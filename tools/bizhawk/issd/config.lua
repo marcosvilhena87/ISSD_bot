@@ -10,7 +10,11 @@ M.ADDR = {
     possession = 0x00A6,
     team_possession = 0x104C,
     game_state = 0x00BA,
+    -- Legacy/unstable: 0x056E changes with player state (e.g. GK possession).
+    -- Do not use for orientation decisions.
     my_side = 0x056E,
+
+    -- Validated operational source for field orientation.
     cpu_side = 0x106E,
     my_ctrl = 0x1ACC,
     cpu_ctrl = 0x1AFC,
