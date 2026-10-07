@@ -25,12 +25,30 @@ function M.new(players, game_state)
             state.possession or 0
         ))
 
-        if state.status == "LIVE_DEFENSE" then
+        if state.game_state == 0 and state.possession_class ~= nil then
             gui.text(8, 78, string.format(
+                "Context: %s last=%s owner=%s",
+                tostring(state.possession_class),
+                tostring(state.context_last_team),
+                state.context_last_owner == nil
+                    and "-"
+                    or string.format("$%04X", state.context_last_owner)
+            ))
+            gui.text(8, 92, string.format(
+                "NoPoss=%d BallV=(%d,%d) speed=%.1f",
+                state.context_frames_without or 0,
+                state.ball_dx or 0,
+                state.ball_dy or 0,
+                state.ball_speed or 0
+            ))
+        end
+
+        if state.status == "LIVE_DEFENSE" then
+            gui.text(8, 106, string.format(
                 "Carrier: %s",
                 players.decode_any(state.live_carrier)
             ))
-            gui.text(8, 92, string.format(
+            gui.text(8, 120, string.format(
                 "Def target: (%s,%s) Side=%s",
                 tostring(state.live_target_x),
                 tostring(state.live_target_y),
