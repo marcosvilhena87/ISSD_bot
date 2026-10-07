@@ -1,6 +1,6 @@
 local M = {}
 
-function M.new(config, players, mem)
+function M.new(config, players, field_side)
     local obj = {
         lane_direction = nil,
         lane_lock_frames = 0,
@@ -104,10 +104,10 @@ function M.new(config, players, mem)
         end
 
         local px, py = players.xy(carrier_base)
-        local my_side = mem.u8(config.ADDR.my_side)
-        local dir = attack_direction(my_side)
+        local my_side = field_side.my_side()
+        local dir = field_side.attack_direction()
 
-        if dir == 0 then
+        if my_side == nil or dir == 0 then
             obj.reset()
             return nil
         end
