@@ -27,6 +27,7 @@ tools/bizhawk/issd/
 ├── movement.lua
 ├── defense.lua
 ├── live_defense.lua
+├── interception.lua
 ├── team_possession.lua
 ├── possession_context.lua
 ├── restart.lua
@@ -178,6 +179,28 @@ goal_side_offset = 48
 
 Isso evita depender de uma coordenada exata do gol ainda não validada e já muda o comportamento de perseguição da bola para posicionamento entre portador e nosso lado defensivo.
 
+### interception.lua
+
+Implementa o primeiro baseline de interceptação preditiva para bolas em trânsito da CPU.
+
+Em vez de correr para a posição atual da bola, projeta:
+
+```text
+target = ball_pos + ball_velocity * lead_frames
+```
+
+Parâmetros iniciais:
+
+```text
+lead_frames       = 6
+max_lead_distance = 96
+min_ball_speed    = 1.0
+```
+
+O vetor projetado é limitado a 96 unidades para reduzir overshoot. Se a bola estiver praticamente parada, o alvo volta a ser a posição atual da bola.
+
+O HUD mostra velocidade, alvo previsto, lead e se a previsão está ativa.
+
 ### team_possession.lua
 
 Lê `WRAM 0x104C` como fonte primária de posse lógica por equipe em jogo corrido:
@@ -252,7 +275,7 @@ Contém somente a orquestração / máquina de estados:
    ├─ 0x00A6 = jogador CPU -> LIVE_DEFENSE
    └─ 0x00A6 = 0
    ├─ 0x104C = 0 -> MY_BALL_IN_FLIGHT
-   ├─ 0x104C = 1 -> CPU_BALL_IN_FLIGHT
+   ├─ 0x104C = 1 -> CPU_BALL_INTERCEPT
    └─ outro valor -> possession_context fallback
 
 Game_State = 1/2
