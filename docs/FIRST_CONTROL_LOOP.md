@@ -48,7 +48,7 @@ Essas teclas evitam conflito com F1/F2 do BizHawk, usados para load state.
 Game_State = 0
 ├─ 0x00A6 == MyCtrl e jogador de linha -> ATTACK_ADVANCE
 ├─ 0x00A6 aponta outro MY              -> MY_TEAMMATE_POSSESSION
-├─ 0x00A6 aponta MY GK                 -> MY_GK_POSSESSION
+├─ 0x00A6 aponta MY GK                 -> GK_DISTRIBUTE
 ├─ 0x00A6 aponta CPU  -> LIVE_DEFENSE
 └─ 0x00A6 = 0
    ├─ 0x104C = 0 -> MY_BALL_IN_FLIGHT
@@ -271,3 +271,48 @@ MyCtrl == MY GK      -> não avançar automaticamente
 ```
 
 Ainda não há escolha de corredor, passe, drible ou chute; esta etapa valida somente a capacidade de ganhar território com posse.
+
+
+## Reposição com o goleiro
+
+Quando o goleiro controlado está com a bola nas mãos:
+
+```text
+P=$0500
+MyCtrl=$0500
+→ GK_DISTRIBUTE
+```
+
+A política inicial tenta primeiro uma saída curta:
+
+```text
+companheiro <= 360 unidades
+e clearance >= 72
+→ escolher melhor receptor
+→ UP/DOWN ou frente
+→ B
+```
+
+Score do receptor:
+
+```text
+1.00 * clearance
++ 0.35 * progressao para frente
+- 0.25 * distancia ao goleiro
+```
+
+Se não houver receptor curto seguro:
+
+```text
+frente relativa ao gol adversário + A
+→ chutão
+```
+
+A direção para frente usa `My_Side`:
+
+```text
+My_Side=0 -> RIGHT
+My_Side=1 -> LEFT
+```
+
+O HUD mostra ação, direção, botão, receptor, distância, clearance, progressão e score.
