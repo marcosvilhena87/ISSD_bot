@@ -76,7 +76,7 @@ O bot usa `Game_State` como fonte primária para detectar reposições. A geomet
 
 ## Team Possession / posse lógica por equipe
 
-Ainda não localizado.
+Candidato forte atual: `WRAM 0x104C` (u8), ainda não validado como 🟢.
 
 Hipótese de trabalho: existe uma flag separada de `Player Ball Possession (0x00A6)` que mantém o time responsável pela jogada mesmo quando a bola está em trânsito.
 
@@ -106,6 +106,36 @@ R = reset
 ```
 
 Para reduzir falsos positivos, o ideal é capturar pelo menos 3 amostras por classe, usando jogadores, zonas do campo e passes diferentes.
+
+Após múltiplas amostras, `0x104C` sobreviveu com o padrão:
+
+```text
+MY_CONTROLLED  = 0
+MY_PASS        = 0
+CPU_CONTROLLED = 1
+CPU_PASS       = 1
+```
+
+Foi adicionado um probe focal:
+
+```text
+tools/bizhawk/team_possession_watch.lua
+```
+
+Ele mostra em tempo real:
+
+```text
+0x104C
+0x00A6 Player Possession
+0x00BA Game_State
+Ball X/Y
+MyCtrl / CPUCtrl
+My_Side / CPU_Side
+```
+
+e registra no console toda transição de `0x104C` com o contexto do frame.
+
+Próximo critério de validação: confirmar que `0x104C` mantém `0` durante passes do nosso time e `1` durante passes da CPU, inclusive em passes longos, e verificar seu comportamento em bola realmente solta, reposições, replay e troca de lados.
 
 ## Possession
 
