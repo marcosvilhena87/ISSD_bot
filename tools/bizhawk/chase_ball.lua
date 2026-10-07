@@ -1,5 +1,5 @@
--- ISSD Bot - launcher
--- Mantido por compatibilidade: a implementacao vive em tools/bizhawk/issd/.
+-- Deprecated compatibility launcher.
+-- Prefer: tools/bizhawk/main.lua
 
 local function script_dir()
     local source = debug.getinfo(1, "S").source
@@ -9,4 +9,5 @@ local function script_dir()
     return source:match("^(.*[\\/])") or "./"
 end
 
-dofile(script_dir() .. "issd/main.lua")
+console.log("[ISSD] chase_ball.lua is deprecated; use tools/bizhawk/main.lua")
+dofile(script_dir() .. "main.lua")
