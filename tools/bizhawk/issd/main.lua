@@ -120,7 +120,7 @@ local function step_bot()
         movement.stop()
 
         local state = make_state(
-            my_base, nil, nil, "INVALID_MYCTRL", possession, gs
+            my_base, nil, nil, "BOT_IDLE_NO_PLAYER", possession, gs
         )
         state.gameplay_active = gameplay_value
         state.gameplay_active_kind = gameplay_active.kind(gameplay_value)
@@ -290,7 +290,19 @@ local function step_bot()
         )
     end
 
+    if game_state.is_stoppage(gs) then
+        restart.clear()
+        possession_context.reset()
+        movement.stop()
+
+        local status = game_state.kind(gs)
+        return make_state(
+            my_base, 0, 0, status, possession, gs
+        )
+    end
+
     restart.clear()
+    movement.stop()
     return make_state(
         my_base, nil, nil, "UNKNOWN_GAME_STATE", possession, gs
     )
@@ -300,7 +312,7 @@ console.log("[ISSD] Modular bot carregado")
 console.log("[ISSD] K = bot ON/OFF")
 console.log("[ISSD] L = stop_on_possession ON/OFF")
 console.log("[ISSD] GameplayActive 0x0006: 1=active, other=BOT_IDLE")
-console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in")
+console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in, 3=foul, 4=offside, 5=post-goal")
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
 console.log("[ISSD] switch event HUD: 60 frames")
