@@ -60,3 +60,9 @@ Um buffer de 600 frames (~10 s a 60 FPS) amostra estado a cada 3 frames. Ao entr
 Enderecos WRAM candidatos: `0x0DA2` (My_Goal(s), u16 LE) e `0x0EA2` (CPU_Goal(s), u16 LE). Ao variar exatamente um gol, o bot registra `GOAL_FOR` ou `GOAL_AGAINST` e reconstitui ate 600 frames anteriores (`PRE_GOAL_TRACE`, amostra de 3 em 3). Mudancas negativas geram `SCORE_RESET` e saltos nao unitarios `SCORE_JUMP`, sem atribuir um gol. Entrada em GS=5 sem aumento detectado gera apenas `POST_GOAL_UNVERIFIED`. Todos os eventos vao para o unico `issd_report.csv`.
 
 **Validacao necessaria:** marcar um gol de cada lado e confirmar visualmente o incremento exato nos enderecos indicados; testar load state/partida nova. Ainda nao ha teste executado no BizHawk.
+
+## Interceptacao emergencial (CPU_DANGER_INTERCEPT)
+
+Quando a bola esta livre, a posse de equipe indica CPU e a bola se move com velocidade >=3 unidades/frame e componente horizontal >=2 unidades/frame em direcao ao nosso goleiro, o bot pode priorizar um ponto futuro no caminho da bola. A ativacao exige distancia horizontal ao GK de ate 300 unidades e estimativa de chegada em ate 28 frames. A projecao usa lead de 3 a 16 frames (65% do tempo ate o GK) e nao ultrapassa sua coordenada X. A troca de jogador considera o novo ponto-alvo; o status `CPU_DANGER_INTERCEPT` registra a ativacao, e a coluna `detail` de STATE_CHANGE inclui `danger_intercept=true`, `frames_to_goal` e `lead_frames`.
+
+Limites: posicao do goleiro e aproximacao horizontal sao proxies para a linha de gol; nao ha calibracao da velocidade de corrida, colisao ou defesa do goleiro. A regra nao altera a IA de goleiro nem garante prevencao de gol. Validar em BizHawk e comparar PRE_GOAL_TRACE/GOAL_AGAINST antes de afinar os thresholds.
