@@ -351,3 +351,9 @@ O antigo `0x056E` permanece apenas como endereço legado/documental e não parti
 Em `ATTACK_ADVANCE`, o waypoint e projetado sobre o vetor entre o portador e a posicao em RAM do goleiro adversario (`CPU_FIRST=0x1000`); o ataque deixa de seguir apenas o eixo X. Em `ATTACK_LANE`, bloqueadores sao detectados por projecao nesse vetor e o desvio e perpendicular a trajetoria para o goleiro. O bloqueador nao inclui o proprio goleiro. A escolha de desvio considera folga e progresso em direcao ao goleiro, com lock para diminuir oscilacao. Se a posicao do goleiro estiver atras da direcao de ataque ou coincidir com o portador, mantem fallback para o eixo ofensivo. O relatorio `issd_report.csv` recebe `goal_x`, `goal_y` e `goal_distance` na coluna detail durante transicoes ofensivas.
 
 Essa melhoria e exclusivamente de conducao. Ainda nao significa escolher momento de finalizacao ou chutar; validar no BizHawk se o goleiro de fato e uma referencia adequada perto da area.
+
+## Lateral: receptor buscando espaco (iteracao inicial)
+
+O `Restart taker` executa A/B e o `Player` se movimenta com direcionais/R. Para lateral a favor, o bot amostra pontos de recepcao proximos ao cobrador, avalia distancia ao marcador mais proximo, progressao e deslocamento do receptor. O melhor ponto vira alvo temporario durante 20 frames, evitando trocas a cada quadro. O jogador controlado caminha ate ficar a 16 unidades do ponto; com folga de ao menos 40 unidades do adversario, o bot tenta B. Se nao conseguir uma oportunidade ate 180 frames, tenta A (fallback) antes de duas tentativas no maximo. O bot nunca precisa controlar o cobrador. O evento e o destino aparecem no CSV unico `issd_report.csv`.
+
+A politica ainda e experimental: trajetoria do lateral, posicionamento dentro das linhas e recepcao efetiva devem ser validados no BizHawk, junto aos valores de coordenada de mundo e Game_State.
