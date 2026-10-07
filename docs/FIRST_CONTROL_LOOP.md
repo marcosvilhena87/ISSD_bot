@@ -316,3 +316,32 @@ My_Side=1 -> LEFT
 ```
 
 O HUD mostra ação, direção, botão, receptor, distância, clearance, progressão e score.
+
+
+## Orientação do campo consolidada
+
+`WRAM 0x106E (CPU_Side)` passou a ser a fonte operacional para direção do campo.
+
+```text
+CPU_Side=0 -> My_Side derivado=1
+CPU_Side=1 -> My_Side derivado=0
+```
+
+O watcher focal manteve `Invalid CPU_Side frames=0` e confirmou a inversão na troca de lados.
+
+A orientação é centralizada em:
+
+```text
+field_side.lua
+```
+
+e agora é usada por:
+
+```text
+live_attack.lua
+live_defense.lua
+gk_distribution.lua
+defense.lua
+```
+
+O antigo `0x056E` permanece apenas como endereço legado/documental e não participa mais das decisões de ataque/defesa.
