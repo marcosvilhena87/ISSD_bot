@@ -39,6 +39,7 @@ M.DEFENSE = {
     -- Histerese da marcacao durante RESTART_DEFENSE.
     target_lock_frames = 10,
     switch_margin = 0.05,
+    switch_event_frames = 60,
 }
 
 return M
