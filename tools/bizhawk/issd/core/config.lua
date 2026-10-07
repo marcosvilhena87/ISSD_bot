@@ -130,6 +130,8 @@ M.DEFENSE = {
 -- Initial experimental throw-in parameters; validate button mapping in BizHawk.
 M.THROW_IN = {
     throw_button = "B",
+    long_throw_button = "A",
+    long_fallback_frames = 180,
     min_distance = 24,
     max_distance = 280,
     min_clearance = 40,
