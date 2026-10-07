@@ -56,6 +56,9 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         mark_dist_to_me = restart.mark_dist_to_me,
         mark_dist_to_ball = restart.mark_dist_to_ball,
         mark_goal_cost = restart.mark_goal_cost,
+        mark_norm_me = restart.mark_norm_me,
+        mark_norm_ball = restart.mark_norm_ball,
+        mark_norm_goal = restart.mark_norm_goal,
         my_side = restart.my_side,
     }
 end
@@ -126,7 +129,7 @@ console.log("[ISSD] Modular bot carregado")
 console.log("[ISSD] K = bot ON/OFF")
 console.log("[ISSD] L = stop_on_possession ON/OFF")
 console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in")
-console.log("[ISSD] marking_score: 35% me + 25% ball + 40% goal-axis")
+console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 
 while true do
     local keys = input.get()
