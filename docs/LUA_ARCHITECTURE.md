@@ -244,10 +244,13 @@ Contém somente a orquestração / máquina de estados:
 └─ BOT_IDLE
 
 0x0006 == 1
+├─ Game_State = 3/4/5
+│  └─ estado conhecido sem movimento
+│
 └─ Game_State = 0
-├─ 0x00A6 = jogador MY  -> POSSESSION_MANUAL
-├─ 0x00A6 = jogador CPU -> LIVE_DEFENSE
-└─ 0x00A6 = 0
+   ├─ 0x00A6 = jogador MY  -> POSSESSION_MANUAL
+   ├─ 0x00A6 = jogador CPU -> LIVE_DEFENSE
+   └─ 0x00A6 = 0
    ├─ 0x104C = 0 -> MY_BALL_IN_FLIGHT
    ├─ 0x104C = 1 -> CPU_BALL_IN_FLIGHT
    └─ outro valor -> possession_context fallback
@@ -352,3 +355,17 @@ A intenção é validar uma guarda global futura:
 ```
 
 A guarda foi validada em gameplay normal, pause e replay e já está integrada ao bot principal.
+
+
+### Prioridade semântica de estados
+
+Depois de validar telas de seleção de cobrador e cobrança com `GS=3` e `MyCtrl=0`, a ordem do loop passou a ser:
+
+```text
+GameplayActive
+→ Game_State 3/4/5
+→ validação de MyCtrl
+→ demais estados
+```
+
+Assim `FOUL_RESTART_SEQUENCE`, `OFFSIDE_SEQUENCE` e `POST_GOAL` são reconhecidos mesmo quando não existe jogador controlável.
