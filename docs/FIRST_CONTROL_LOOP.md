@@ -245,13 +245,23 @@ My_Side=1 -> avançar para a esquerda
 advance_distance = 96
 ```
 
-Estado:
+Estados:
 
 ```text
-ATTACK_ADVANCE
+ATTACK_ADVANCE -> corredor frontal livre
+ATTACK_LANE    -> adversário bloqueando a progressão
 ```
 
-O HUD mostra `Attack target`, direção, lado e distância de avanço.
+Critério inicial de bloqueio:
+
+```text
+forward <= 72
+lateral <= 32
+```
+
+Em `ATTACK_LANE`, o bot testa alvos diagonais `80` à frente e `56` para cima/baixo, escolhendo o lado com maior folga para adversários. A decisão fica travada por 12 frames para reduzir zigue-zague.
+
+O HUD mostra alvo, direção, modo, bloqueador, direção da diagonal, lock e clearance UP/DOWN.
 
 Proteções iniciais:
 
