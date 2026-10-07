@@ -74,6 +74,39 @@ Transições observadas:
 
 O bot usa `Game_State` como fonte primária para detectar reposições. A geometria dos jogadores é usada apenas para identificar o provável cobrador e, em reposição contra, escolher um adversário sem bola para marcar.
 
+## Team Possession / posse lógica por equipe
+
+Ainda não localizado.
+
+Hipótese de trabalho: existe uma flag separada de `Player Ball Possession (0x00A6)` que mantém o time responsável pela jogada mesmo quando a bola está em trânsito.
+
+Foi adicionado:
+
+```text
+tools/bizhawk/team_possession_probe.lua
+```
+
+O probe procura endereços `u8` e `u16 little-endian` que satisfaçam:
+
+```text
+MY_CONTROLLED == MY_PASS
+CPU_CONTROLLED == CPU_PASS
+MY_* != CPU_*
+```
+
+Classes de captura:
+
+```text
+Y = MY_CONTROLLED
+U = MY_PASS
+I = CPU_CONTROLLED
+O = CPU_PASS
+P = imprimir candidatos
+R = reset
+```
+
+Para reduzir falsos positivos, o ideal é capturar pelo menos 3 amostras por classe, usando jogadores, zonas do campo e passes diferentes.
+
 ## Possession
 
 Validado em `WRAM 0x00A6`:
