@@ -100,6 +100,8 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         intercept_lead_x = 0,
         intercept_lead_y = 0,
         intercept_predictive = false,
+        intercept_player_ball_distance = nil,
+        intercept_clipped = false,
     }
 end
 
@@ -216,7 +218,10 @@ local function step_bot()
         -- Quando nenhum jogador esta fisicamente ligado a bola,
         -- 0x104C passa a ser a fonte primaria para o lado da posse.
         if possession == 0 and team_possession.is_cpu(team_value) then
+            local px, py = players.xy(my_base)
             local target = interception.target(
+                px,
+                py,
                 bx,
                 by,
                 possession_context.ball_dx,
@@ -224,7 +229,6 @@ local function step_bot()
                 possession_context.ball_speed
             )
 
-            local px, py = players.xy(my_base)
             local dx = target.x - px
             local dy = target.y - py
             movement.move_toward(dx, dy)
@@ -238,6 +242,12 @@ local function step_bot()
             state.intercept_lead_x = target.lead_x
             state.intercept_lead_y = target.lead_y
             state.intercept_predictive = target.predictive
+            state.intercept_player_ball_distance =
+                target.player_ball_distance
+            state.intercept_clipped = target.clipped
+            state.intercept_player_ball_distance =
+                target.player_ball_distance
+            state.intercept_clipped = target.clipped
 
             return attach_live_state(
                 state,
@@ -258,7 +268,10 @@ local function step_bot()
 
         -- Fallback temporal somente se 0x104C sair do dominio validado 0/1.
         if fallback_class == "CPU_BALL_IN_FLIGHT" then
+            local px, py = players.xy(my_base)
             local target = interception.target(
+                px,
+                py,
                 bx,
                 by,
                 possession_context.ball_dx,
@@ -266,7 +279,6 @@ local function step_bot()
                 possession_context.ball_speed
             )
 
-            local px, py = players.xy(my_base)
             local dx = target.x - px
             local dy = target.y - py
             movement.move_toward(dx, dy)
