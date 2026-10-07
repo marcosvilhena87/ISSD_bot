@@ -99,7 +99,7 @@ Hipótese de trabalho: existe uma flag separada de `Player Ball Possession (0x00
 Foi adicionado:
 
 ```text
-tools/bizhawk/team_possession_probe.lua
+tools/bizhawk/issd/probes/team_possession_probe.lua
 ```
 
 O probe procura endereços `u8` e `u16 little-endian` que satisfaçam:
@@ -135,7 +135,7 @@ CPU_PASS       = 1
 Foi adicionado um probe focal:
 
 ```text
-tools/bizhawk/team_possession_watch.lua
+tools/bizhawk/issd/probes/team_possession_watch.lua
 ```
 
 Ele mostra em tempo real:
@@ -336,7 +336,7 @@ Problema observado em execução: durante a tela `RESUME REPLAY`, `Game_State (0
 Foi adicionado:
 
 ```text
-tools/bizhawk/replay_probe.lua
+tools/bizhawk/issd/probes/replay_probe.lua
 ```
 
 O probe compara duas classes:
@@ -376,7 +376,7 @@ Semântica validada:
 Foi adicionado:
 
 ```text
-tools/bizhawk/gameplay_active_watch.lua
+tools/bizhawk/issd/probes/gameplay_active_watch.lua
 ```
 
 O watcher mostra `0x0006`, `Game_State`, `TeamPoss`, `PlayerPoss`, bola, controles e lados, e registra somente transições de `0x0006`.
