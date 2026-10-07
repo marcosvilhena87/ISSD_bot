@@ -35,6 +35,10 @@ M.DEFENSE = {
     weight_to_me = 0.35,
     weight_to_ball = 0.25,
     weight_to_goal = 0.40,
+
+    -- Histerese da marcacao durante RESTART_DEFENSE.
+    target_lock_frames = 10,
+    switch_margin = 0.05,
 }
 
 return M
