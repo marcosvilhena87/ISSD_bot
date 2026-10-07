@@ -84,6 +84,9 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         live_target_x = nil,
         live_target_y = nil,
         live_my_side = nil,
+        gk_distance = nil,
+        gk_press_threshold = nil,
+        gk_should_press = nil,
         team_possession = nil,
         team_possession_kind = nil,
         team_possession_source = nil,
@@ -190,6 +193,27 @@ local function step_bot()
         end
 
         if players.valid_cpu_base(possession) then
+            local gk_policy =
+                live_defense.goalkeeper_policy(my_base, possession)
+
+            if gk_policy ~= nil and not gk_policy.should_press then
+                movement.stop()
+
+                local state = make_state(
+                    my_base, 0, 0, "CPU_GK_HOLD", possession, gs
+                )
+                state.live_carrier = possession
+                state.gk_distance = gk_policy.distance
+                state.gk_press_threshold = gk_policy.threshold
+                state.gk_should_press = false
+
+                return attach_live_state(
+                    state,
+                    "PLAYER_POSSESSION",
+                    "CPU_CONTROLLED"
+                )
+            end
+
             local live = live_defense.target_for_carrier(possession)
 
             if live ~= nil then
@@ -206,6 +230,12 @@ local function step_bot()
                 state.live_target_x = live.target_x
                 state.live_target_y = live.target_y
                 state.live_my_side = live.my_side
+
+                if gk_policy ~= nil then
+                    state.gk_distance = gk_policy.distance
+                    state.gk_press_threshold = gk_policy.threshold
+                    state.gk_should_press = true
+                end
 
                 return attach_live_state(
                     state,
@@ -370,7 +400,7 @@ console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in, 3=foul, 4=offside
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
 console.log("[ISSD] switch event HUD: 60 frames")
-console.log("[ISSD] live: team possession + predictive interception")
+console.log("[ISSD] live: GK press gate + team possession + predictive interception")
 
 while true do
     local keys = input.get()
