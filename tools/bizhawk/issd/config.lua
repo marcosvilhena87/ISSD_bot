@@ -43,7 +43,9 @@ M.LIVE_DEFENSE = {
 -- O primeiro baseline projeta alguns frames a frente usando a velocidade
 -- observada da bola e limita o deslocamento previsto para evitar overshoot.
 M.INTERCEPTION = {
-    lead_frames = 6,
+    min_lead_frames = 3,
+    max_lead_frames = 12,
+    distance_per_lead_frame = 24,
     max_lead_distance = 96,
     min_ball_speed = 1.0,
 }
