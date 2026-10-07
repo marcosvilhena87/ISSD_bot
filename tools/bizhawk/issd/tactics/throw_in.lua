@@ -1,7 +1,18 @@
 -- Offensive throw-in: restart.taker throws; MyCtrl moves as receiver.
 local M = {}
 function M.new(config, players, field_side)
-    local c = config.THROW_IN
+    local c = config.THROW_IN or {}
+    local defaults = {
+        throw_button="B", long_throw_button="A",
+        min_distance=24, max_distance=280, min_clearance=40,
+        clearance_weight=1, forward_weight=0.25, distance_weight=0.35,
+        retry_frames=45, switch_margin=80, switch_cooldown=45,
+        target_lock_frames=20, target_tolerance=16,
+        max_attempts=2, long_fallback_frames=180
+    }
+    for key, value in pairs(defaults) do
+        if c[key] == nil then c[key] = value end
+    end
     local obj = {taker=nil, frames=0, switch_cd=0, throw_cd=0,
         attempts=0, target_x=nil, target_y=nil, lock=0}
     local function dist(x,y,a,b)
@@ -81,7 +92,9 @@ function M.new(config, players, field_side)
             obj.lock=c.target_lock_frames
         end
         local mode="MOVE_RECEIVER"
-        if best.travel<=c.target_tolerance and best.space>=c.min_clearance then
+        if best.travel ~= nil and best.space ~= nil
+            and best.travel <= c.target_tolerance
+            and best.space >= c.min_clearance then
             mode="READY"
         elseif obj.frames>=c.long_fallback_frames and obj.attempts==0 then
             mode="READY_LONG"
