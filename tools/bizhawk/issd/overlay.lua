@@ -48,20 +48,43 @@ function M.new(players, game_state)
             ))
         end
 
-        if state.status == "ATTACK_ADVANCE" then
+        if state.status == "ATTACK_ADVANCE"
+           or state.status == "ATTACK_LANE" then
             gui.text(8, 120, string.format(
                 "Attack target: (%s,%s)",
                 tostring(state.attack_target_x),
                 tostring(state.attack_target_y)
             ))
             gui.text(8, 134, string.format(
-                "Attack dir=%s Side=%s advance=%s",
+                "Attack dir=%s Side=%s mode=%s",
                 state.attack_direction == 1 and "RIGHT"
                     or state.attack_direction == -1 and "LEFT"
                     or "?",
                 tostring(state.attack_my_side),
-                tostring(state.attack_advance_distance)
+                tostring(state.attack_mode or "?")
             ))
+
+            if state.status == "ATTACK_LANE" then
+                gui.text(8, 148, string.format(
+                    "Lane=%s lock=%d blocker=%s F=%.1f L=%.1f",
+                    state.attack_lane_direction == -1 and "UP"
+                        or state.attack_lane_direction == 1 and "DOWN"
+                        or "?",
+                    state.attack_lane_lock_frames or 0,
+                    players.decode_any(state.attack_blocker_base),
+                    state.attack_blocker_forward or 0,
+                    state.attack_blocker_lateral or 0
+                ))
+                gui.text(8, 162, string.format(
+                    "Clear UP=%s DOWN=%s",
+                    state.attack_up_clearance == nil
+                        and "-"
+                        or string.format("%.1f", state.attack_up_clearance),
+                    state.attack_down_clearance == nil
+                        and "-"
+                        or string.format("%.1f", state.attack_down_clearance)
+                ))
+            end
         end
 
         if state.status == "PLAYER_SWITCH" then
