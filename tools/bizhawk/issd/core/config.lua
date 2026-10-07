@@ -10,6 +10,8 @@ M.ADDR = {
     possession = 0x00A6,
     team_possession = 0x104C,
     game_state = 0x00BA,
+    score_my = 0x0DA2, -- u16 LE; user-supplied WCH candidate
+    score_cpu = 0x0EA2, -- u16 LE; user-supplied WCH candidate
     -- Legacy/unstable: 0x056E changes with player state (e.g. GK possession).
     -- Do not use for orientation decisions.
     my_side = 0x056E,
