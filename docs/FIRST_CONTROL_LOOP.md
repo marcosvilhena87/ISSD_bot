@@ -178,12 +178,14 @@ Nesses estados o bot continua sem enviar movimento.
 
 Quando a CPU mantém a posse lógica da jogada (`0x104C=1`) mas `0x00A6=0`, o bot não corre mais para a posição atual da bola.
 
-Ele projeta um alvo curto à frente da trajetória usando a velocidade observada da bola:
+Ele projeta um alvo à frente da trajetória usando a velocidade observada da bola e um horizonte que cresce com a distância do defensor:
 
 ```text
-lead_frames       = 6
+lead = 3 + floor(distance(player, ball) / 24)
+lead limitado a 3..12 frames
+
 max_lead_distance = 96
 min_ball_speed    = 1.0
 ```
 
-O HUD expõe `BallV`, `Intercept`, `lead`, `pred` e `LeadVec` para calibração empírica.
+O HUD expõe `BallV`, `Dist`, `Intercept`, `lead`, `pred`, `LeadVec` e `clip` para calibração empírica.
