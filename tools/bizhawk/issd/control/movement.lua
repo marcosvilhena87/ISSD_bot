@@ -8,7 +8,7 @@ function M.new(config)
         for key, value in pairs(pad) do if value then keys[#keys + 1] = key end end
         table.sort(keys)
         obj.last_command = #keys > 0 and table.concat(keys, "+") or "NONE"
-        send(pad)
+        joypad.set(pad, config.PLAYER)
     end
 
     function obj.direction_pad(dx, dy)
