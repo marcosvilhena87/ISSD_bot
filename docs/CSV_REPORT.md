@@ -48,3 +48,9 @@ Estados: `THROW_IN_SWITCH_RECEIVER`, `THROW_IN_MOVE_RECEIVER`, `THROW_IN_RECEIVE
 ## Controles confirmados para lateral
 
 Durante GS=2, o jogador controlado (MyCtrl) recebe direcionais e R; o cobrador identificado (restart.taker) responde aos botoes B (curto) e A (longo), independentemente de MyCtrl coincidir com o cobrador. A rotina agora tenta B ao posicionar o receptor, registra a tentativa no CSV e limita a duas tentativas por cobrador/reinicio. Se nao houver candidato receptor, apos 180 frames tenta A como fallback experimental. Validar o resultado na ROM-alvo.
+
+## Diagnostico de gol (historico circular)
+
+Um buffer de 600 frames (~10 s a 60 FPS) amostra estado a cada 3 frames. Ao entrar em `Game_State=5`, o CSV unico `issd_report.csv` recebe `POST_GOAL_CANDIDATE` e as amostras `PRE_GOAL_TRACE` com o numero original do frame e `trigger_frame` em detail. O historico inclui bola, jogador controlado, estado tatico, alvo e comando de controle (quando o bot esta ligado). Quando estiver desligado, posicoes e comandos taticos nao sao disponiveis.
+
+**Atenção:** `GS=5` significa sequencia pos-gol, mas o mapa atual nao revela qual equipe marcou; portanto `scoring_team=UNKNOWN` ate que enderecos de placar sejam descobertos e validados. O evento nao e automaticamente classificado como gol sofrido. A cada novo inicio de `main.lua`, o mesmo CSV e recriado; nao ha segundo relatorio.
