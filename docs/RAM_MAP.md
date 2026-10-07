@@ -14,6 +14,7 @@ Documento de trabalho para registrar endereços de memória descobertos no ISS D
 
 | Variável | Endereço WRAM | Tipo WCH | Status | Fonte / observações |
 |---|---:|---|---|---|
+| Gameplay Active | `0x0006` | byte unsigned | 🟢 | `1` = gameplay ativo; `0` = pause/replay; usado como guarda global do bot |
 | Ball X | `0x042A` | word signed | 🟢 | validado em execução |
 | Ball Y | `0x042C` | word signed | 🟢 | validado em execução |
 | My Controlled Player | `0x1ACC` | word unsigned | 🟢 | base da struct do jogador controlado |
@@ -350,7 +351,7 @@ Recomendação: capturar pelo menos 5 amostras LIVE, 5 REPLAY e 5 PAUSED em mome
 
 ### Gameplay Active candidate
 
-O scanner `replay_probe.lua` encontrou `WRAM 0x0006` (u8) como candidato de maior interesse:
+`WRAM 0x0006` (u8) foi validado em execução como guarda de gameplay:
 
 ```text
 LIVE   = 1
@@ -358,7 +359,7 @@ REPLAY = 0
 PAUSED = 0
 ```
 
-Isso sugere uma semântica mais útil que uma flag de replay:
+Semântica validada:
 
 ```text
 1 = gameplay ativo
@@ -383,4 +384,11 @@ replay             -> 0
 retorno do replay  -> 1
 ```
 
-Também deve ser observado em gol/comemoração, lateral, escanteio, tiro de meta, intervalo e fim de partida antes de integrar ao bot.
+A integração foi feita no bot principal como guarda global:
+
+```text
+0x0006 != 1 -> BOT_IDLE + release de input + reset de estado temporário
+0x0006 == 1 -> máquina normal
+```
+
+Ainda vale caracterizar estados adicionais como gol/comemoração, intervalo e fim de partida, mas pause e replay já foram validados.
