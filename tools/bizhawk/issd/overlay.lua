@@ -59,6 +59,23 @@ function M.new(players, game_state)
                 tostring(state.live_target_y),
                 tostring(state.live_my_side)
             ))
+
+            if state.gk_distance ~= nil then
+                gui.text(8, 148, string.format(
+                    "GK dist=%.1f threshold=%.1f PRESS",
+                    state.gk_distance,
+                    state.gk_press_threshold or 0
+                ))
+            end
+        end
+
+        if state.status == "CPU_GK_HOLD" then
+            gui.text(8, 120, "Carrier: CPU GK")
+            gui.text(8, 134, string.format(
+                "GK dist=%.1f threshold=%.1f HOLD",
+                state.gk_distance or 0,
+                state.gk_press_threshold or 0
+            ))
         end
 
         if state.status == "CPU_BALL_INTERCEPT"
