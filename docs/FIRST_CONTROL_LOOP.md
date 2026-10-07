@@ -46,10 +46,12 @@ Essas teclas evitam conflito com F1/F2 do BizHawk, usados para load state.
 
 ```text
 Game_State = 0
-├─ posse do meu time -> POSSESSION_MANUAL
-├─ Possession == 0   -> LOOSE_BALL_CHASE
-├─ posse da CPU      -> LIVE_DEFENSE
-└─ fallback          -> LIVE_FALLBACK_CHASE
+├─ MY_CONTROLLED      -> POSSESSION_MANUAL
+├─ CPU_CONTROLLED     -> LIVE_DEFENSE
+├─ CPU_BALL_IN_FLIGHT -> intercepta/persegue a bola
+├─ MY_BALL_IN_FLIGHT  -> controle manual
+├─ TRUE_LOOSE_BALL    -> LOOSE_BALL_CHASE
+└─ fallback           -> LIVE_FALLBACK_CHASE
 
 Game_State = 1 ou 2
 ├─ cobrador MY  -> RESTART_ATTACK
@@ -98,3 +100,18 @@ Validado em execução:
 - retorno automático para jogo normal.
 
 O próximo salto é melhorar a seleção defensiva do alvo e, depois, transformar o estado validado em observação para Gymnasium/RL.
+
+
+## Contexto temporal de posse
+
+`Possession=0x0000` significa que nenhum jogador está vinculado fisicamente à bola naquele frame; isso pode acontecer em passe, chute ou bola realmente solta.
+
+O bot agora memoriza o último time/possuidor e a velocidade da bola para distinguir:
+
+```text
+CPU_BALL_IN_FLIGHT
+MY_BALL_IN_FLIGHT
+TRUE_LOOSE_BALL
+```
+
+Isso evita classificar imediatamente todo `Possession=0` como bola neutra.
