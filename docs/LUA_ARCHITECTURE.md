@@ -267,3 +267,19 @@ MY != CPU
 O scanner mantém apenas endereços estáveis dentro de cada classe e imprime candidatos tanto como `u8` quanto `u16 little-endian`.
 
 O objetivo é substituir, se possível, a heurística temporal de `possession_context.lua` por uma variável nativa do jogo que represente posse por equipe.
+
+
+### team_possession_watch.lua
+
+Probe focal para validar `WRAM 0x104C` antes de integrá-lo ao bot.
+
+O HUD mostra em tempo real o candidato, `Player Possession`, `Game_State`, bola, controles e orientação dos lados. Toda mudança de `0x104C` é persistida no console com o contexto do frame.
+
+Hipótese atual:
+
+```text
+0x104C = 0 -> MY
+0x104C = 1 -> CPU
+```
+
+Ainda é um candidato forte, não uma variável confirmada.
