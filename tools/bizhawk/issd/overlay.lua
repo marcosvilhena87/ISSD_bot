@@ -43,6 +43,12 @@ function M.new(players, game_state)
                     state.mark_dist_to_me or -1,
                     state.mark_dist_to_ball or -1
                 ))
+
+                gui.text(8, 120, string.format(
+                    "GoalAxis=%.1f My_Side=%s",
+                    state.mark_goal_cost or -1,
+                    tostring(state.my_side)
+                ))
             end
         end
     end
