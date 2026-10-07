@@ -48,6 +48,32 @@ function M.new(players, game_state)
             ))
         end
 
+        if state.status == "GK_DISTRIBUTE" then
+            gui.text(8, 120, string.format(
+                "GK action=%s dir=%s button=%s wait=%d",
+                tostring(state.gk_dist_mode or "?"),
+                tostring(state.gk_dist_direction or "?"),
+                tostring(state.gk_dist_button or "?"),
+                state.gk_dist_wait_frames or 0
+            ))
+
+            if state.gk_dist_receiver ~= nil then
+                gui.text(8, 134, string.format(
+                    "Receiver: %s dist=%.1f clear=%.1f",
+                    players.decode_any(state.gk_dist_receiver),
+                    state.gk_dist_receiver_distance or 0,
+                    state.gk_dist_receiver_clearance or 0
+                ))
+                gui.text(8, 148, string.format(
+                    "Forward=%.1f score=%.1f",
+                    state.gk_dist_receiver_forward or 0,
+                    state.gk_dist_receiver_score or 0
+                ))
+            else
+                gui.text(8, 134, "Receiver: none -> LONG_KICK")
+            end
+        end
+
         if state.status == "ATTACK_ADVANCE"
            or state.status == "ATTACK_LANE" then
             gui.text(8, 120, string.format(
