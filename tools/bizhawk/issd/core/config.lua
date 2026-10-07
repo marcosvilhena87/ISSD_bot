@@ -97,6 +97,12 @@ M.INTERCEPTION = {
     distance_per_lead_frame = 24,
     max_lead_distance = 96,
     min_ball_speed = 1.0,
+    danger_min_speed = 3.0,
+    danger_min_x_speed = 2.0,
+    danger_max_goal_distance = 300,
+    danger_max_frames = 28,
+    danger_min_lead_frames = 3,
+    danger_max_lead_frames = 16,
 }
 
 -- Troca automatica do jogador controlado em defesa.
