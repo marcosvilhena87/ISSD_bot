@@ -37,6 +37,10 @@ M.DEADZONE_Y = 8
 -- em relacao ao portador da CPU.
 M.LIVE_DEFENSE = {
     goal_side_offset = 48,
+
+    -- Evita que um defensor atravesse o campo para pressionar o GK rival.
+    -- Se ja estiver perto, a pressao normal continua permitida.
+    gk_press_distance = 160,
 }
 
 -- Interceptacao de bola em movimento.
