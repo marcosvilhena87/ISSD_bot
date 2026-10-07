@@ -132,6 +132,14 @@ Regras:
 
 O HUD mostra `Lock`, `delta` e `HOLD/FREE` para auditar a histerese.
 
+Quando uma troca é realmente autorizada por `delta > SWITCH_MARGIN`, o evento fica visível por 60 frames:
+
+```text
+SWITCH CPU slot 9 -> CPU slot 5 d=0.071 age=6
+```
+
+Esse evento persiste após o frame da troca, permitindo comprovar a mudança sem precisar capturar exatamente o instante em que ela ocorreu. Trocas forçadas por mudança de cobrador ou invalidação do alvo não são registradas como evento de histerese.
+
 ### restart.lua
 
 Identifica o provável cobrador pela proximidade da bola e delega a seleção do alvo defensivo.
