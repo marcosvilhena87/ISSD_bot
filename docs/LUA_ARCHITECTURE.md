@@ -115,6 +115,23 @@ Depois de calcular os scores, os candidatos são ordenados do menor para o maior
 
 Isso permite auditar não só o vencedor, mas também a margem para os próximos candidatos antes de recalibrar os pesos.
 
+Para evitar oscilação entre candidatos com scores muito próximos, `restart.lua` aplica histerese somente durante `RESTART_DEFENSE`:
+
+```text
+TARGET_LOCK_FRAMES = 10
+SWITCH_MARGIN      = 0.05
+```
+
+Regras:
+
+- o primeiro alvo fica comprometido por pelo menos 10 frames;
+- depois disso, um novo #1 só assume se melhorar o score em mais de 0.05;
+- se o alvo atual deixar de ser válido, a troca é imediata;
+- se o cobrador mudar, o lock é reiniciado;
+- quando `Game_State` volta para `0`, `restart.clear()` apaga imediatamente o lock e o bot retorna ao fluxo normal.
+
+O HUD mostra `Lock`, `delta` e `HOLD/FREE` para auditar a histerese.
+
 ### restart.lua
 
 Identifica o provável cobrador pela proximidade da bola e delega a seleção do alvo defensivo.
