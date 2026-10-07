@@ -1,6 +1,6 @@
 local M = {}
 
-function M.new(config, players, mem)
+function M.new(config, players, field_side)
     local obj = {}
 
     local function goal_direction(my_side)
@@ -37,8 +37,12 @@ function M.new(config, players, mem)
         end
 
         local cx, cy = players.xy(carrier_base)
-        local my_side = mem.u8(config.ADDR.my_side)
-        local dir = goal_direction(my_side)
+        local my_side = field_side.my_side()
+        local dir = field_side.goal_direction()
+
+        if my_side == nil or dir == 0 then
+            return nil
+        end
 
         local tx = cx + dir * config.LIVE_DEFENSE.goal_side_offset
         local ty = cy
