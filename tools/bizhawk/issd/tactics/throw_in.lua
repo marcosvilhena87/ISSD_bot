@@ -1,7 +1,7 @@
--- Experimental offensive throw-in. Do not send throw inputs unless the taker is controlled.
+-- Experimental offensive throw-in. A/B are used for the throw while MyCtrl moves a receiver.
 local M = {}
 function M.new(config, players, field_side)
-    local obj = { cooldown = 0, active_taker = nil, switch_cooldown = 0, last_control = nil, stationary_frames = 0 }
+    local obj = { cooldown = 0, active_taker = nil, switch_cooldown = 0, last_control = nil, stationary_frames = 0, attempts = 0 }
     local settings = config.THROW_IN
     local function dist(ax, ay, bx, by)
         local dx, dy = bx - ax, by - ay
@@ -13,6 +13,7 @@ function M.new(config, players, field_side)
         obj.switch_cooldown = 0
         obj.last_control = nil
         obj.stationary_frames = 0
+        obj.attempts = 0
     end
     function obj.plan(taker, my_ctrl)
         if not players.valid_my_base(taker) then return nil end
@@ -22,6 +23,7 @@ function M.new(config, players, field_side)
             obj.switch_cooldown = 0
             obj.last_control = nil
             obj.stationary_frames = 0
+        obj.attempts = 0
         end
         if obj.switch_cooldown > 0 then obj.switch_cooldown = obj.switch_cooldown - 1 end
         local tx, ty = players.xy(taker)
@@ -62,7 +64,7 @@ function M.new(config, players, field_side)
             end
             -- Do not assume the throw-in button controls the thrower.
             -- The current receiver has been positioned; await manual calibration.
-            return {mode=mode, taker=taker, receiver=my_ctrl,
+            return {mode="READY", button=settings.throw_button, taker=taker, receiver=my_ctrl,
                 receiver_x=px, receiver_y=py, receiver_distance=d,
                 nearest=nearest, nearest_distance=nearest_d}
         end
@@ -102,7 +104,7 @@ function M.new(config, players, field_side)
         else
             direction = dy >= 0 and "Down" or "Up"
         end
-        local mode = my_ctrl == taker and "READY" or "WAIT_TAKER_CONTROL"
+        local mode = "READY"
         if best.clearance < settings.min_clearance then mode = "WAIT_CLEARANCE" end
         return {mode=mode, taker=taker, receiver=best.base, receiver_x=best.x,
             receiver_y=best.y, receiver_distance=best.distance,
@@ -111,11 +113,13 @@ function M.new(config, players, field_side)
     end
     function obj.fire(plan, movement)
         if plan == nil or plan.mode ~= "READY" then return false end
+        if obj.attempts >= 2 then return false end
         if obj.cooldown > 0 then
             obj.cooldown = obj.cooldown - 1
             return false
         end
-        movement.press_direction_button(plan.direction, plan.button)
+        movement.press_button(plan.button)
+        obj.attempts = obj.attempts + 1
         obj.cooldown = settings.retry_frames
         return true
     end
