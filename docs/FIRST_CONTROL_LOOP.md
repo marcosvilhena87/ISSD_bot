@@ -157,3 +157,18 @@ A primeira decisão do loop agora é:
 ```
 
 Isso impede que o bot continue executando lógica de jogo durante pause ou replay, mesmo quando `Game_State=0`.
+
+
+## Prioridade de estados especiais
+
+`Game_State=3/4/5` agora é interpretado antes de validar `MyCtrl`.
+
+Isso evita classificar telas legítimas de seleção/cobrança como `BOT_IDLE_NO_PLAYER`. Mesmo com `MyCtrl=0`, o HUD mostra o estado semântico correto:
+
+```text
+3 -> FOUL_RESTART_SEQUENCE
+4 -> OFFSIDE_SEQUENCE
+5 -> POST_GOAL
+```
+
+Nesses estados o bot continua sem enviar movimento.
