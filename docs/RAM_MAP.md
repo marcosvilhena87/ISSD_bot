@@ -26,35 +26,35 @@ Documento de trabalho para registrar endereços de memória descobertos no ISS D
 | Player Ball Possession | `0x00A6` | word unsigned | 🟢 | `0x0000` = sem jogador fisicamente ligado; caso contrário base da struct do possuidor |
 | Team Possession | `0x104C` | byte unsigned | 🟢* | em jogo corrido: `0=MY`, `1=CPU`; validado também durante passes longos; bola neutra/restarts ainda em caracterização |
 | Game State | `0x00BA` | word unsigned | 🟢 | `0` live; `1` endline; `2` lateral; `3` falta; `4` impedimento; `5` pós-gol |
-| My Side | `0x056E` | byte unsigned | 🟢 | `0` esquerda; `1` direita; validado após troca de lados |
-| CPU Side | `0x106E` | byte unsigned | 🟢 | `0` esquerda; `1` direita; validado após troca de lados |
+| My Side (legacy) | `0x056E` | byte unsigned | 🔴 | instável; assume valores como `0x80/0x81/0x88/0x89` conforme estado do jogador, inclusive posse do GK; não usar para orientação |
+| CPU Side | `0x106E` | byte unsigned | 🟢 | fonte operacional validada; permaneceu em `0/1`, inverteu na troca de lados e não apresentou frames inválidos no watcher |
 | Score For | — | — | 🔴 | ainda não localizado |
 | Score Against | — | — | 🔴 | ainda não localizado |
 | Match Time | — | — | 🔴 | ainda não localizado |
 
 ## Side / orientação do campo
 
-Validado em execução:
+A fonte operacional passou a ser `WRAM 0x106E (CPU_Side)`.
+
+Validação focal observada:
 
 ```text
-0x056E My_Side
-0x106E CPU_Side
+CPU_Side = 1 -> derived My_Side = 0
+CPU_Side = 0 -> derived My_Side = 1
 
-0 = esquerda
-1 = direita
+derived My_Side = 1 - CPU_Side
 ```
 
-A troca de lados foi observada diretamente:
+No watcher dedicado, `0x106E` permaneceu estritamente em `0/1`, com `Invalid CPU_Side frames=0`, e inverteu de valor na troca de lados.
 
-```text
-My_Side  0 -> 1
-CPU_Side 1 -> 0
-```
+O antigo `0x056E` foi rebaixado: ele varia com estado interno do jogador e assumiu valores como `0x80/0x81/0x88/0x89`, inclusive durante posse do goleiro. Portanto não deve ser usado diretamente para orientação.
 
-O eixo X de mundo cresce da esquerda para a direita. O módulo defensivo usa isso para estimar perigo territorial sem precisar assumir uma coordenada exata de gol:
+O eixo X de mundo cresce da esquerda para a direita:
 
-- `My_Side = 0`: X menor = mais próximo do nosso lado defensivo;
-- `My_Side = 1`: X maior = mais próximo do nosso lado defensivo.
+- `derived My_Side = 0`: defendemos a esquerda e atacamos para a direita;
+- `derived My_Side = 1`: defendemos a direita e atacamos para a esquerda.
+
+A implementação centraliza essa lógica em `field_side.lua`.
 
 ## Game_State — estados da partida
 
