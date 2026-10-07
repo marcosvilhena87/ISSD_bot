@@ -28,6 +28,7 @@ tools/bizhawk/issd/
 ├── defense.lua
 ├── live_defense.lua
 ├── live_attack.lua
+├── gk_distribution.lua
 ├── interception.lua
 ├── player_switch.lua
 ├── team_possession.lua
@@ -201,6 +202,60 @@ Ainda não há decisão de chute, passe ou drible; esta etapa acrescenta apenas 
 
 Se a posse física estiver em outro jogador MY, ou no nosso goleiro, o bot não injeta condução automática.
 
+### gk_distribution.lua
+
+Implementa a primeira política de reposição quando o goleiro MY está com a bola nas mãos:
+
+```text
+P = 0x0500
+MyCtrl = 0x0500
+→ GK_DISTRIBUTE
+```
+
+Ações validadas pelo controle:
+
+```text
+B = reposição com as mãos
+A = chutão
+```
+
+Direção:
+
+```text
+UP / DOWN = laterais
+My_Side=0 -> frente = RIGHT
+My_Side=1 -> frente = LEFT
+```
+
+O módulo procura um companheiro de linha dentro de 360 unidades e exige pelo menos 72 unidades de folga para o adversário mais próximo.
+
+Score inicial:
+
+```text
+score =
+    1.00 * clearance
+  + 0.35 * forward_progress
+  - 0.25 * distance_from_GK
+```
+
+Se houver receptor seguro:
+
+```text
+GK_THROW
+→ direção do receptor
+→ B
+```
+
+Sem receptor seguro:
+
+```text
+GK_LONG_KICK
+→ direção para frente
+→ A
+```
+
+O input é emitido por um frame e só pode ser repetido após 30 frames se a bola ainda continuar nas mãos, evitando spam.
+
 ### live_defense.lua
 
 Implementa o primeiro baseline de defesa em jogo corrido. Quando `Game_State=0` e `Possession` pertence a um jogador da CPU, o próprio valor de `Possession` é usado como base da struct do portador.
@@ -371,7 +426,7 @@ Contém somente a orquestração / máquina de estados:
    │  ├─ corredor livre -> ATTACK_ADVANCE
    │  └─ bloqueador frontal -> ATTACK_LANE
    ├─ 0x00A6 = outro jogador MY -> MY_TEAMMATE_POSSESSION
-   ├─ 0x00A6 = MY GK -> MY_GK_POSSESSION
+   ├─ 0x00A6 = MY GK -> GK_DISTRIBUTE
    ├─ 0x00A6 = jogador CPU -> PLAYER_SWITCH se necessário -> LIVE_DEFENSE
    └─ 0x00A6 = 0
    ├─ 0x104C = 0 -> MY_BALL_IN_FLIGHT
