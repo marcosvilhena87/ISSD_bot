@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.idea/
+.vscode/
+.DS_Store
+runs/
+logs/
+models/
+checkpoints/
+*.sav
+*.state
+*.srm
+*.smc
+*.sfc
