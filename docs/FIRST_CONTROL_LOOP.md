@@ -27,7 +27,8 @@ Associações observadas:
 
 O bot é híbrido:
 
-- em jogo normal, persegue a bola usando coordenadas de mundo;
+- em jogo normal com bola livre, persegue a bola usando coordenadas de mundo;
+- quando a CPU tem posse, posiciona-se do lado do próprio gol em relação ao portador;
 - com posse própria, devolve o controle ao humano;
 - em reposição a favor, mantém controle manual;
 - em reposição contra, ignora o cobrador e marca outro adversário.
@@ -45,8 +46,10 @@ Essas teclas evitam conflito com F1/F2 do BizHawk, usados para load state.
 
 ```text
 Game_State = 0
-├─ Possession == MyCtrl -> POSSESSION_MANUAL
-└─ caso contrário       -> CHASING
+├─ posse do meu time -> POSSESSION_MANUAL
+├─ Possession == 0   -> LOOSE_BALL_CHASE
+├─ posse da CPU      -> LIVE_DEFENSE
+└─ fallback          -> LIVE_FALLBACK_CHASE
 
 Game_State = 1 ou 2
 ├─ cobrador MY  -> RESTART_ATTACK
