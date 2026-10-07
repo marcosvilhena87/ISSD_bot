@@ -288,6 +288,9 @@ local function step_bot()
                     local state = make_state(
                         my_base, dx, dy, status, possession, gs
                     )
+                    state.attack_goal_x = attack.goal_target_x
+                    state.attack_goal_y = attack.goal_target_y
+                    state.attack_goal_distance = attack.goal_distance
                     state.attack_target_x = attack.target_x
                     state.attack_target_y = attack.target_y
                     state.attack_direction = attack.direction
@@ -700,6 +703,11 @@ while true do
         state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score) .. ";nearest=" .. tostring(state.throw_nearest) .. ";nearest_distance=" .. tostring(state.throw_nearest_distance)) or nil
         state.score_my = mem.u16(config.ADDR.score_my)
         state.score_cpu = mem.u16(config.ADDR.score_cpu)
+        if state.attack_goal_x ~= nil then
+            state.report_detail = "goal_x=" .. tostring(state.attack_goal_x)
+                .. ";goal_y=" .. tostring(state.attack_goal_y)
+                .. ";goal_distance=" .. tostring(state.attack_goal_distance)
+        end
         report:observe(true, state)
         goal_trace.observe(true, state)
         overlay.draw(state)
