@@ -19,7 +19,9 @@ function M.new(players, game_state)
             state.status or "?"
         ))
         gui.text(8, 64, string.format(
-            "Game_State=%d (%s) Possession=$%04X",
+            "GA=$%02X(%s) GS=%d(%s) P=$%04X",
+            state.gameplay_active or 0,
+            tostring(state.gameplay_active_kind or "?"),
             state.game_state or -1,
             game_state.kind(state.game_state or -1),
             state.possession or 0
