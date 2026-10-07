@@ -192,9 +192,9 @@ Depois disso, repetir o procedimento para o jogador controlado e a posse de bola
 A lógica do BizHawk é modular. O ponto de entrada oficial é:
 
 ```text
-tools/bizhawk/issd/entry/bizhawk.lua
+tools/bizhawk/issd/main.lua
 ```
 
-A implementação fica em `tools/bizhawk/issd/`, organizada por responsabilidade em `entry/`, `app/`, `core/`, `state/`, `control/`, `tactics/`, `ui/` e `probes/`. O launcher `entry/chase_ball.lua` permanece apenas para compatibilidade.
+A implementação fica em `tools/bizhawk/issd/`, organizada por responsabilidade em `app/`, `core/`, `state/`, `control/`, `tactics/`, `ui/`, `probes/` e `entry/` (somente compatibilidade). O launcher `entry/chase_ball.lua` permanece apenas para compatibilidade.
 
 Veja [docs/LUA_ARCHITECTURE.md](docs/LUA_ARCHITECTURE.md).
