@@ -60,6 +60,7 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         mark_norm_ball = restart.mark_norm_ball,
         mark_norm_goal = restart.mark_norm_goal,
         my_side = restart.my_side,
+        ranking = restart.ranking,
     }
 end
 
