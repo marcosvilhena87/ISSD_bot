@@ -28,4 +28,12 @@ M.PLAYER_STRIDE = 0x100
 M.DEADZONE_X = 8
 M.DEADZONE_Y = 8
 
+-- Menor score = alvo defensivo mais prioritario.
+-- O peso de proximidade do gol sera adicionado quando
+-- a orientacao/lado do nosso gol estiver validada.
+M.DEFENSE = {
+    weight_to_me = 0.55,
+    weight_to_ball = 0.45,
+}
+
 return M

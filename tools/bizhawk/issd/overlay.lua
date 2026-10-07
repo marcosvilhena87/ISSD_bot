@@ -36,6 +36,13 @@ function M.new(players, game_state)
                     "Mark target: %s",
                     players.decode_any(state.mark_target)
                 ))
+
+                gui.text(8, 106, string.format(
+                    "Mark score=%.1f me=%.1f ball=%.1f",
+                    state.mark_score or -1,
+                    state.mark_dist_to_me or -1,
+                    state.mark_dist_to_ball or -1
+                ))
             end
         end
     end

@@ -52,6 +52,9 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         game_state = gs,
         restart_taker = restart.taker,
         mark_target = restart.mark_target,
+        mark_score = restart.mark_score,
+        mark_dist_to_me = restart.mark_dist_to_me,
+        mark_dist_to_ball = restart.mark_dist_to_ball,
     }
 end
 
@@ -111,7 +114,6 @@ local function step_bot()
         )
     end
 
-    -- Estado ainda nao mapeado: nao interfere no controle.
     restart.clear()
     return make_state(
         my_base, nil, nil, "UNKNOWN_GAME_STATE", possession, gs
@@ -122,6 +124,7 @@ console.log("[ISSD] Modular bot carregado")
 console.log("[ISSD] K = bot ON/OFF")
 console.log("[ISSD] L = stop_on_possession ON/OFF")
 console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in")
+console.log("[ISSD] marking_score: 55% me + 45% ball")
 
 while true do
     local keys = input.get()
