@@ -203,3 +203,30 @@ distancia <= 160 -> LIVE_DEFENSE normal
 ```
 
 O HUD mostra `GK dist`, `threshold` e `HOLD/PRESS` para calibração.
+
+
+## Troca automática de defensor
+
+Antes de executar `LIVE_DEFENSE` ou `CPU_BALL_INTERCEPT`, o bot compara o jogador atual com os jogadores MY de linha para o mesmo alvo tático.
+
+Regra inicial:
+
+```text
+ganho de distancia > 80
+e cooldown = 0
+→ PLAYER_SWITCH
+→ pulso de R por 1 frame
+→ cooldown de 12 frames
+```
+
+O goleiro MY é excluído da seleção automática.
+
+O HUD mostra:
+
+```text
+Switch current -> best via R
+Dist current=... best=... gain=...
+Cooldown=...
+```
+
+Importante: `best` é a referência espacial usada para decidir se vale pedir a troca; o jogador realmente escolhido é determinado pelo mecanismo nativo de troca do ISSD.
