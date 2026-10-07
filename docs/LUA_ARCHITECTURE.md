@@ -73,8 +73,11 @@ Decodifica `WRAM 0x00BA`:
 
 ```text
 0 = LIVE
-1 = ENDLINE
+1 = ENDLINE_RESTART
 2 = THROW_IN
+3 = FOUL_RESTART_SEQUENCE
+4 = OFFSIDE_SEQUENCE
+5 = POST_GOAL
 ```
 
 ### gameplay_active.lua
@@ -252,6 +255,12 @@ Contém somente a orquestração / máquina de estados:
 Game_State = 1/2
 ├─ cobrador MY  -> RESTART_ATTACK
 └─ cobrador CPU -> RESTART_DEFENSE
+
+Game_State = 3/4/5
+└─ estado conhecido sem automação de movimento
+   ├─ 3 -> FOUL_RESTART_SEQUENCE
+   ├─ 4 -> OFFSIDE_SEQUENCE
+   └─ 5 -> POST_GOAL
 ```
 
 ## Regra de manutenção
