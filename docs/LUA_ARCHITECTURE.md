@@ -5,19 +5,19 @@ A automação do BizHawk foi dividida em módulos para evitar que `chase_ball.lu
 ## Entrada
 
 ```text
-tools/bizhawk/issd/entry/main.lua
+tools/bizhawk/issd/entry/bizhawk.lua
         ↓
 tools/bizhawk/issd/app/main.lua
 ```
 
-`tools/bizhawk/issd/entry/main.lua` é o ponto de entrada oficial no BizHawk. `chase_ball.lua` permanece apenas como launcher de compatibilidade.
+`tools/bizhawk/issd/entry/bizhawk.lua` é o ponto de entrada oficial no BizHawk. `chase_ball.lua` permanece apenas como launcher de compatibilidade.
 
 ## Módulos
 
 ```text
 tools/bizhawk/issd/
 ├── entry/
-│   ├── main.lua
+│   ├── bizhawk.lua
 │   └── chase_ball.lua
 ├── app/
 │   └── main.lua
