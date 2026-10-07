@@ -19,6 +19,7 @@ local Movement = dofile(DIR .. "movement.lua")
 local Geometry = dofile(DIR .. "geometry.lua")
 local Defense = dofile(DIR .. "defense.lua")
 local LiveDefense = dofile(DIR .. "live_defense.lua")
+local PossessionContext = dofile(DIR .. "possession_context.lua")
 local Restart = dofile(DIR .. "restart.lua")
 local Overlay = dofile(DIR .. "overlay.lua")
 
@@ -29,6 +30,7 @@ local game_state = GameState.new(config, mem)
 local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, mem)
 local live_defense = LiveDefense.new(config, players, mem)
+local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
 local overlay = Overlay.new(players, game_state)
 
@@ -74,6 +76,13 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         live_target_x = nil,
         live_target_y = nil,
         live_my_side = nil,
+        possession_class = nil,
+        context_last_team = nil,
+        context_last_owner = nil,
+        context_frames_without = 0,
+        ball_dx = 0,
+        ball_dy = 0,
+        ball_speed = 0,
     }
 end
 
@@ -92,29 +101,28 @@ local function step_bot()
     if game_state.is_live(gs) then
         restart.clear()
 
-        -- Posse de qualquer jogador do nosso time:
-        -- nao perseguir o proprio companheiro; devolve controle ao humano.
-        if players.valid_my_base(possession) then
-            return make_state(
+        local possession_class =
+            possession_context.update(possession, bx, by)
+
+        local function attach_context(state)
+            state.possession_class = possession_class
+            state.context_last_team = possession_context.last_team
+            state.context_last_owner = possession_context.last_owner
+            state.context_frames_without =
+                possession_context.frames_without_possession
+            state.ball_dx = possession_context.ball_dx
+            state.ball_dy = possession_context.ball_dy
+            state.ball_speed = possession_context.ball_speed
+            return state
+        end
+
+        if possession_class == "MY_CONTROLLED" then
+            return attach_context(make_state(
                 my_base, 0, 0, "POSSESSION_MANUAL", possession, gs
-            )
+            ))
         end
 
-        -- Bola livre: perseguicao direta continua sendo o baseline.
-        if possession == 0 then
-            local px, py = players.xy(my_base)
-            local dx = bx - px
-            local dy = by - py
-            movement.move_toward(dx, dy)
-
-            return make_state(
-                my_base, dx, dy, "LOOSE_BALL_CHASE", possession, gs
-            )
-        end
-
-        -- CPU com posse: defender do lado do nosso gol em vez de
-        -- perseguir cegamente a posicao atual da bola.
-        if players.valid_cpu_base(possession) then
+        if possession_class == "CPU_CONTROLLED" then
             local live = live_defense.target_for_carrier(possession)
 
             if live ~= nil then
@@ -131,20 +139,49 @@ local function step_bot()
                 state.live_target_x = live.target_x
                 state.live_target_y = live.target_y
                 state.live_my_side = live.my_side
-                return state
+                return attach_context(state)
             end
         end
 
-        -- Fallback conservador para valores de posse ainda nao mapeados.
+        if possession_class == "CPU_BALL_IN_FLIGHT" then
+            local px, py = players.xy(my_base)
+            local dx = bx - px
+            local dy = by - py
+            movement.move_toward(dx, dy)
+
+            return attach_context(make_state(
+                my_base, dx, dy, "CPU_BALL_IN_FLIGHT", possession, gs
+            ))
+        end
+
+        if possession_class == "MY_BALL_IN_FLIGHT" then
+            return attach_context(make_state(
+                my_base, 0, 0, "MY_BALL_IN_FLIGHT", possession, gs
+            ))
+        end
+
+        if possession_class == "TRUE_LOOSE_BALL" then
+            local px, py = players.xy(my_base)
+            local dx = bx - px
+            local dy = by - py
+            movement.move_toward(dx, dy)
+
+            return attach_context(make_state(
+                my_base, dx, dy, "LOOSE_BALL_CHASE", possession, gs
+            ))
+        end
+
         local px, py = players.xy(my_base)
         local dx = bx - px
         local dy = by - py
         movement.move_toward(dx, dy)
 
-        return make_state(
+        return attach_context(make_state(
             my_base, dx, dy, "LIVE_FALLBACK_CHASE", possession, gs
-        )
+        ))
     end
+
+    possession_context.reset()
 
     if game_state.is_restart(gs) then
         restart.assign(bx, by, my_base)
@@ -186,7 +223,7 @@ console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in")
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
 console.log("[ISSD] switch event HUD: 60 frames")
-console.log("[ISSD] live: possession 0=LOOSE_BALL_CHASE, CPU=LIVE_DEFENSE")
+console.log("[ISSD] live context: CPU/MY controlled, ball-in-flight, true loose")
 
 while true do
     local keys = input.get()
