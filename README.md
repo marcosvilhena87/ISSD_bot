@@ -189,6 +189,12 @@ Depois disso, repetir o procedimento para o jogador controlado e a posse de bola
 
 ## Arquitetura Lua modular
 
-A lógica do BizHawk agora é modular. O arquivo `tools/bizhawk/chase_ball.lua` é apenas o launcher; a implementação fica em `tools/bizhawk/issd/`.
+A lógica do BizHawk é modular. O ponto de entrada oficial é:
+
+```text
+tools/bizhawk/main.lua
+```
+
+A implementação fica em `tools/bizhawk/issd/`, organizada por responsabilidade em `core/`, `state/`, `control/`, `tactics/` e `ui/`. O arquivo `chase_ball.lua` permanece apenas para compatibilidade.
 
 Veja [docs/LUA_ARCHITECTURE.md](docs/LUA_ARCHITECTURE.md).
