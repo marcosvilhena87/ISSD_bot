@@ -57,12 +57,21 @@ function M.new(players, game_state)
                     tostring(state.my_side)
                 ))
 
+                gui.text(8, 148, string.format(
+                    "Lock=%d delta=%s %s",
+                    state.lock_frames or 0,
+                    state.switch_delta == nil
+                        and "-"
+                        or string.format("%.3f", state.switch_delta),
+                    state.switch_blocked and "HOLD" or "FREE"
+                ))
+
                 local ranking = state.ranking or {}
                 local top_n = math.min(3, #ranking)
 
                 for i = 1, top_n do
                     local candidate = ranking[i]
-                    gui.text(8, 148 + (i - 1) * 14, string.format(
+                    gui.text(8, 162 + (i - 1) * 14, string.format(
                         "#%d %s S=%.3f M=%.2f B=%.2f G=%.2f",
                         i,
                         players.decode_any(candidate.base),
