@@ -189,17 +189,27 @@ Em vez de correr para a posição atual da bola, projeta:
 target = ball_pos + ball_velocity * lead_frames
 ```
 
+O horizonte agora é dinâmico conforme a distância entre o defensor controlado e a bola:
+
+```text
+lead =
+    min_lead_frames
+    + floor(distance(player, ball) / distance_per_lead_frame)
+```
+
 Parâmetros iniciais:
 
 ```text
-lead_frames       = 6
-max_lead_distance = 96
-min_ball_speed    = 1.0
+min_lead_frames         = 3
+max_lead_frames         = 12
+distance_per_lead_frame = 24
+max_lead_distance       = 96
+min_ball_speed          = 1.0
 ```
 
-O vetor projetado é limitado a 96 unidades para reduzir overshoot. Se a bola estiver praticamente parada, o alvo volta a ser a posição atual da bola.
+Assim o bot prevê pouco quando já está perto da jogada e mais quando está longe. O vetor previsto continua limitado a 96 unidades para reduzir overshoot. Se a bola estiver praticamente parada, o alvo volta a ser a posição atual da bola.
 
-O HUD mostra velocidade, alvo previsto, lead e se a previsão está ativa.
+O HUD mostra velocidade, distância defensor-bola, alvo previsto, lead escolhido, vetor de lead e se houve clipping.
 
 ### team_possession.lua
 
