@@ -28,6 +28,7 @@ tools/bizhawk/issd/
 ├── defense.lua
 ├── live_defense.lua
 ├── interception.lua
+├── player_switch.lua
 ├── team_possession.lua
 ├── possession_context.lua
 ├── restart.lua
@@ -221,6 +222,40 @@ Assim o bot prevê pouco quando já está perto da jogada e mais quando está lo
 
 O HUD mostra velocidade, distância defensor-bola, alvo previsto, lead escolhido, vetor de lead e se houve clipping.
 
+### player_switch.lua
+
+Seleciona quando vale pedir ao próprio jogo uma troca de jogador defensivo via botão `R`.
+
+O módulo não força diretamente uma base de jogador. Ele compara o jogador atualmente controlado com o jogador MY de linha mais próximo do alvo tático atual e, se a vantagem for grande o suficiente, pede uma troca ao engine:
+
+```text
+improvement =
+    distancia(current, target)
+    - distancia(best_MY, target)
+
+improvement > 80
+e cooldown == 0
+→ pulso de R por 1 frame
+```
+
+Parâmetros iniciais:
+
+```text
+button = R
+improvement_margin = 80
+cooldown_frames = 12
+exclude_goalkeeper = true
+```
+
+O alvo usado é o mesmo da decisão tática:
+
+```text
+CPU conduzindo -> Def target
+bola em trânsito -> Intercept target
+```
+
+O jogador efetivamente selecionado ainda é decidido pelo próprio ISSD ao receber `R`; o cálculo do bot serve para decidir quando a troca vale a pena e evitar spam.
+
 ### team_possession.lua
 
 Lê `WRAM 0x104C` como fonte primária de posse lógica por equipe em jogo corrido:
@@ -292,10 +327,10 @@ Contém somente a orquestração / máquina de estados:
 │
 └─ Game_State = 0
    ├─ 0x00A6 = jogador MY  -> POSSESSION_MANUAL
-   ├─ 0x00A6 = jogador CPU -> LIVE_DEFENSE
+   ├─ 0x00A6 = jogador CPU -> PLAYER_SWITCH se necessário -> LIVE_DEFENSE
    └─ 0x00A6 = 0
    ├─ 0x104C = 0 -> MY_BALL_IN_FLIGHT
-   ├─ 0x104C = 1 -> CPU_BALL_INTERCEPT
+   ├─ 0x104C = 1 -> PLAYER_SWITCH se necessário -> CPU_BALL_INTERCEPT
    └─ outro valor -> possession_context fallback
 
 Game_State = 1/2
