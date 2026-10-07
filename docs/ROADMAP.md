@@ -2,21 +2,21 @@
 
 ## Milestone 0 — RAM mínima
 
-- [ ] Ball X
-- [ ] Ball Y
-- [ ] Controlled player X
-- [ ] Controlled player Y
-- [ ] Controlled player ID
-- [ ] Possession
+- [x] Ball X
+- [x] Ball Y
+- [x] Controlled player X
+- [x] Controlled player Y
+- [x] Controlled player ID/base
+- [x] Possession
 - [ ] Score
 - [ ] Match time
 
 ## Milestone 1 — Bridge com emulador
 
-- [ ] ler RAM programaticamente
-- [ ] enviar comandos do controle
+- [x] ler RAM programaticamente
+- [x] enviar comandos do controle
 - [ ] reset determinístico
-- [ ] frame advance
+- [x] frame advance
 - [ ] frame skip configurável
 
 ## Milestone 2 — Gymnasium
@@ -29,8 +29,8 @@
 
 ## Milestone 3 — Primeiro currículo
 
-- [ ] aproximar-se da bola
-- [ ] conquistar posse
+- [x] aproximar-se da bola
+- [x] conquistar posse
 - [ ] manter posse
 - [ ] avançar territorialmente
 - [ ] chutar
