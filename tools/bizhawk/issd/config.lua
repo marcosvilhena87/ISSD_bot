@@ -52,6 +52,28 @@ M.ATTACK = {
     lane_lock_frames = 12,
 }
 
+M.GK_DISTRIBUTION = {
+    throw_button = "B",
+    long_kick_button = "A",
+
+    -- Saida curta so e tentada para companheiro relativamente proximo
+    -- e com folga minima para o adversario mais proximo.
+    max_throw_distance = 360,
+    min_receiver_clearance = 72,
+
+    -- Se o receptor estiver bem acima/abaixo do GK, usa UP/DOWN.
+    -- Caso contrario, orienta para frente com LEFT/RIGHT relativo ao ataque.
+    lateral_direction_threshold = 48,
+
+    -- Score simples do receptor curto.
+    weight_clearance = 1.00,
+    weight_forward = 0.35,
+    weight_distance = 0.25,
+
+    -- Se o primeiro pulso nao for aceito pelo jogo, permite retry tardio.
+    retry_frames = 30,
+}
+
 M.LIVE_DEFENSE = {
     goal_side_offset = 48,
 
