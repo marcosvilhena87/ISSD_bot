@@ -79,7 +79,10 @@ function M:observe(enabled, state)
         elseif status == "RESTART_MANUAL" then
             detail = detail .. ";reason=no_confirmed_restart_target"
         end
+        if state and state.report_detail then detail = detail .. ";" .. state.report_detail end
         self:write("STATE_CHANGE", true, state, status, detail)
+    elseif state and state.throw_fired then
+        self:write("THROW_ATTEMPT", true, state, status, state.report_detail or "")
     elseif self.frame % 300 == 0 then
         self:write("HEARTBEAT", true, state, status, "periodic")
     end
