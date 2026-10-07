@@ -172,14 +172,32 @@ My_Side = 0 -> atacar para a direita
 My_Side = 1 -> atacar para a esquerda
 ```
 
-Alvo inicial:
+Com corredor frontal livre:
 
 ```text
+ATTACK_ADVANCE
+
 target_x = player_x + attack_direction * 96
 target_y = player_y
 ```
 
-O objetivo desta etapa é apenas ganhar território. Ainda não há decisão de chute, passe ou drible.
+O módulo também detecta o primeiro bloqueador CPU dentro de:
+
+```text
+até 72 unidades à frente
+até 32 unidades para cada lado do corredor
+```
+
+Quando há bloqueio, entra em `ATTACK_LANE` e compara duas diagonais:
+
+```text
+80 para frente
+56 para cima  OU  56 para baixo
+```
+
+A diagonal escolhida é a que possui maior distância mínima aos jogadores CPU. A escolha fica travada por 12 frames para evitar oscilação UP/DOWN.
+
+Ainda não há decisão de chute, passe ou drible; esta etapa acrescenta apenas progressão com desvio espacial.
 
 Se a posse física estiver em outro jogador MY, ou no nosso goleiro, o bot não injeta condução automática.
 
@@ -349,7 +367,9 @@ Contém somente a orquestração / máquina de estados:
 │  └─ estado conhecido sem movimento
 │
 └─ Game_State = 0
-   ├─ 0x00A6 == MyCtrl e jogador de linha -> ATTACK_ADVANCE
+   ├─ 0x00A6 == MyCtrl e jogador de linha
+   │  ├─ corredor livre -> ATTACK_ADVANCE
+   │  └─ bloqueador frontal -> ATTACK_LANE
    ├─ 0x00A6 = outro jogador MY -> MY_TEAMMATE_POSSESSION
    ├─ 0x00A6 = MY GK -> MY_GK_POSSESSION
    ├─ 0x00A6 = jogador CPU -> PLAYER_SWITCH se necessário -> LIVE_DEFENSE
