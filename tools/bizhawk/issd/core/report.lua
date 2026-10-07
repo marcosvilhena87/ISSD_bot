@@ -28,7 +28,7 @@ function M.new(path)
     return self
 end
 
-function M:write(event, enabled, state, action, detail)
+function M:write(event, enabled, state, action, detail, frame_override)
     if not self.handle then return end
     state = state or {}
     local telemetry = {
@@ -42,7 +42,7 @@ function M:write(event, enabled, state, action, detail)
         state.team_possession_source
     }
     local values = {
-        timestamp(), self.session or "", self.frame or 0, event,
+        timestamp(), self.session or "", frame_override or self.frame or 0, event,
         enabled and 1 or 0, state.status, state.game_state,
         state.gameplay_active, state.possession, state.team_possession,
         state.my_base, state.ball_dx, state.ball_dy, state.ball_speed,
