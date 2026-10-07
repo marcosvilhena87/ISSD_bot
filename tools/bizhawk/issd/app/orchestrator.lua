@@ -28,6 +28,7 @@ local PlayerSwitch = dofile(DIR .. "../control/player_switch.lua")
 local TeamPossession = dofile(DIR .. "../state/team_possession.lua")
 local PossessionContext = dofile(DIR .. "../state/possession_context.lua")
 local Restart = dofile(DIR .. "../tactics/restart.lua")
+local ThrowIn = dofile(DIR .. "../tactics/throw_in.lua")
 local Overlay = dofile(DIR .. "../ui/overlay.lua")
 local Report = dofile(DIR .. "../core/report.lua")
 
@@ -47,6 +48,7 @@ local player_switch = PlayerSwitch.new(config, players)
 local team_possession = TeamPossession.new(config, mem)
 local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
+local throw_in = ThrowIn.new(config, players, field_side)
 local overlay = Overlay.new(players, game_state)
 
 local report = Report.new(DIR .. "../issd_report.csv")
@@ -157,6 +159,7 @@ local function step_bot()
 
     if not gameplay_active.is_active(gameplay_value) then
         restart.clear()
+        throw_in.reset()
         possession_context.reset()
         player_switch.reset()
         live_attack.reset()
@@ -206,6 +209,7 @@ local function step_bot()
     local bx, by = ball.world_xy()
 
     if game_state.is_live(gs) then
+        throw_in.reset()
         restart.clear()
 
         -- Mantem a heuristica temporal aquecida apenas como fallback.
@@ -563,8 +567,32 @@ local function step_bot()
 
     if game_state.is_restart(gs) then
         restart.assign(bx, by, my_base)
+        if gs ~= 2 or restart.taker_team ~= "MY" then throw_in.reset() end
 
         if restart.taker_team == "MY" then
+            if gs == 2 then
+                local plan = throw_in.plan(restart.taker, my_base)
+                local fired = throw_in.fire(plan, movement)
+                if not fired then movement.stop() end
+                local state = make_state(my_base, nil, nil,
+                    plan and ("THROW_IN_" .. plan.mode) or "THROW_IN_WAIT",
+                    possession, gs)
+                if plan then
+                    state.throw_taker = plan.taker
+                    state.throw_receiver = plan.receiver
+                    state.throw_mode = plan.mode
+                    state.throw_fired = fired
+                    state.throw_direction = plan.direction
+                    state.throw_button = plan.button
+                    state.throw_clearance = plan.receiver_clearance
+                    state.throw_score = plan.receiver_score
+                    state.throw_receiver_x = plan.receiver_x
+                    state.throw_receiver_y = plan.receiver_y
+                end
+                return state
+            end
+            throw_in.reset()
+            movement.stop()
             return make_state(
                 my_base, nil, nil, "RESTART_ATTACK", possession, gs
             )
@@ -648,8 +676,17 @@ while true do
             local dy = state.target_y - state.player_y
             state.target_distance = math.sqrt(dx * dx + dy * dy)
         end
+        if state.throw_receiver_x ~= nil then
+            state.target_x, state.target_y = state.throw_receiver_x, state.throw_receiver_y
+            if state.player_x ~= nil then
+                local dx = state.target_x - state.player_x
+                local dy = state.target_y - state.player_y
+                state.target_distance = math.sqrt(dx * dx + dy * dy)
+            end
+        end
         state.restart_taker_team = restart.taker_team
         state.controller_command = movement.last_command
+        state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score)) or nil
         report:observe(true, state)
         overlay.draw(state)
     else
