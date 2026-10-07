@@ -44,3 +44,7 @@ Estados adicionais: `THROW_IN_WAIT_SIDE`, `THROW_IN_WAIT_RECEIVER`, `THROW_IN_WA
 Durante GS=2 com cobranca MY, o ponteiro MyCtrl pode referir-se a um receptor em campo, mesmo com Allejo como cobrador. Se o receptor estiver distante do cobrador, o bot tenta aproximar o jogador controlado com os direcionais. Quando outro companheiro esta substancialmente mais proximo, solicita uma troca com R (respeitando cooldown). O resultado efetivo de R depende do jogo e precisa ser observado no BizHawk.
 
 Estados: `THROW_IN_SWITCH_RECEIVER`, `THROW_IN_MOVE_RECEIVER`, `THROW_IN_RECEIVER_POSITIONED`. Uma vez posicionado, o bot nao envia B automaticamente enquanto o controle real da cobranca nao estiver validado. O CSV unico `issd_report.csv` registra transicoes, comandos e distancia do candidato. Validar a tecla R em savestate antes de confiar na troca automatica.
+
+## Controles confirmados para lateral
+
+Durante GS=2, o jogador controlado (MyCtrl) recebe direcionais e R; o cobrador identificado (restart.taker) responde aos botoes B (curto) e A (longo), independentemente de MyCtrl coincidir com o cobrador. A rotina agora tenta B ao posicionar o receptor, registra a tentativa no CSV e limita a duas tentativas por cobrador/reinicio. Se nao houver candidato receptor, apos 180 frames tenta A como fallback experimental. Validar o resultado na ROM-alvo.
