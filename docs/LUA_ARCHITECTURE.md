@@ -83,11 +83,23 @@ Converte deltas X/Y em comandos direcionais e envia o movimento ao controle.
 
 ### defense.lua
 
-Seleciona alvo defensivo. O baseline atual é:
+Seleciona alvo defensivo por `marking_score`:
 
-> adversário mais próximo do jogador controlado, excluindo o cobrador.
+```text
+score =
+    0.35 * distância até o jogador controlado
+  + 0.25 * distância até a bola
+  + 0.40 * perigo territorial no eixo do gol
+```
 
-Este módulo é o ponto planejado para evoluir para `marking_score`, linha de passe e posicionamento entre atacante e gol.
+O cobrador é excluído. O termo territorial usa `My_Side` validado em `0x056E`:
+
+```text
+My_Side = 0 -> defendemos a esquerda -> X menor é mais perigoso
+My_Side = 1 -> defendemos a direita  -> X maior é mais perigoso
+```
+
+A implementação usa somente a ordem do eixo X, sem depender de uma coordenada exata ainda não validada para a linha do gol. O HUD expõe `GoalAxis` e `My_Side` para auditoria.
 
 ### restart.lua
 
