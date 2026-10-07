@@ -101,7 +101,7 @@ Y = MY_CONTROLLED
 U = MY_PASS
 I = CPU_CONTROLLED
 O = CPU_PASS
-P = imprimir candidatos
+C = imprimir candidatos
 R = reset
 ```
 
