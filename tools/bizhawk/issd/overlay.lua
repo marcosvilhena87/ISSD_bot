@@ -48,6 +48,25 @@ function M.new(players, game_state)
             ))
         end
 
+        if state.status == "PLAYER_SWITCH" then
+            gui.text(8, 120, string.format(
+                "Switch %s -> %s via %s",
+                players.decode_any(state.my_base),
+                players.decode_any(state.switch_best_base),
+                tostring(state.switch_button or "?")
+            ))
+            gui.text(8, 134, string.format(
+                "Dist current=%.1f best=%.1f gain=%.1f",
+                state.switch_current_distance or 0,
+                state.switch_best_distance or 0,
+                state.switch_improvement or 0
+            ))
+            gui.text(8, 148, string.format(
+                "Cooldown=%d",
+                state.switch_cooldown or 0
+            ))
+        end
+
         if state.status == "LIVE_DEFENSE" then
             gui.text(8, 120, string.format(
                 "Carrier: %s",
