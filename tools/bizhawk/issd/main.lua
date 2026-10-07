@@ -21,6 +21,7 @@ local Geometry = dofile(DIR .. "geometry.lua")
 local Defense = dofile(DIR .. "defense.lua")
 local LiveDefense = dofile(DIR .. "live_defense.lua")
 local Interception = dofile(DIR .. "interception.lua")
+local PlayerSwitch = dofile(DIR .. "player_switch.lua")
 local TeamPossession = dofile(DIR .. "team_possession.lua")
 local PossessionContext = dofile(DIR .. "possession_context.lua")
 local Restart = dofile(DIR .. "restart.lua")
@@ -35,6 +36,7 @@ local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, mem)
 local live_defense = LiveDefense.new(config, players, mem)
 local interception = Interception.new(config)
+local player_switch = PlayerSwitch.new(config, players)
 local team_possession = TeamPossession.new(config, mem)
 local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
@@ -105,10 +107,18 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         intercept_predictive = false,
         intercept_player_ball_distance = nil,
         intercept_clipped = false,
+        switch_best_base = nil,
+        switch_current_distance = nil,
+        switch_best_distance = nil,
+        switch_improvement = nil,
+        switch_cooldown = 0,
+        switch_button = nil,
     }
 end
 
 local function step_bot()
+    player_switch.tick()
+
     local gameplay_value = gameplay_active.read()
     local my_base = read_my_base()
     local possession = ball.possession()
@@ -117,6 +127,7 @@ local function step_bot()
     if not gameplay_active.is_active(gameplay_value) then
         restart.clear()
         possession_context.reset()
+        player_switch.reset()
         movement.stop()
 
         local state = make_state(
@@ -130,6 +141,7 @@ local function step_bot()
     if game_state.is_stoppage(gs) then
         restart.clear()
         possession_context.reset()
+        player_switch.reset()
         movement.stop()
 
         local state = make_state(
@@ -143,6 +155,7 @@ local function step_bot()
     if not players.valid_my_base(my_base) then
         restart.clear()
         possession_context.reset()
+        player_switch.reset()
         movement.stop()
 
         local state = make_state(
@@ -178,6 +191,34 @@ local function step_bot()
             state.ball_dy = possession_context.ball_dy
             state.ball_speed = possession_context.ball_speed
             return state
+        end
+
+
+        local function maybe_switch_player(target_x, target_y, class)
+            local decision =
+                player_switch.consider(my_base, target_x, target_y)
+
+            if not decision.should_switch then
+                return nil
+            end
+
+            movement.press_button(decision.button)
+
+            local state = make_state(
+                my_base, 0, 0, "PLAYER_SWITCH", possession, gs
+            )
+            state.switch_best_base = decision.best_base
+            state.switch_current_distance = decision.current_distance
+            state.switch_best_distance = decision.best_distance
+            state.switch_improvement = decision.improvement
+            state.switch_cooldown = decision.cooldown
+            state.switch_button = decision.button
+
+            return attach_live_state(
+                state,
+                "PLAYER_SWITCH",
+                class
+            )
         end
 
         -- 0x00A6 continua sendo a fonte autoritativa para o jogador
@@ -217,6 +258,15 @@ local function step_bot()
             local live = live_defense.target_for_carrier(possession)
 
             if live ~= nil then
+                local switch_state = maybe_switch_player(
+                    live.target_x,
+                    live.target_y,
+                    "CPU_CONTROLLED"
+                )
+                if switch_state ~= nil then
+                    return switch_state
+                end
+
                 local px, py = players.xy(my_base)
                 local dx = live.target_x - px
                 local dy = live.target_y - py
@@ -258,6 +308,24 @@ local function step_bot()
                 possession_context.ball_dy,
                 possession_context.ball_speed
             )
+
+            local switch_state = maybe_switch_player(
+                target.x,
+                target.y,
+                "CPU_BALL_IN_FLIGHT"
+            )
+            if switch_state ~= nil then
+                return switch_state
+            end
+
+            local switch_state = maybe_switch_player(
+                target.x,
+                target.y,
+                "CPU_BALL_IN_FLIGHT"
+            )
+            if switch_state ~= nil then
+                return switch_state
+            end
 
             local dx = target.x - px
             local dy = target.y - py
@@ -400,7 +468,7 @@ console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in, 3=foul, 4=offside
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
 console.log("[ISSD] switch event HUD: 60 frames")
-console.log("[ISSD] live: GK press gate + team possession + predictive interception")
+console.log("[ISSD] live: player switch + GK press gate + predictive interception")
 
 while true do
     local keys = input.get()
