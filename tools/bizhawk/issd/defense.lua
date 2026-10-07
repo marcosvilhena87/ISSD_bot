@@ -1,6 +1,6 @@
 local M = {}
 
-function M.new(config, players, geometry, mem)
+function M.new(config, players, geometry, field_side)
     local obj = {}
 
     local function distance(ax, ay, bx, by)
@@ -27,8 +27,12 @@ function M.new(config, players, geometry, mem)
 
     local function build_candidates(my_base, excluded_base, ball_x, ball_y)
         local mx, my = players.xy(my_base)
-        local my_side = mem.u8(config.ADDR.my_side)
+        local my_side = field_side.my_side()
         local candidates = {}
+
+        if my_side == nil then
+            return candidates
+        end
 
         players.each_cpu(function(base)
             if base ~= excluded_base then
