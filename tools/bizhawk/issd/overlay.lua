@@ -38,14 +38,21 @@ function M.new(players, game_state)
                 ))
 
                 gui.text(8, 106, string.format(
-                    "Mark score=%.1f me=%.1f ball=%.1f",
-                    state.mark_score or -1,
-                    state.mark_dist_to_me or -1,
-                    state.mark_dist_to_ball or -1
+                    "Mark score=%.3f",
+                    state.mark_score or -1
                 ))
 
                 gui.text(8, 120, string.format(
-                    "GoalAxis=%.1f My_Side=%s",
+                    "Norm me=%.2f ball=%.2f goal=%.2f",
+                    state.mark_norm_me or -1,
+                    state.mark_norm_ball or -1,
+                    state.mark_norm_goal or -1
+                ))
+
+                gui.text(8, 134, string.format(
+                    "Raw me=%.1f ball=%.1f goal=%.1f Side=%s",
+                    state.mark_dist_to_me or -1,
+                    state.mark_dist_to_ball or -1,
                     state.mark_goal_cost or -1,
                     tostring(state.my_side)
                 ))
