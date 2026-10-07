@@ -21,6 +21,7 @@ local Geometry = dofile(DIR .. "geometry.lua")
 local Defense = dofile(DIR .. "defense.lua")
 local LiveDefense = dofile(DIR .. "live_defense.lua")
 local LiveAttack = dofile(DIR .. "live_attack.lua")
+local GKDistribution = dofile(DIR .. "gk_distribution.lua")
 local Interception = dofile(DIR .. "interception.lua")
 local PlayerSwitch = dofile(DIR .. "player_switch.lua")
 local TeamPossession = dofile(DIR .. "team_possession.lua")
@@ -37,6 +38,7 @@ local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, mem)
 local live_defense = LiveDefense.new(config, players, mem)
 local live_attack = LiveAttack.new(config, players, mem)
+local gk_distribution = GKDistribution.new(config, players, mem)
 local interception = Interception.new(config)
 local player_switch = PlayerSwitch.new(config, players)
 local team_possession = TeamPossession.new(config, mem)
@@ -101,6 +103,15 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         attack_blocker_lateral = nil,
         attack_up_clearance = nil,
         attack_down_clearance = nil,
+        gk_dist_mode = nil,
+        gk_dist_direction = nil,
+        gk_dist_button = nil,
+        gk_dist_receiver = nil,
+        gk_dist_receiver_distance = nil,
+        gk_dist_receiver_clearance = nil,
+        gk_dist_receiver_forward = nil,
+        gk_dist_receiver_score = nil,
+        gk_dist_wait_frames = 0,
         gk_distance = nil,
         gk_press_threshold = nil,
         gk_should_press = nil,
@@ -133,6 +144,7 @@ end
 
 local function step_bot()
     player_switch.tick()
+    gk_distribution.tick()
 
     local gameplay_value = gameplay_active.read()
     local my_base = read_my_base()
@@ -144,6 +156,7 @@ local function step_bot()
         possession_context.reset()
         player_switch.reset()
         live_attack.reset()
+        gk_distribution.reset()
         movement.stop()
 
         local state = make_state(
@@ -159,6 +172,7 @@ local function step_bot()
         possession_context.reset()
         player_switch.reset()
         live_attack.reset()
+        gk_distribution.reset()
         movement.stop()
 
         local state = make_state(
@@ -174,6 +188,7 @@ local function step_bot()
         possession_context.reset()
         player_switch.reset()
         live_attack.reset()
+        gk_distribution.reset()
         movement.stop()
 
         local state = make_state(
@@ -294,13 +309,53 @@ local function step_bot()
             end
 
             live_attack.reset()
+
+            if possession == my_base and my_base == config.MY_FIRST then
+                local plan = gk_distribution.plan(my_base)
+
+                if plan ~= nil then
+                    if gk_distribution.should_fire() then
+                        movement.press_direction_button(
+                            plan.direction,
+                            plan.button
+                        )
+                        gk_distribution.mark_fired(plan)
+                    else
+                        movement.stop()
+                    end
+
+                    local state = make_state(
+                        my_base, 0, 0, "GK_DISTRIBUTE", possession, gs
+                    )
+                    state.gk_dist_mode = plan.mode
+                    state.gk_dist_direction = plan.direction
+                    state.gk_dist_button = plan.button
+                    state.gk_dist_receiver = plan.receiver
+                    state.gk_dist_receiver_distance =
+                        plan.receiver_distance
+                    state.gk_dist_receiver_clearance =
+                        plan.receiver_clearance
+                    state.gk_dist_receiver_forward =
+                        plan.receiver_forward
+                    state.gk_dist_receiver_score =
+                        plan.receiver_score
+                    state.gk_dist_wait_frames =
+                        gk_distribution.wait_frames
+
+                    return attach_live_state(
+                        state,
+                        "PLAYER_POSSESSION",
+                        "MY_CONTROLLED"
+                    )
+                end
+            end
+
+            gk_distribution.reset()
             movement.stop()
 
             local status = "POSSESSION_MANUAL"
             if possession ~= my_base then
                 status = "MY_TEAMMATE_POSSESSION"
-            elseif my_base == config.MY_FIRST then
-                status = "MY_GK_POSSESSION"
             end
 
             return attach_live_state(
@@ -314,6 +369,7 @@ local function step_bot()
 
         if players.valid_cpu_base(possession) then
             live_attack.reset()
+            gk_distribution.reset()
             local gk_policy =
                 live_defense.goalkeeper_policy(my_base, possession)
 
@@ -379,6 +435,7 @@ local function step_bot()
         -- 0x104C passa a ser a fonte primaria para o lado da posse.
         if possession == 0 and team_possession.is_cpu(team_value) then
             live_attack.reset()
+            gk_distribution.reset()
             local px, py = players.xy(my_base)
             local target = interception.target(
                 px,
@@ -425,6 +482,7 @@ local function step_bot()
 
         if possession == 0 and team_possession.is_my(team_value) then
             live_attack.reset()
+            gk_distribution.reset()
             return attach_live_state(
                 make_state(
                     my_base, 0, 0, "MY_BALL_IN_FLIGHT", possession, gs
@@ -541,7 +599,7 @@ console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in, 3=foul, 4=offside
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
 console.log("[ISSD] switch event HUD: 60 frames")
-console.log("[ISSD] live: attack lanes + player switch + GK press + interception")
+console.log("[ISSD] live: attack lanes + GK distribution + player switch + interception")
 
 while true do
     local keys = input.get()
