@@ -1,0 +1,50 @@
+local M = {}
+
+function M.new(players, game_state)
+    local obj = {}
+
+    function obj.draw(state)
+        gui.text(8, 8, "ISSD CHASE BOT: ON")
+        gui.text(8, 22, string.format(
+            "Player: %s",
+            state.my_base and players.decode_my(state.my_base) or "?"
+        ))
+        gui.text(8, 36, string.format(
+            "Delta: (%s,%s)",
+            tostring(state.dx),
+            tostring(state.dy)
+        ))
+        gui.text(8, 50, string.format(
+            "Status: %s",
+            state.status or "?"
+        ))
+        gui.text(8, 64, string.format(
+            "Game_State=%d (%s) Possession=$%04X",
+            state.game_state or -1,
+            game_state.kind(state.game_state or -1),
+            state.possession or 0
+        ))
+
+        if state.game_state ~= nil and state.game_state ~= 0 then
+            gui.text(8, 78, string.format(
+                "Restart taker: %s",
+                players.decode_any(state.restart_taker)
+            ))
+
+            if state.mark_target ~= nil then
+                gui.text(8, 92, string.format(
+                    "Mark target: %s",
+                    players.decode_any(state.mark_target)
+                ))
+            end
+        end
+    end
+
+    function obj.draw_off()
+        gui.text(8, 8, "ISSD CHASE BOT: OFF (K) - manual control")
+    end
+
+    return obj
+end
+
+return M
