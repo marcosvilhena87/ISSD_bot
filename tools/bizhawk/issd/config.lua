@@ -30,6 +30,13 @@ M.PLAYER_STRIDE = 0x100
 M.DEADZONE_X = 8
 M.DEADZONE_Y = 8
 
+-- Defesa em jogo corrido:
+-- ponto-alvo fica goal_side_offset unidades do lado do nosso gol
+-- em relacao ao portador da CPU.
+M.LIVE_DEFENSE = {
+    goal_side_offset = 48,
+}
+
 -- Menor score = alvo defensivo mais prioritario.
 M.DEFENSE = {
     weight_to_me = 0.35,
