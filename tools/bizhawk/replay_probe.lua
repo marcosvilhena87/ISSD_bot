@@ -7,18 +7,20 @@
 -- Hotkeys:
 --   N = capturar gameplay normal (LIVE)
 --   V = capturar replay (REPLAY)
+--   B = capturar jogo pausado (PAUSED)
 --   C = imprimir candidatos ranqueados
 --   R = resetar amostras
 --
 -- Recomendado:
---   5+ amostras LIVE e 5+ amostras REPLAY,
---   variando jogadores, campo e momentos do replay.
+--   5+ amostras LIVE, 5+ REPLAY e 5+ PAUSED,
+--   variando jogadores, campo, momentos do replay e pausas.
 
 local DOMAIN = "WRAM"
 
 local classes = {
     LIVE = { count = 0, reference = nil, stable = nil },
     REPLAY = { count = 0, reference = nil, stable = nil },
+    PAUSED = { count = 0, reference = nil, stable = nil },
 }
 
 local previous_keys = {}
@@ -42,6 +44,7 @@ local function reset()
     classes = {
         LIVE = { count = 0, reference = nil, stable = nil },
         REPLAY = { count = 0, reference = nil, stable = nil },
+        PAUSED = { count = 0, reference = nil, stable = nil },
     }
     console.log("[REPLAY_PROBE] reset")
 end
@@ -74,16 +77,29 @@ local function capture(name)
     ))
 end
 
-local function simple_score(live_value, replay_value, addr)
+local function simple_score(live_value, replay_value, paused_value, addr)
     local score = 0
 
     -- Flags binárias / boolean-like primeiro.
-    local pair =
+    local replay_pair =
         (live_value == 0 and replay_value == 1)
         or (live_value == 1 and replay_value == 0)
 
-    if pair then
+    if replay_pair then
         score = score + 1000
+    end
+
+    local paused_pair =
+        (live_value == 0 and paused_value == 1)
+        or (live_value == 1 and paused_value == 0)
+
+    if paused_pair then
+        score = score + 700
+    end
+
+    -- Muito valioso: replay e pause diferentes entre si.
+    if replay_value ~= paused_value then
+        score = score + 500
     end
 
     local ff_pair =
@@ -95,7 +111,7 @@ local function simple_score(live_value, replay_value, addr)
     end
 
     -- Valores pequenos costumam ser flags/modos.
-    if live_value <= 7 and replay_value <= 7 then
+    if live_value <= 7 and replay_value <= 7 and paused_value <= 7 then
         score = score + 300
     end
 
@@ -112,7 +128,9 @@ end
 local function collect_candidates()
     local out = {}
 
-    if classes.LIVE.count == 0 or classes.REPLAY.count == 0 then
+    if classes.LIVE.count == 0
+       or classes.REPLAY.count == 0
+       or classes.PAUSED.count == 0 then
         return out
     end
 
@@ -127,16 +145,22 @@ local function collect_candidates()
             classes.REPLAY.stable ~= nil
             and classes.REPLAY.stable[addr] == true
 
-        if live_stable and replay_stable then
+        local paused_stable =
+            classes.PAUSED.stable ~= nil
+            and classes.PAUSED.stable[addr] == true
+
+        if live_stable and replay_stable and paused_stable then
             local a = classes.LIVE.reference[addr]
             local b = classes.REPLAY.reference[addr]
+            local p = classes.PAUSED.reference[addr]
 
-            if a ~= b then
+            if a ~= b or a ~= p or b ~= p then
                 out[#out + 1] = {
                     addr = addr,
                     live = a,
                     replay = b,
-                    score = simple_score(a, b, addr),
+                    paused = p,
+                    score = simple_score(a, b, p, addr),
                 }
             end
         end
@@ -153,11 +177,14 @@ local function collect_candidates()
 end
 
 local function print_candidates()
-    if classes.LIVE.count == 0 or classes.REPLAY.count == 0 then
+    if classes.LIVE.count == 0
+       or classes.REPLAY.count == 0
+       or classes.PAUSED.count == 0 then
         console.log(string.format(
-            "[REPLAY_PROBE] faltam amostras LIVE=%d REPLAY=%d",
+            "[REPLAY_PROBE] faltam amostras LIVE=%d REPLAY=%d PAUSED=%d",
             classes.LIVE.count,
-            classes.REPLAY.count
+            classes.REPLAY.count,
+            classes.PAUSED.count
         ))
         return
     end
@@ -165,10 +192,11 @@ local function print_candidates()
     local candidates = collect_candidates()
 
     console.log(string.format(
-        "[REPLAY_PROBE] candidates=%d | LIVE=%d REPLAY=%d",
+        "[REPLAY_PROBE] candidates=%d | LIVE=%d REPLAY=%d PAUSED=%d",
         #candidates,
         classes.LIVE.count,
-        classes.REPLAY.count
+        classes.REPLAY.count,
+        classes.PAUSED.count
     ))
 
     local limit = math.min(30, #candidates)
@@ -176,13 +204,15 @@ local function print_candidates()
     for i = 1, limit do
         local c = candidates[i]
         console.log(string.format(
-            "  #%02d $%05X LIVE=%02X (%d) REPLAY=%02X (%d) score=%d",
+            "  #%02d $%05X LIVE=%02X (%d) REPLAY=%02X (%d) PAUSED=%02X (%d) score=%d",
             i,
             c.addr,
             c.live,
             c.live,
             c.replay,
             c.replay,
+            c.paused,
+            c.paused,
             c.score
         ))
     end
@@ -206,12 +236,16 @@ local function draw_hud()
         "REPLAY samples: %d",
         classes.REPLAY.count
     ))
-    gui.text(8, 50, "N=LIVE  V=REPLAY  C=print  R=reset")
-    gui.text(8, 64, "Goal: flag stable while Game_State=0 in replay")
+    gui.text(8, 50, string.format(
+        "PAUSED samples: %d",
+        classes.PAUSED.count
+    ))
+    gui.text(8, 64, "N=LIVE  V=REPLAY  B=PAUSED")
+    gui.text(8, 78, "C=print  R=reset")
 end
 
 console.log("[REPLAY_PROBE] started")
-console.log("[REPLAY_PROBE] N=LIVE | V=REPLAY | C=print | R=reset")
+console.log("[REPLAY_PROBE] N=LIVE | V=REPLAY | B=PAUSED | C=print | R=reset")
 console.log("[REPLAY_PROBE] capture 5+ samples of each class")
 
 while true do
@@ -223,6 +257,10 @@ while true do
 
     if pressed(keys, "V") then
         capture("REPLAY")
+    end
+
+    if pressed(keys, "B") then
+        capture("PAUSED")
     end
 
     if pressed(keys, "C") then
