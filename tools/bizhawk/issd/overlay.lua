@@ -77,9 +77,11 @@ function M.new(players, game_state)
                 state.intercept_predictive and "YES" or "NO"
             ))
             gui.text(8, 148, string.format(
-                "LeadVec=(%.1f,%.1f)",
+                "Dist=%.1f LeadVec=(%.1f,%.1f) clip=%s",
+                state.intercept_player_ball_distance or 0,
                 state.intercept_lead_x or 0,
-                state.intercept_lead_y or 0
+                state.intercept_lead_y or 0,
+                state.intercept_clipped and "YES" or "NO"
             ))
         end
 
