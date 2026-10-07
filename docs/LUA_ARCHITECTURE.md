@@ -7,7 +7,7 @@ A automação do BizHawk foi dividida em módulos para evitar que `chase_ball.lu
 ```text
 tools/bizhawk/main.lua
         ↓
-tools/bizhawk/issd/main.lua
+tools/bizhawk/issd/app/main.lua
 ```
 
 `tools/bizhawk/main.lua` é o ponto de entrada oficial no BizHawk. `chase_ball.lua` permanece apenas como launcher de compatibilidade.
@@ -16,7 +16,8 @@ tools/bizhawk/issd/main.lua
 
 ```text
 tools/bizhawk/issd/
-├── main.lua
+├── app/
+│   └── main.lua
 ├── core/
 │   ├── config.lua
 │   ├── memory.lua
@@ -45,6 +46,7 @@ tools/bizhawk/issd/
 
 A divisão segue responsabilidade:
 
+- `app/`: orquestração / máquina principal de estados;
 - `core/`: configuração, memória e utilidades matemáticas;
 - `state/`: leitura e interpretação do estado da partida;
 - `control/`: emissão de comandos e troca de jogador;
