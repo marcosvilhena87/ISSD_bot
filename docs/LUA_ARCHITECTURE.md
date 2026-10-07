@@ -83,14 +83,18 @@ Converte deltas X/Y em comandos direcionais e envia o movimento ao controle.
 
 ### defense.lua
 
-Seleciona alvo defensivo por `marking_score`:
+Seleciona alvo defensivo por `marking_score`. Antes do peso final, cada componente é normalizado por min-max entre os candidatos da própria reposição:
 
 ```text
+norm = (valor - mínimo) / (máximo - mínimo)
+
 score =
-    0.35 * distância até o jogador controlado
-  + 0.25 * distância até a bola
-  + 0.40 * perigo territorial no eixo do gol
+    0.35 * me_norm
+  + 0.25 * ball_norm
+  + 0.40 * goal_norm
 ```
+
+Assim os pesos 35% / 25% / 40% deixam de ser distorcidos pelas escalas originais das distâncias e do eixo X.
 
 O cobrador é excluído. O termo territorial usa `My_Side` validado em `0x056E`:
 
@@ -99,7 +103,7 @@ My_Side = 0 -> defendemos a esquerda -> X menor é mais perigoso
 My_Side = 1 -> defendemos a direita  -> X maior é mais perigoso
 ```
 
-A implementação usa somente a ordem do eixo X, sem depender de uma coordenada exata ainda não validada para a linha do gol. O HUD expõe `GoalAxis` e `My_Side` para auditoria.
+A implementação usa somente a ordem do eixo X, sem depender de uma coordenada exata ainda não validada para a linha do gol. O HUD expõe o score normalizado, os três componentes normalizados e os valores brutos para auditoria.
 
 ### restart.lua
 
