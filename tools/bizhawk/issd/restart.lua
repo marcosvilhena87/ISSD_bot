@@ -8,6 +8,8 @@ function M.new(config, players, geometry, defense)
         mark_score = nil,
         mark_dist_to_me = nil,
         mark_dist_to_ball = nil,
+        mark_goal_cost = nil,
+        my_side = nil,
     }
 
     local function nearest_player_to_point(x, y)
@@ -45,6 +47,8 @@ function M.new(config, players, geometry, defense)
         obj.mark_score = nil
         obj.mark_dist_to_me = nil
         obj.mark_dist_to_ball = nil
+        obj.mark_goal_cost = nil
+        obj.my_side = nil
     end
 
     function obj.assign(ball_x, ball_y, my_base)
@@ -53,7 +57,7 @@ function M.new(config, players, geometry, defense)
         obj.taker_team = team
 
         if team == "CPU" and taker ~= nil then
-            local target, score, to_me, to_ball =
+            local target, score, to_me, to_ball, goal_cost, my_side =
                 defense.select_mark_target(
                     my_base,
                     taker,
@@ -65,11 +69,15 @@ function M.new(config, players, geometry, defense)
             obj.mark_score = score
             obj.mark_dist_to_me = to_me
             obj.mark_dist_to_ball = to_ball
+            obj.mark_goal_cost = goal_cost
+            obj.my_side = my_side
         else
             obj.mark_target = nil
             obj.mark_score = nil
             obj.mark_dist_to_me = nil
             obj.mark_dist_to_ball = nil
+            obj.mark_goal_cost = nil
+            obj.my_side = nil
         end
     end
 
