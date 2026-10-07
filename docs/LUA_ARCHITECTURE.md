@@ -175,9 +175,19 @@ Baseline atual:
 
 ```text
 goal_side_offset = 48
+gk_press_distance = 160
 ```
 
-Isso evita depender de uma coordenada exata do gol ainda não validada e já muda o comportamento de perseguição da bola para posicionamento entre portador e nosso lado defensivo.
+Para o goleiro adversário (`CPU_FIRST = 0x1000`), o bot aplica uma regra especial:
+
+```text
+distancia ao CPU GK > 160 -> CPU_GK_HOLD
+distancia ao CPU GK <= 160 -> LIVE_DEFENSE normal
+```
+
+Isso impede que um defensor atravesse o campo inteiro apenas para pressionar o goleiro rival, mas ainda permite pressão quando já está próximo.
+
+Para jogadores de linha, o comportamento continua sendo posicionamento do lado do próprio gol em relação ao portador.
 
 ### interception.lua
 
