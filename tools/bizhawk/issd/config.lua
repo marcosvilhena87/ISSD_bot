@@ -35,6 +35,12 @@ M.DEADZONE_Y = 8
 -- Defesa em jogo corrido:
 -- ponto-alvo fica goal_side_offset unidades do lado do nosso gol
 -- em relacao ao portador da CPU.
+-- Ataque em jogo corrido.
+-- Primeiro baseline: conduzir reto na direcao do gol adversario.
+M.ATTACK = {
+    advance_distance = 96,
+}
+
 M.LIVE_DEFENSE = {
     goal_side_offset = 48,
 
