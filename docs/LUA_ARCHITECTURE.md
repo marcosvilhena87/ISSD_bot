@@ -304,3 +304,26 @@ Probe dedicado para localizar uma flag que diferencie gameplay realmente ativo d
 Motivação: foi observado que `Game_State=0` também durante `RESUME REPLAY`. O scanner captura estados LIVE e REPLAY, mantém apenas bytes estáveis dentro de cada classe e ranqueia candidatos que mudam entre as duas.
 
 A integração no bot só deve ocorrer depois de validar um endereço em múltiplos replays e partidas.
+
+
+### gameplay_active_watch.lua
+
+Watcher focal de `WRAM 0x0006`.
+
+Hipótese:
+
+```text
+1 = gameplay ativo
+0 = replay / pause / gameplay inativo
+```
+
+O watcher registra apenas transições e inclui no contexto `Game_State`, `TeamPoss`, `PlayerPoss`, bola, controles e lados.
+
+A intenção é validar uma guarda global futura:
+
+```text
+0x0006 != 1 -> BOT_IDLE
+0x0006 == 1 -> máquina normal
+```
+
+Essa guarda ainda não foi integrada ao bot principal.
