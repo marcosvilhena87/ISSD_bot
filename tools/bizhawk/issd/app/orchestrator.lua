@@ -698,6 +698,8 @@ while true do
         state.restart_taker_team = restart.taker_team
         state.controller_command = movement.last_command
         state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score) .. ";nearest=" .. tostring(state.throw_nearest) .. ";nearest_distance=" .. tostring(state.throw_nearest_distance)) or nil
+        state.score_my = mem.u16(config.ADDR.score_my)
+        state.score_cpu = mem.u16(config.ADDR.score_cpu)
         report:observe(true, state)
         goal_trace.observe(true, state)
         overlay.draw(state)
@@ -707,6 +709,8 @@ while true do
         local gs = game_state.read()
         goal_trace.observe(false, {
             game_state = gs,
+            score_my = mem.u16(config.ADDR.score_my),
+            score_cpu = mem.u16(config.ADDR.score_cpu),
             gameplay_active = gameplay_active.read(),
             possession = ball.possession(),
             my_base = read_my_base(),
