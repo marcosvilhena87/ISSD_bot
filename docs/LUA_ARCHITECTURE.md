@@ -5,22 +5,22 @@ A automação do BizHawk foi dividida em módulos para evitar que `chase_ball.lu
 ## Entrada
 
 ```text
-tools/bizhawk/issd/entry/bizhawk.lua
+tools/bizhawk/issd/main.lua
         ↓
 tools/bizhawk/issd/app/main.lua
 ```
 
-`tools/bizhawk/issd/entry/bizhawk.lua` é o ponto de entrada oficial no BizHawk. `chase_ball.lua` permanece apenas como launcher de compatibilidade.
+`tools/bizhawk/issd/main.lua` é o ponto de entrada oficial no BizHawk. `entry/chase_ball.lua` permanece apenas como launcher de compatibilidade.
 
 ## Módulos
 
 ```text
 tools/bizhawk/issd/
-├── entry/
-│   ├── bizhawk.lua
-│   └── chase_ball.lua
+├── main.lua
 ├── app/
-│   └── main.lua
+│   └── orchestrator.lua
+├── entry/
+│   └── chase_ball.lua
 ├── core/
 │   ├── config.lua
 │   ├── memory.lua
@@ -60,8 +60,8 @@ tools/bizhawk/issd/
 
 A divisão segue responsabilidade:
 
-- `entry/`: launchers para abrir no BizHawk;
 - `app/`: orquestração / máquina principal de estados;
+- `entry/`: apenas launcher legado de compatibilidade;
 - `core/`: configuração, memória e utilidades matemáticas;
 - `state/`: leitura e interpretação do estado da partida;
 - `control/`: emissão de comandos e troca de jogador;
@@ -461,7 +461,7 @@ Identifica o provável cobrador pela proximidade da bola e delega a seleção do
 
 Centraliza o HUD de debug.
 
-### main.lua
+### orchestrator.lua
 
 Contém somente a orquestração / máquina de estados:
 
@@ -498,7 +498,7 @@ Game_State = 3/4/5
 
 ## Regra de manutenção
 
-Novas capacidades devem preferencialmente entrar no módulo responsável, não em `main.lua`.
+Novas capacidades devem preferencialmente entrar no módulo responsável, não em `app/orchestrator.lua`.
 
 Exemplos:
 
@@ -508,7 +508,7 @@ Exemplos:
 - nova reposição -> `game_state.lua` / `restart.lua`;
 - novo HUD -> `overlay.lua`.
 
-O objetivo é manter `main.lua` pequeno e previsível.
+O objetivo é manter `app/orchestrator.lua` pequeno e previsível.
 
 
 ## RAM probes
