@@ -50,7 +50,7 @@ Game_State = 0
 ├─ 0x00A6 aponta CPU  -> LIVE_DEFENSE
 └─ 0x00A6 = 0
    ├─ 0x104C = 0 -> MY_BALL_IN_FLIGHT
-   ├─ 0x104C = 1 -> CPU_BALL_IN_FLIGHT
+   ├─ 0x104C = 1 -> CPU_BALL_INTERCEPT
    └─ outro valor -> fallback temporal
 
 Game_State = 1 ou 2
@@ -172,3 +172,18 @@ Isso evita classificar telas legítimas de seleção/cobrança como `BOT_IDLE_NO
 ```
 
 Nesses estados o bot continua sem enviar movimento.
+
+
+## Interceptação preditiva
+
+Quando a CPU mantém a posse lógica da jogada (`0x104C=1`) mas `0x00A6=0`, o bot não corre mais para a posição atual da bola.
+
+Ele projeta um alvo curto à frente da trajetória usando a velocidade observada da bola:
+
+```text
+lead_frames       = 6
+max_lead_distance = 96
+min_ball_speed    = 1.0
+```
+
+O HUD expõe `BallV`, `Intercept`, `lead`, `pred` e `LeadVec` para calibração empírica.
