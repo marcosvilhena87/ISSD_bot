@@ -31,6 +31,7 @@ local Restart = dofile(DIR .. "../tactics/restart.lua")
 local ThrowIn = dofile(DIR .. "../tactics/throw_in.lua")
 local Overlay = dofile(DIR .. "../ui/overlay.lua")
 local Report = dofile(DIR .. "../core/report.lua")
+local GoalTrace = dofile(DIR .. "../core/goal_trace.lua")
 
 local mem = Memory.new(config)
 local players = Players.new(config, mem)
@@ -52,6 +53,7 @@ local throw_in = ThrowIn.new(config, players, field_side)
 local overlay = Overlay.new(players, game_state)
 
 local report = Report.new(DIR .. "../issd_report.csv")
+local goal_trace = GoalTrace.new(report, 600, 3)
 local enabled = false
 local stop_on_possession = true
 local previous_keys = {}
@@ -697,10 +699,22 @@ while true do
         state.controller_command = movement.last_command
         state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score) .. ";nearest=" .. tostring(state.throw_nearest) .. ";nearest_distance=" .. tostring(state.throw_nearest_distance)) or nil
         report:observe(true, state)
+        goal_trace.observe(true, state)
         overlay.draw(state)
     else
         restart.clear()
         report:observe(false, nil)
+        local gs = game_state.read()
+        goal_trace.observe(false, {
+            game_state = gs,
+            gameplay_active = gameplay_active.read(),
+            possession = ball.possession(),
+            my_base = read_my_base(),
+            ball_x = mem.s16(config.ADDR.ball_x),
+            ball_y = mem.s16(config.ADDR.ball_y),
+            controller_command = "BOT_OFF",
+            status = "BOT_OFF",
+        })
         overlay.draw_off()
     end
 
