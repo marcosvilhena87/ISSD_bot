@@ -1,6 +1,6 @@
 local M = {}
 
-function M.new(config, players, mem)
+function M.new(config, players, field_side)
     local obj = {
         wait_frames = 0,
         last_action = nil,
@@ -102,10 +102,10 @@ function M.new(config, players, mem)
     end
 
     function obj.plan(gk_base)
-        local my_side = mem.u8(config.ADDR.my_side)
-        local dir = attack_direction(my_side)
+        local my_side = field_side.my_side()
+        local dir = field_side.attack_direction()
 
-        if dir == 0 then
+        if my_side == nil or dir == 0 then
             return nil
         end
 
