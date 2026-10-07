@@ -127,3 +127,27 @@ Isso evita classificar imediatamente todo `Possession=0` como bola neutra.
 ```
 
 Ele permanece estável durante passes longos mesmo quando `Player Possession (0x00A6)` cai para zero. Por isso passou a ser a fonte primária para identificar o lado da jogada sem possuidor físico. `possession_context.lua` permanece apenas como fallback defensivo.
+
+
+## Guarda global de gameplay
+
+`WRAM 0x0006` foi validado:
+
+```text
+1 = gameplay ativo
+0 = pause/replay
+```
+
+A primeira decisão do loop agora é:
+
+```text
+0x0006 != 1
+→ BOT_IDLE
+→ liberar input do bot
+→ limpar restart/possession_context
+
+0x0006 == 1
+→ continuar para Game_State / TeamPoss / PlayerPoss
+```
+
+Isso impede que o bot continue executando lógica de jogo durante pause ou replay, mesmo quando `Game_State=0`.
