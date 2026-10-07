@@ -61,6 +61,28 @@ function M.new(players, game_state)
             ))
         end
 
+        if state.status == "CPU_BALL_INTERCEPT"
+           or state.status == "CPU_BALL_INTERCEPT_FALLBACK" then
+            gui.text(8, 120, string.format(
+                "BallV=(%d,%d) speed=%.1f",
+                state.ball_dx or 0,
+                state.ball_dy or 0,
+                state.ball_speed or 0
+            ))
+            gui.text(8, 134, string.format(
+                "Intercept=(%s,%s) lead=%d pred=%s",
+                tostring(state.intercept_target_x),
+                tostring(state.intercept_target_y),
+                state.intercept_lead_frames or 0,
+                state.intercept_predictive and "YES" or "NO"
+            ))
+            gui.text(8, 148, string.format(
+                "LeadVec=(%.1f,%.1f)",
+                state.intercept_lead_x or 0,
+                state.intercept_lead_y or 0
+            ))
+        end
+
         if state.game_state ~= nil and state.game_state ~= 0 then
             gui.text(8, 78, string.format(
                 "Restart taker: %s",
