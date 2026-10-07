@@ -239,3 +239,31 @@ Exemplos:
 - novo HUD -> `overlay.lua`.
 
 O objetivo é manter `main.lua` pequeno e previsível.
+
+
+## RAM probes
+
+### team_possession_probe.lua
+
+Probe dedicado para procurar posse lógica por equipe na WRAM.
+
+Ele compara quatro classes sem depender de `0x00A6` durante o passe:
+
+```text
+MY_CONTROLLED
+MY_PASS
+CPU_CONTROLLED
+CPU_PASS
+```
+
+Critério de candidato:
+
+```text
+MY_CONTROLLED == MY_PASS
+CPU_CONTROLLED == CPU_PASS
+MY != CPU
+```
+
+O scanner mantém apenas endereços estáveis dentro de cada classe e imprime candidatos tanto como `u8` quanto `u16 little-endian`.
+
+O objetivo é substituir, se possível, a heurística temporal de `possession_context.lua` por uma variável nativa do jogo que represente posse por equipe.
