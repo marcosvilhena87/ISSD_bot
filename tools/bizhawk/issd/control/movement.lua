@@ -1,7 +1,15 @@
 local M = {}
 
 function M.new(config)
-    local obj = {}
+    local obj = { last_command = "NONE" }
+
+    local function send(pad)
+        local keys = {}
+        for key, value in pairs(pad) do if value then keys[#keys + 1] = key end end
+        table.sort(keys)
+        obj.last_command = #keys > 0 and table.concat(keys, "+") or "NONE"
+        send(pad)
+    end
 
     function obj.direction_pad(dx, dy)
         local pad = {}
@@ -22,13 +30,13 @@ function M.new(config)
     end
 
     function obj.move_toward(dx, dy)
-        joypad.set(obj.direction_pad(dx, dy), config.PLAYER)
+        send(obj.direction_pad(dx, dy))
     end
 
     function obj.press_button(button)
         local pad = {}
         pad[button] = true
-        joypad.set(pad, config.PLAYER)
+        send(pad)
     end
 
     function obj.press_direction_button(direction, button)
@@ -39,11 +47,11 @@ function M.new(config)
         if button ~= nil then
             pad[button] = true
         end
-        joypad.set(pad, config.PLAYER)
+        send(pad)
     end
 
     function obj.stop()
-        joypad.set({}, config.PLAYER)
+        send({})
     end
 
     return obj
