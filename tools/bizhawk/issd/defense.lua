@@ -66,22 +66,14 @@ function M.new(config, players, geometry, mem)
         return min_value, max_value
     end
 
-    -- Componentes sao normalizados por min-max entre os candidatos
-    -- da propria reposicao. Assim 0.35 / 0.25 / 0.40 representam
-    -- pesos comparaveis, independentemente da escala original.
-    function obj.select_mark_target(my_base, excluded_base, ball_x, ball_y)
-        local candidates =
-            build_candidates(my_base, excluded_base, ball_x, ball_y)
-
+    local function score_candidates(candidates)
         if #candidates == 0 then
-            return nil
+            return candidates
         end
 
         local min_me, max_me = bounds(candidates, "dist_to_me")
         local min_ball, max_ball = bounds(candidates, "dist_to_ball")
         local min_goal, max_goal = bounds(candidates, "goal_cost")
-
-        local best = nil
 
         for _, candidate in ipairs(candidates) do
             candidate.norm_me =
@@ -95,10 +87,33 @@ function M.new(config, players, geometry, mem)
                 config.DEFENSE.weight_to_me * candidate.norm_me
               + config.DEFENSE.weight_to_ball * candidate.norm_ball
               + config.DEFENSE.weight_to_goal * candidate.norm_goal
+        end
 
-            if best == nil or candidate.score < best.score then
-                best = candidate
+        table.sort(candidates, function(a, b)
+            if a.score == b.score then
+                return a.base < b.base
             end
+            return a.score < b.score
+        end)
+
+        return candidates
+    end
+
+    -- Retorna o ranking completo. O primeiro item e o alvo principal.
+    function obj.rank_mark_targets(my_base, excluded_base, ball_x, ball_y)
+        local candidates =
+            build_candidates(my_base, excluded_base, ball_x, ball_y)
+
+        return score_candidates(candidates)
+    end
+
+    function obj.select_mark_target(my_base, excluded_base, ball_x, ball_y)
+        local ranking =
+            obj.rank_mark_targets(my_base, excluded_base, ball_x, ball_y)
+
+        local best = ranking[1]
+        if best == nil then
+            return nil, ranking
         end
 
         return best.base,
@@ -109,7 +124,8 @@ function M.new(config, players, geometry, mem)
                best.my_side,
                best.norm_me,
                best.norm_ball,
-               best.norm_goal
+               best.norm_goal,
+               ranking
     end
 
     return obj
