@@ -49,7 +49,7 @@ local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
 local overlay = Overlay.new(players, game_state)
 
-local report = Report.new(DIR .. "../issd_report_v2.csv")
+local report = Report.new(DIR .. "../issd_report.csv")
 local enabled = false
 local stop_on_possession = true
 local previous_keys = {}
