@@ -39,6 +39,17 @@ M.DEADZONE_Y = 8
 -- Primeiro baseline: conduzir reto na direcao do gol adversario.
 M.ATTACK = {
     advance_distance = 96,
+
+    -- Corredor frontal: se houver CPU dentro desta janela, desviar.
+    blocker_forward_distance = 72,
+    blocker_lateral_half_width = 32,
+
+    -- Alvo diagonal para contornar o primeiro bloqueador.
+    lane_forward_distance = 80,
+    lane_offset_y = 56,
+
+    -- Evita oscilacao UP/DOWN enquanto contorna.
+    lane_lock_frames = 12,
 }
 
 M.LIVE_DEFENSE = {
