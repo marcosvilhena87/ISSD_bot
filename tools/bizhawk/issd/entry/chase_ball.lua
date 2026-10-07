@@ -1,5 +1,5 @@
 -- Deprecated compatibility launcher.
--- Prefer: tools/bizhawk/issd/entry/bizhawk.lua
+-- Prefer: tools/bizhawk/issd/main.lua
 
 local function script_dir()
     local source = debug.getinfo(1, "S").source
@@ -9,5 +9,5 @@ local function script_dir()
     return source:match("^(.*[\\/])") or "./"
 end
 
-console.log("[ISSD] chase_ball.lua is deprecated; use tools/bizhawk/issd/entry/bizhawk.lua")
-dofile(script_dir() .. "bizhawk.lua")
+console.log("[ISSD] chase_ball.lua is deprecated; use tools/bizhawk/issd/main.lua")
+dofile(script_dir() .. "../main.lua")
