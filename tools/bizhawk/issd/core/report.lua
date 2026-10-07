@@ -13,13 +13,12 @@ local function timestamp()
 end
 
 function M.new(path)
-    local handle, err = io.open(path, "a+")
+    local handle, err = io.open(path, "w")
     if not handle then
         console.log("[ISSD] CSV indisponivel: " .. tostring(err))
         return setmetatable({handle = nil}, M)
     end
-    local size = handle:seek("end")
-    if size == 0 then
+    do
         handle:write("timestamp,session,frame,event,enabled,status,game_state,gameplay_active,player_possession,team_possession,controlled_player,ball_dx,ball_dy,ball_speed,action,detail,ball_x,ball_y,player_x,player_y,target_x,target_y,target_distance,controller_command,attack_mode,lane_direction,blocker_base,blocker_forward,blocker_lateral,up_clearance,down_clearance,restart_taker,restart_taker_team,mark_target,team_possession_source\n")
     end
     local session = os.date("%Y%m%d_%H%M%S")
