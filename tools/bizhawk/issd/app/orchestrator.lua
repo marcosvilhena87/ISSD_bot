@@ -29,6 +29,7 @@ local TeamPossession = dofile(DIR .. "../state/team_possession.lua")
 local PossessionContext = dofile(DIR .. "../state/possession_context.lua")
 local Restart = dofile(DIR .. "../tactics/restart.lua")
 local Overlay = dofile(DIR .. "../ui/overlay.lua")
+local Report = dofile(DIR .. "../core/report.lua")
 
 local mem = Memory.new(config)
 local players = Players.new(config, mem)
@@ -48,6 +49,7 @@ local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
 local overlay = Overlay.new(players, game_state)
 
+local report = Report.new(DIR .. "../issd_report.csv")
 local enabled = false
 local stop_on_possession = true
 local previous_keys = {}
@@ -610,6 +612,7 @@ while true do
     if pressed(keys, "K") then
         enabled = not enabled
         restart.clear()
+        report:write(enabled and "BOT_ON" or "BOT_OFF", enabled, nil, "K", "toggle")
         console.log(string.format(
             "[ISSD] bot %s",
             enabled and "ON" or "OFF"
@@ -618,6 +621,7 @@ while true do
 
     if pressed(keys, "L") then
         stop_on_possession = not stop_on_possession
+        report:write("SETTING_CHANGE", enabled, nil, "L", "stop_on_possession=" .. tostring(stop_on_possession))
         console.log(string.format(
             "[ISSD] stop_on_possession %s",
             stop_on_possession and "ON" or "OFF"
@@ -625,9 +629,12 @@ while true do
     end
 
     if enabled then
-        overlay.draw(step_bot())
+        local state = step_bot()
+        report:observe(true, state)
+        overlay.draw(state)
     else
         restart.clear()
+        report:observe(false, nil)
         overlay.draw_off()
     end
 
