@@ -127,4 +127,16 @@ M.DEFENSE = {
     switch_event_frames = 60,
 }
 
+-- Initial experimental throw-in parameters; validate button mapping in BizHawk.
+M.THROW_IN = {
+    throw_button = "B",
+    min_distance = 24,
+    max_distance = 280,
+    min_clearance = 40,
+    clearance_weight = 1.0,
+    forward_weight = 0.25,
+    distance_weight = 0.35,
+    retry_frames = 45,
+}
+
 return M
