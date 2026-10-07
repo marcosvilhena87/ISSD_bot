@@ -54,3 +54,9 @@ Durante GS=2, o jogador controlado (MyCtrl) recebe direcionais e R; o cobrador i
 Um buffer de 600 frames (~10 s a 60 FPS) amostra estado a cada 3 frames. Ao entrar em `Game_State=5`, o CSV unico `issd_report.csv` recebe `POST_GOAL_CANDIDATE` e as amostras `PRE_GOAL_TRACE` com o numero original do frame e `trigger_frame` em detail. O historico inclui bola, jogador controlado, estado tatico, alvo e comando de controle (quando o bot esta ligado). Quando estiver desligado, posicoes e comandos taticos nao sao disponiveis.
 
 **Atenção:** `GS=5` significa sequencia pos-gol, mas o mapa atual nao revela qual equipe marcou; portanto `scoring_team=UNKNOWN` ate que enderecos de placar sejam descobertos e validados. O evento nao e automaticamente classificado como gol sofrido. A cada novo inicio de `main.lua`, o mesmo CSV e recriado; nao ha segundo relatorio.
+
+## Identificacao do autor do gol pelo placar (candidato)
+
+Enderecos WRAM candidatos: `0x0DA2` (My_Goal(s), u16 LE) e `0x0EA2` (CPU_Goal(s), u16 LE). Ao variar exatamente um gol, o bot registra `GOAL_FOR` ou `GOAL_AGAINST` e reconstitui ate 600 frames anteriores (`PRE_GOAL_TRACE`, amostra de 3 em 3). Mudancas negativas geram `SCORE_RESET` e saltos nao unitarios `SCORE_JUMP`, sem atribuir um gol. Entrada em GS=5 sem aumento detectado gera apenas `POST_GOAL_UNVERIFIED`. Todos os eventos vao para o unico `issd_report.csv`.
+
+**Validacao necessaria:** marcar um gol de cada lado e confirmar visualmente o incremento exato nos enderecos indicados; testar load state/partida nova. Ainda nao ha teste executado no BizHawk.
