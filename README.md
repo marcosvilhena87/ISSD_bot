@@ -195,6 +195,6 @@ A lógica do BizHawk é modular. O ponto de entrada oficial é:
 tools/bizhawk/main.lua
 ```
 
-A implementação fica em `tools/bizhawk/issd/`, organizada por responsabilidade em `core/`, `state/`, `control/`, `tactics/` e `ui/`. O arquivo `chase_ball.lua` permanece apenas para compatibilidade.
+A implementação fica em `tools/bizhawk/issd/`, organizada por responsabilidade em `app/`, `core/`, `state/`, `control/`, `tactics/` e `ui/`. O arquivo `chase_ball.lua` permanece apenas para compatibilidade.
 
 Veja [docs/LUA_ARCHITECTURE.md](docs/LUA_ARCHITECTURE.md).
