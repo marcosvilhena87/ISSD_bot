@@ -114,6 +114,19 @@ local function step_bot()
         return state
     end
 
+    if game_state.is_stoppage(gs) then
+        restart.clear()
+        possession_context.reset()
+        movement.stop()
+
+        local state = make_state(
+            my_base, 0, 0, game_state.kind(gs), possession, gs
+        )
+        state.gameplay_active = gameplay_value
+        state.gameplay_active_kind = gameplay_active.kind(gameplay_value)
+        return state
+    end
+
     if not players.valid_my_base(my_base) then
         restart.clear()
         possession_context.reset()
@@ -287,17 +300,6 @@ local function step_bot()
 
         return make_state(
             my_base, nil, nil, "RESTART_MANUAL", possession, gs
-        )
-    end
-
-    if game_state.is_stoppage(gs) then
-        restart.clear()
-        possession_context.reset()
-        movement.stop()
-
-        local status = game_state.kind(gs)
-        return make_state(
-            my_base, 0, 0, status, possession, gs
         )
     end
 
