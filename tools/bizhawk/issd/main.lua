@@ -20,6 +20,7 @@ local Movement = dofile(DIR .. "movement.lua")
 local Geometry = dofile(DIR .. "geometry.lua")
 local Defense = dofile(DIR .. "defense.lua")
 local LiveDefense = dofile(DIR .. "live_defense.lua")
+local LiveAttack = dofile(DIR .. "live_attack.lua")
 local Interception = dofile(DIR .. "interception.lua")
 local PlayerSwitch = dofile(DIR .. "player_switch.lua")
 local TeamPossession = dofile(DIR .. "team_possession.lua")
@@ -35,6 +36,7 @@ local gameplay_active = GameplayActive.new(config, mem)
 local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, mem)
 local live_defense = LiveDefense.new(config, players, mem)
+local live_attack = LiveAttack.new(config, players, mem)
 local interception = Interception.new(config)
 local player_switch = PlayerSwitch.new(config, players)
 local team_possession = TeamPossession.new(config, mem)
@@ -86,6 +88,11 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         live_target_x = nil,
         live_target_y = nil,
         live_my_side = nil,
+        attack_target_x = nil,
+        attack_target_y = nil,
+        attack_direction = nil,
+        attack_my_side = nil,
+        attack_advance_distance = nil,
         gk_distance = nil,
         gk_press_threshold = nil,
         gk_should_press = nil,
@@ -224,9 +231,49 @@ local function step_bot()
         -- 0x00A6 continua sendo a fonte autoritativa para o jogador
         -- fisicamente ligado a bola.
         if players.valid_my_base(possession) then
+            -- So automatiza a progressao se o jogador controlado
+            -- for exatamente o possuidor. Evita mover um companheiro
+            -- sem bola quando a posse esta em outra struct MY.
+            if possession == my_base and my_base ~= config.MY_FIRST then
+                local attack = live_attack.target_for_carrier(my_base)
+
+                if attack ~= nil then
+                    local px, py = players.xy(my_base)
+                    local dx = attack.target_x - px
+                    local dy = attack.target_y - py
+
+                    movement.move_toward(dx, dy)
+
+                    local state = make_state(
+                        my_base, dx, dy, "ATTACK_ADVANCE", possession, gs
+                    )
+                    state.attack_target_x = attack.target_x
+                    state.attack_target_y = attack.target_y
+                    state.attack_direction = attack.direction
+                    state.attack_my_side = attack.my_side
+                    state.attack_advance_distance =
+                        attack.advance_distance
+
+                    return attach_live_state(
+                        state,
+                        "PLAYER_POSSESSION",
+                        "MY_CONTROLLED"
+                    )
+                end
+            end
+
+            movement.stop()
+
+            local status = "POSSESSION_MANUAL"
+            if possession ~= my_base then
+                status = "MY_TEAMMATE_POSSESSION"
+            elseif my_base == config.MY_FIRST then
+                status = "MY_GK_POSSESSION"
+            end
+
             return attach_live_state(
                 make_state(
-                    my_base, 0, 0, "POSSESSION_MANUAL", possession, gs
+                    my_base, 0, 0, status, possession, gs
                 ),
                 "PLAYER_POSSESSION",
                 "MY_CONTROLLED"
@@ -308,15 +355,6 @@ local function step_bot()
                 possession_context.ball_dy,
                 possession_context.ball_speed
             )
-
-            local switch_state = maybe_switch_player(
-                target.x,
-                target.y,
-                "CPU_BALL_IN_FLIGHT"
-            )
-            if switch_state ~= nil then
-                return switch_state
-            end
 
             local switch_state = maybe_switch_player(
                 target.x,
@@ -468,7 +506,7 @@ console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in, 3=foul, 4=offside
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
 console.log("[ISSD] switch event HUD: 60 frames")
-console.log("[ISSD] live: player switch + GK press gate + predictive interception")
+console.log("[ISSD] live: attack advance + player switch + GK press + interception")
 
 while true do
     local keys = input.get()
