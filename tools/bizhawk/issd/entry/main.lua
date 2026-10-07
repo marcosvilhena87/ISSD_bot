@@ -1,7 +1,7 @@
 -- ISSD Bot - official BizHawk entry point
 --
 -- Open this file in BizHawk:
---   Tools -> Lua Console -> Open Script -> tools/bizhawk/main.lua
+--   Tools -> Lua Console -> Open Script -> tools/bizhawk/issd/entry/main.lua
 
 local function script_dir()
     local source = debug.getinfo(1, "S").source
