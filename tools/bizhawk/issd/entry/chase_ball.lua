@@ -9,5 +9,5 @@ local function script_dir()
     return source:match("^(.*[\\/])") or "./"
 end
 
-console.log("[ISSD] chase_ball.lua is deprecated; use tools/bizhawk/main.lua")
+console.log("[ISSD] chase_ball.lua is deprecated; use tools/bizhawk/issd/entry/main.lua")
 dofile(script_dir() .. "main.lua")
