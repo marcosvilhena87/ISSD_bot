@@ -48,6 +48,22 @@ function M.new(players, game_state)
             ))
         end
 
+        if state.status == "ATTACK_ADVANCE" then
+            gui.text(8, 120, string.format(
+                "Attack target: (%s,%s)",
+                tostring(state.attack_target_x),
+                tostring(state.attack_target_y)
+            ))
+            gui.text(8, 134, string.format(
+                "Attack dir=%s Side=%s advance=%s",
+                state.attack_direction == 1 and "RIGHT"
+                    or state.attack_direction == -1 and "LEFT"
+                    or "?",
+                tostring(state.attack_my_side),
+                tostring(state.attack_advance_distance)
+            ))
+        end
+
         if state.status == "PLAYER_SWITCH" then
             gui.text(8, 120, string.format(
                 "Switch %s -> %s via %s",
