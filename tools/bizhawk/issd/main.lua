@@ -26,7 +26,7 @@ local players = Players.new(config, mem)
 local ball = Ball.new(config, mem)
 local game_state = GameState.new(config, mem)
 local movement = Movement.new(config)
-local defense = Defense.new(config, players, Geometry)
+local defense = Defense.new(config, players, Geometry, mem)
 local restart = Restart.new(config, players, Geometry, defense)
 local overlay = Overlay.new(players, game_state)
 
@@ -55,6 +55,8 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         mark_score = restart.mark_score,
         mark_dist_to_me = restart.mark_dist_to_me,
         mark_dist_to_ball = restart.mark_dist_to_ball,
+        mark_goal_cost = restart.mark_goal_cost,
+        my_side = restart.my_side,
     }
 end
 
@@ -124,7 +126,7 @@ console.log("[ISSD] Modular bot carregado")
 console.log("[ISSD] K = bot ON/OFF")
 console.log("[ISSD] L = stop_on_possession ON/OFF")
 console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in")
-console.log("[ISSD] marking_score: 55% me + 45% ball")
+console.log("[ISSD] marking_score: 35% me + 25% ball + 40% goal-axis")
 
 while true do
     local keys = input.get()
