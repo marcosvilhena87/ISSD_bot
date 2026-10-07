@@ -37,6 +37,14 @@ M.LIVE_DEFENSE = {
     goal_side_offset = 48,
 }
 
+-- Contexto temporal de posse quando 0x00A6 volta para zero.
+-- Evita tratar imediatamente passe/chute como bola neutra.
+M.POSSESSION_CONTEXT = {
+    grace_frames = 18,
+    initial_grace_frames = 2,
+    moving_threshold = 2.0,
+}
+
 -- Menor score = alvo defensivo mais prioritario.
 M.DEFENSE = {
     weight_to_me = 0.35,
