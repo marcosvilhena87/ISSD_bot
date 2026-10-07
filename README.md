@@ -185,3 +185,10 @@ Depois disso, repetir o procedimento para o jogador controlado e a posse de bola
 ## Status
 
 🟡 **Fase inicial — engenharia reversa / mapeamento da RAM**
+
+
+## Arquitetura Lua modular
+
+A lógica do BizHawk agora é modular. O arquivo `tools/bizhawk/chase_ball.lua` é apenas o launcher; a implementação fica em `tools/bizhawk/issd/`.
+
+Veja [docs/LUA_ARCHITECTURE.md](docs/LUA_ARCHITECTURE.md).
