@@ -19,3 +19,4 @@ roms/
 
 # Local BizHawk runtime telemetry
 tools/bizhawk/issd/issd_report.csv
+tools/bizhawk/issd/issd_report_v2.csv
