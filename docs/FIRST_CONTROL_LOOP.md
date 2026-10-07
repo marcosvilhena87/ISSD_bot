@@ -56,14 +56,20 @@ Game_State = 0
 Game_State = 1 ou 2
 ├─ cobrador MY  -> RESTART_ATTACK
 └─ cobrador CPU -> RESTART_DEFENSE
+
+Game_State = 3, 4 ou 5
+└─ sem movimento automático
 ```
 
 `Game_State` fica em `WRAM 0x00BA`:
 
 ```text
-0 = bola em jogo
-1 = reposição pela linha de fundo
-2 = lateral
+0 = LIVE
+1 = ENDLINE_RESTART
+2 = THROW_IN
+3 = FOUL_RESTART_SEQUENCE
+4 = OFFSIDE_SEQUENCE
+5 = POST_GOAL
 ```
 
 Transições observadas e validadas:
