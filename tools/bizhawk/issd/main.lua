@@ -64,6 +64,10 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         lock_frames = restart.lock_frames,
         switch_delta = restart.switch_delta,
         switch_blocked = restart.switch_blocked,
+        last_switch_from = restart.last_switch_from,
+        last_switch_to = restart.last_switch_to,
+        last_switch_delta = restart.last_switch_delta,
+        last_switch_age = restart.last_switch_age,
     }
 end
 
@@ -135,6 +139,7 @@ console.log("[ISSD] L = stop_on_possession ON/OFF")
 console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in")
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
+console.log("[ISSD] switch event HUD: 60 frames")
 
 while true do
     local keys = input.get()
