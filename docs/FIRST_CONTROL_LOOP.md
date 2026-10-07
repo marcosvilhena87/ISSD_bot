@@ -189,3 +189,17 @@ min_ball_speed    = 1.0
 ```
 
 O HUD expõe `BallV`, `Dist`, `Intercept`, `lead`, `pred`, `LeadVec` e `clip` para calibração empírica.
+
+
+## Posse do goleiro adversário
+
+Quando `PlayerPoss = 0x1000` (CPU GK), o bot não persegue mais o goleiro de qualquer distância.
+
+Regra inicial:
+
+```text
+distancia > 160 -> CPU_GK_HOLD + movement.stop()
+distancia <= 160 -> LIVE_DEFENSE normal
+```
+
+O HUD mostra `GK dist`, `threshold` e `HOLD/PRESS` para calibração.
