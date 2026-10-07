@@ -14,21 +14,62 @@ Documento de trabalho para registrar endereços de memória descobertos no ISS D
 
 | Variável | Endereço WRAM | Tipo WCH | Status | Fonte / observações |
 |---|---:|---|---|---|
-| Ball X | `0x042A` | word signed | 🟡 | `ISSD_players.wch` |
-| Ball Y | `0x042C` | word signed | 🟡 | `ISSD_players.wch` |
-| My Controlled Player | `0x1ACC` | word unsigned | 🟡 | `flags.wch`; semântica/ID ainda precisa ser confirmada |
-| CPU Controlled Player | `0x1AFC` | word unsigned | 🟡 | `flags.wch` |
+| Ball X | `0x042A` | word signed | 🟢 | validado em execução |
+| Ball Y | `0x042C` | word signed | 🟢 | validado em execução |
+| My Controlled Player | `0x1ACC` | word unsigned | 🟢 | base da struct do jogador controlado |
+| CPU Controlled Player | `0x1AFC` | word unsigned | 🟢 | base da struct do jogador controlado pela CPU |
 | My Controlled Player X (camera) | `0x1AA8` | word signed | 🟡 | `ISSD_players_cam.wch` |
 | My Controlled Player Y (camera) | `0x1AAC` | word signed | 🟡 | `ISSD_players_cam.wch` |
 | CPU Controlled Player X (camera) | `0x1AD8` | word signed | 🟡 | `ISSD_players_cam.wch` |
 | CPU Controlled Player Y (camera) | `0x1ADC` | word signed | 🟡 | `ISSD_players_cam.wch` |
-| Player Ball Possession | `0x00A6` | word unsigned | 🟡 | `flags.wch`; valores ainda não decodificados |
-| Game State | `0x00BA` | word unsigned | 🟡 | `flags.wch`; enum ainda não decodificado |
+| Player Ball Possession | `0x00A6` | word unsigned | 🟢 | `0x0000` = bola livre; caso contrário base da struct do possuidor |
+| Game State | `0x00BA` | word unsigned | 🟢 | `0` jogo; `1` linha de fundo; `2` lateral |
 | My Side | `0x056E` | byte unsigned | 🟡 | `flags.wch` |
 | CPU Side | `0x106E` | byte unsigned | 🟡 | `flags.wch` |
 | Score For | — | — | 🔴 | ainda não localizado |
 | Score Against | — | — | 🔴 | ainda não localizado |
 | Match Time | — | — | 🔴 | ainda não localizado |
+
+## Game_State — reposições
+
+Validado em execução em `WRAM 0x00BA`:
+
+```text
+0 = bola em jogo
+1 = reposição após a bola sair pela linha de fundo
+    (corner kick ou goal kick; o flag não distingue os dois)
+2 = reposição após a bola sair pela lateral
+```
+
+Transições observadas:
+
+```text
+2 -> 0  após cobrança de lateral
+1 -> 0  após cobrança pela linha de fundo
+```
+
+O bot usa `Game_State` como fonte primária para detectar reposições. A geometria dos jogadores é usada apenas para identificar o provável cobrador e, em reposição contra, escolher um adversário sem bola para marcar.
+
+## Possession
+
+Validado em `WRAM 0x00A6`:
+
+```text
+0x0000 = bola livre / sem possuidor
+
+0x0500..0x0F00 = jogador do meu time
+0x1000..0x1A00 = jogador da CPU
+```
+
+Quando um jogador possui a bola, o valor coincide com a base da estrutura desse jogador.
+
+Exemplos observados:
+
+```text
+0x0D00 = Beranco
+0x0E00 = Gomez
+0x0F00 = Allejo
+```
 
 ## Bola — coordenadas de mundo
 
