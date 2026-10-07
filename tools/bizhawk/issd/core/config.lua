@@ -137,6 +137,9 @@ M.THROW_IN = {
     forward_weight = 0.25,
     distance_weight = 0.35,
     retry_frames = 45,
+    receiver_ready_distance = 80,
+    switch_margin = 80,
+    switch_cooldown = 45,
 }
 
 return M
