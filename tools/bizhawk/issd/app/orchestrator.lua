@@ -460,6 +460,16 @@ local function step_bot()
                 possession_context.ball_speed
             )
 
+            local gkx, gky = players.xy(config.MY_FIRST)
+            local danger = interception.danger_target(
+                bx, by, possession_context.ball_dx, possession_context.ball_dy,
+                possession_context.ball_speed, gkx, gky, field_side.goal_direction()
+            )
+            if danger then
+                danger.player_ball_distance = target.player_ball_distance
+                target = danger
+            end
+
             local switch_state = maybe_switch_player(
                 target.x,
                 target.y,
@@ -474,7 +484,7 @@ local function step_bot()
             movement.move_toward(dx, dy)
 
             local state = make_state(
-                my_base, dx, dy, "CPU_BALL_INTERCEPT", possession, gs
+                my_base, dx, dy, target.danger and "CPU_DANGER_INTERCEPT" or "CPU_BALL_INTERCEPT", possession, gs
             )
             state.intercept_target_x = target.x
             state.intercept_target_y = target.y
@@ -485,6 +495,8 @@ local function step_bot()
             state.intercept_player_ball_distance =
                 target.player_ball_distance
             state.intercept_clipped = target.clipped
+            state.intercept_danger = target.danger
+            state.intercept_frames_to_goal = target.frames_to_goal
 
             return attach_live_state(
                 state,
@@ -703,6 +715,11 @@ while true do
         state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score) .. ";nearest=" .. tostring(state.throw_nearest) .. ";nearest_distance=" .. tostring(state.throw_nearest_distance)) or nil
         state.score_my = mem.u16(config.ADDR.score_my)
         state.score_cpu = mem.u16(config.ADDR.score_cpu)
+        if state.intercept_danger then
+            state.report_detail = "danger_intercept=true;frames_to_goal="
+                .. tostring(state.intercept_frames_to_goal)
+                .. ";lead_frames=" .. tostring(state.intercept_lead_frames)
+        end
         if state.attack_goal_x ~= nil then
             state.report_detail = "goal_x=" .. tostring(state.attack_goal_x)
                 .. ";goal_y=" .. tostring(state.attack_goal_y)
