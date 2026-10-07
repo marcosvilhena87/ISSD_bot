@@ -4,6 +4,7 @@ M.DOMAIN = "WRAM"
 M.PLAYER = 1
 
 M.ADDR = {
+    gameplay_active = 0x0006,
     ball_x = 0x042A,
     ball_y = 0x042C,
     possession = 0x00A6,
