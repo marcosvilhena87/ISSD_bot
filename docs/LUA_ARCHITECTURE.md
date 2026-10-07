@@ -26,6 +26,7 @@ tools/bizhawk/issd/
 ├── movement.lua
 ├── defense.lua
 ├── live_defense.lua
+├── team_possession.lua
 ├── possession_context.lua
 ├── restart.lua
 └── overlay.lua
@@ -162,6 +163,17 @@ goal_side_offset = 48
 
 Isso evita depender de uma coordenada exata do gol ainda não validada e já muda o comportamento de perseguição da bola para posicionamento entre portador e nosso lado defensivo.
 
+### team_possession.lua
+
+Lê `WRAM 0x104C` como fonte primária de posse lógica por equipe em jogo corrido:
+
+```text
+0 = MY
+1 = CPU
+```
+
+`0x00A6` continua sendo usado para identificar o jogador fisicamente ligado à bola. Assim, durante passes longos com `0x00A6=0`, `0x104C` preserva o lado da jogada.
+
 ### possession_context.lua
 
 Mantém contexto temporal quando `Possession (0x00A6)` cai para `0x0000`.
@@ -214,12 +226,12 @@ Contém somente a orquestração / máquina de estados:
 
 ```text
 Game_State = 0
-├─ MY_CONTROLLED       -> POSSESSION_MANUAL
-├─ CPU_CONTROLLED      -> LIVE_DEFENSE
-├─ CPU_BALL_IN_FLIGHT  -> intercepta/persegue a bola
-├─ MY_BALL_IN_FLIGHT   -> preserva controle manual
-├─ TRUE_LOOSE_BALL     -> LOOSE_BALL_CHASE
-└─ UNKNOWN             -> LIVE_FALLBACK_CHASE
+├─ 0x00A6 = jogador MY  -> POSSESSION_MANUAL
+├─ 0x00A6 = jogador CPU -> LIVE_DEFENSE
+└─ 0x00A6 = 0
+   ├─ 0x104C = 0 -> MY_BALL_IN_FLIGHT
+   ├─ 0x104C = 1 -> CPU_BALL_IN_FLIGHT
+   └─ outro valor -> possession_context fallback
 
 Game_State = 1/2
 ├─ cobrador MY  -> RESTART_ATTACK
@@ -282,4 +294,4 @@ Hipótese atual:
 0x104C = 1 -> CPU
 ```
 
-Ainda é um candidato forte, não uma variável confirmada.
+Foi validado em condução e passe longo dos dois times durante `Game_State=0`. O probe continua útil para caracterizar bola neutra, reposições, replay e troca de lados.
