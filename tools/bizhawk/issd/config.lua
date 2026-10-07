@@ -54,6 +54,16 @@ M.INTERCEPTION = {
     min_ball_speed = 1.0,
 }
 
+-- Troca automatica do jogador controlado em defesa.
+-- Usa um pulso curto de R apenas quando outro jogador de linha esta
+-- significativamente mais perto do alvo defensivo/interceptacao.
+M.PLAYER_SWITCH = {
+    button = "R",
+    improvement_margin = 80,
+    cooldown_frames = 12,
+    exclude_goalkeeper = true,
+}
+
 -- Contexto temporal de posse quando 0x00A6 volta para zero.
 -- Evita tratar imediatamente passe/chute como bola neutra.
 M.POSSESSION_CONTEXT = {
