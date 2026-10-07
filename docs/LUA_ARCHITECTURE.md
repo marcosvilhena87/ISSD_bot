@@ -5,38 +5,51 @@ A automação do BizHawk foi dividida em módulos para evitar que `chase_ball.lu
 ## Entrada
 
 ```text
-tools/bizhawk/chase_ball.lua
+tools/bizhawk/main.lua
         ↓
 tools/bizhawk/issd/main.lua
 ```
 
-`chase_ball.lua` é apenas um launcher compatível com o fluxo já usado no BizHawk.
+`tools/bizhawk/main.lua` é o ponto de entrada oficial no BizHawk. `chase_ball.lua` permanece apenas como launcher de compatibilidade.
 
 ## Módulos
 
 ```text
 tools/bizhawk/issd/
 ├── main.lua
-├── config.lua
-├── memory.lua
-├── players.lua
-├── ball.lua
-├── game_state.lua
-├── gameplay_active.lua
-├── field_side.lua
-├── geometry.lua
-├── movement.lua
-├── defense.lua
-├── live_defense.lua
-├── live_attack.lua
-├── gk_distribution.lua
-├── interception.lua
-├── player_switch.lua
-├── team_possession.lua
-├── possession_context.lua
-├── restart.lua
-└── overlay.lua
+├── core/
+│   ├── config.lua
+│   ├── memory.lua
+│   └── geometry.lua
+├── state/
+│   ├── ball.lua
+│   ├── players.lua
+│   ├── game_state.lua
+│   ├── gameplay_active.lua
+│   ├── field_side.lua
+│   ├── team_possession.lua
+│   └── possession_context.lua
+├── control/
+│   ├── movement.lua
+│   └── player_switch.lua
+├── tactics/
+│   ├── defense.lua
+│   ├── live_defense.lua
+│   ├── interception.lua
+│   ├── restart.lua
+│   ├── live_attack.lua
+│   └── gk_distribution.lua
+└── ui/
+    └── overlay.lua
 ```
+
+A divisão segue responsabilidade:
+
+- `core/`: configuração, memória e utilidades matemáticas;
+- `state/`: leitura e interpretação do estado da partida;
+- `control/`: emissão de comandos e troca de jogador;
+- `tactics/`: decisões de ataque, defesa, interceptação, reposições e goleiro;
+- `ui/`: HUD e diagnóstico visual.
 
 ### config.lua
 
