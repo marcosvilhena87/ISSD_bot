@@ -295,3 +295,12 @@ Hipótese atual:
 ```
 
 Foi validado em condução e passe longo dos dois times durante `Game_State=0`. O probe continua útil para caracterizar bola neutra, reposições, replay e troca de lados.
+
+
+### replay_probe.lua
+
+Probe dedicado para localizar uma flag que diferencie gameplay realmente ativo de replay.
+
+Motivação: foi observado que `Game_State=0` também durante `RESUME REPLAY`. O scanner captura estados LIVE e REPLAY, mantém apenas bytes estáveis dentro de cada classe e ranqueia candidatos que mudam entre as duas.
+
+A integração no bot só deve ocorrer depois de validar um endereço em múltiplos replays e partidas.
