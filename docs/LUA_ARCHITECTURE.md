@@ -27,6 +27,7 @@ tools/bizhawk/issd/
 ├── movement.lua
 ├── defense.lua
 ├── live_defense.lua
+├── live_attack.lua
 ├── interception.lua
 ├── player_switch.lua
 ├── team_possession.lua
@@ -159,6 +160,28 @@ SWITCH CPU slot 9 -> CPU slot 5 d=0.071 age=6
 ```
 
 Esse evento persiste após o frame da troca, permitindo comprovar a mudança sem precisar capturar exatamente o instante em que ela ocorreu. Trocas forçadas por mudança de cobrador ou invalidação do alvo não são registradas como evento de histerese.
+
+### live_attack.lua
+
+Implementa o primeiro baseline ofensivo com posse controlada.
+
+Quando `0x00A6 == MyCtrl` e o jogador controlado não é o goleiro MY, o bot conduz a bola na direção do gol adversário usando `My_Side`:
+
+```text
+My_Side = 0 -> atacar para a direita
+My_Side = 1 -> atacar para a esquerda
+```
+
+Alvo inicial:
+
+```text
+target_x = player_x + attack_direction * 96
+target_y = player_y
+```
+
+O objetivo desta etapa é apenas ganhar território. Ainda não há decisão de chute, passe ou drible.
+
+Se a posse física estiver em outro jogador MY, ou no nosso goleiro, o bot não injeta condução automática.
 
 ### live_defense.lua
 
@@ -326,7 +349,9 @@ Contém somente a orquestração / máquina de estados:
 │  └─ estado conhecido sem movimento
 │
 └─ Game_State = 0
-   ├─ 0x00A6 = jogador MY  -> POSSESSION_MANUAL
+   ├─ 0x00A6 == MyCtrl e jogador de linha -> ATTACK_ADVANCE
+   ├─ 0x00A6 = outro jogador MY -> MY_TEAMMATE_POSSESSION
+   ├─ 0x00A6 = MY GK -> MY_GK_POSSESSION
    ├─ 0x00A6 = jogador CPU -> PLAYER_SWITCH se necessário -> LIVE_DEFENSE
    └─ 0x00A6 = 0
    ├─ 0x104C = 0 -> MY_BALL_IN_FLIGHT
