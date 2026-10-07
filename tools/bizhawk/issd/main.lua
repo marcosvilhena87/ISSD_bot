@@ -15,6 +15,7 @@ local Memory = dofile(DIR .. "memory.lua")
 local Players = dofile(DIR .. "players.lua")
 local Ball = dofile(DIR .. "ball.lua")
 local GameState = dofile(DIR .. "game_state.lua")
+local GameplayActive = dofile(DIR .. "gameplay_active.lua")
 local Movement = dofile(DIR .. "movement.lua")
 local Geometry = dofile(DIR .. "geometry.lua")
 local Defense = dofile(DIR .. "defense.lua")
@@ -28,6 +29,7 @@ local mem = Memory.new(config)
 local players = Players.new(config, mem)
 local ball = Ball.new(config, mem)
 local game_state = GameState.new(config, mem)
+local gameplay_active = GameplayActive.new(config, mem)
 local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, mem)
 local live_defense = LiveDefense.new(config, players, mem)
@@ -51,6 +53,8 @@ end
 local function make_state(my_base, dx, dy, status, possession, gs)
     return {
         my_base = my_base,
+        gameplay_active = gameplay_active.read(),
+        gameplay_active_kind = gameplay_active.kind(gameplay_active.read()),
         dx = dx,
         dy = dy,
         status = status,
@@ -92,15 +96,37 @@ local function make_state(my_base, dx, dy, status, possession, gs)
 end
 
 local function step_bot()
+    local gameplay_value = gameplay_active.read()
     local my_base = read_my_base()
+    local possession = ball.possession()
+    local gs = game_state.read()
+
+    if not gameplay_active.is_active(gameplay_value) then
+        restart.clear()
+        possession_context.reset()
+        movement.stop()
+
+        local state = make_state(
+            my_base, 0, 0, "BOT_IDLE", possession, gs
+        )
+        state.gameplay_active = gameplay_value
+        state.gameplay_active_kind = gameplay_active.kind(gameplay_value)
+        return state
+    end
 
     if not players.valid_my_base(my_base) then
         restart.clear()
-        return make_state(my_base, nil, nil, "INVALID_MYCTRL", 0, 0)
+        possession_context.reset()
+        movement.stop()
+
+        local state = make_state(
+            my_base, nil, nil, "INVALID_MYCTRL", possession, gs
+        )
+        state.gameplay_active = gameplay_value
+        state.gameplay_active_kind = gameplay_active.kind(gameplay_value)
+        return state
     end
 
-    local possession = ball.possession()
-    local gs = game_state.read()
     local bx, by = ball.world_xy()
 
     if game_state.is_live(gs) then
@@ -273,6 +299,7 @@ end
 console.log("[ISSD] Modular bot carregado")
 console.log("[ISSD] K = bot ON/OFF")
 console.log("[ISSD] L = stop_on_possession ON/OFF")
+console.log("[ISSD] GameplayActive 0x0006: 1=active, other=BOT_IDLE")
 console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in")
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
