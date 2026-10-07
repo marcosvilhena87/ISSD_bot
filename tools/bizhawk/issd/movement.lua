@@ -31,6 +31,17 @@ function M.new(config)
         joypad.set(pad, config.PLAYER)
     end
 
+    function obj.press_direction_button(direction, button)
+        local pad = {}
+        if direction ~= nil then
+            pad[direction] = true
+        end
+        if button ~= nil then
+            pad[button] = true
+        end
+        joypad.set(pad, config.PLAYER)
+    end
+
     function obj.stop()
         joypad.set({}, config.PLAYER)
     end
