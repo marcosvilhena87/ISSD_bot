@@ -61,6 +61,9 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         mark_norm_goal = restart.mark_norm_goal,
         my_side = restart.my_side,
         ranking = restart.ranking,
+        lock_frames = restart.lock_frames,
+        switch_delta = restart.switch_delta,
+        switch_blocked = restart.switch_blocked,
     }
 end
 
@@ -131,6 +134,7 @@ console.log("[ISSD] K = bot ON/OFF")
 console.log("[ISSD] L = stop_on_possession ON/OFF")
 console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in")
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
+console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
 
 while true do
     local keys = input.get()
