@@ -26,6 +26,7 @@ tools/bizhawk/issd/
 ├── movement.lua
 ├── defense.lua
 ├── live_defense.lua
+├── possession_context.lua
 ├── restart.lua
 └── overlay.lua
 ```
@@ -161,6 +162,44 @@ goal_side_offset = 48
 
 Isso evita depender de uma coordenada exata do gol ainda não validada e já muda o comportamento de perseguição da bola para posicionamento entre portador e nosso lado defensivo.
 
+### possession_context.lua
+
+Mantém contexto temporal quando `Possession (0x00A6)` cai para `0x0000`.
+
+O módulo guarda:
+
+```text
+last_team
+last_owner
+frames_without_possession
+prev_ball_x / prev_ball_y
+ball_dx / ball_dy
+ball_speed
+```
+
+Parâmetros atuais:
+
+```text
+grace_frames        = 18
+initial_grace_frames= 2
+moving_threshold    = 2.0
+```
+
+Classificação:
+
+```text
+MY_CONTROLLED
+CPU_CONTROLLED
+MY_BALL_IN_FLIGHT
+CPU_BALL_IN_FLIGHT
+TRUE_LOOSE_BALL
+UNKNOWN_POSSESSION
+```
+
+Quando `Possession=0`, o contexto anterior é preservado por até 18 frames se a bola estiver em movimento. Os primeiros 2 frames têm tolerância mesmo antes de a velocidade ficar clara.
+
+Assim, um passe ou chute da CPU não vira imediatamente `LOOSE_BALL_CHASE`. Durante `CPU_BALL_IN_FLIGHT`, o bot tenta atacar/interceptar a posição atual da bola. Durante `MY_BALL_IN_FLIGHT`, o bot não injeta movimento e preserva controle manual. O contexto é zerado fora de `Game_State=0`.
+
 ### restart.lua
 
 Identifica o provável cobrador pela proximidade da bola e delega a seleção do alvo defensivo.
@@ -175,10 +214,12 @@ Contém somente a orquestração / máquina de estados:
 
 ```text
 Game_State = 0
-├─ posse MY      -> POSSESSION_MANUAL
-├─ Possession=0  -> LOOSE_BALL_CHASE
-├─ posse CPU     -> LIVE_DEFENSE
-└─ valor estranho-> LIVE_FALLBACK_CHASE
+├─ MY_CONTROLLED       -> POSSESSION_MANUAL
+├─ CPU_CONTROLLED      -> LIVE_DEFENSE
+├─ CPU_BALL_IN_FLIGHT  -> intercepta/persegue a bola
+├─ MY_BALL_IN_FLIGHT   -> preserva controle manual
+├─ TRUE_LOOSE_BALL     -> LOOSE_BALL_CHASE
+└─ UNKNOWN             -> LIVE_FALLBACK_CHASE
 
 Game_State = 1/2
 ├─ cobrador MY  -> RESTART_ATTACK
