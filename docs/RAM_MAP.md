@@ -22,7 +22,8 @@ Documento de trabalho para registrar endereços de memória descobertos no ISS D
 | My Controlled Player Y (camera) | `0x1AAC` | word signed | 🟡 | `ISSD_players_cam.wch` |
 | CPU Controlled Player X (camera) | `0x1AD8` | word signed | 🟡 | `ISSD_players_cam.wch` |
 | CPU Controlled Player Y (camera) | `0x1ADC` | word signed | 🟡 | `ISSD_players_cam.wch` |
-| Player Ball Possession | `0x00A6` | word unsigned | 🟢 | `0x0000` = bola livre; caso contrário base da struct do possuidor |
+| Player Ball Possession | `0x00A6` | word unsigned | 🟢 | `0x0000` = sem jogador fisicamente ligado; caso contrário base da struct do possuidor |
+| Team Possession | `0x104C` | byte unsigned | 🟢* | em jogo corrido: `0=MY`, `1=CPU`; validado também durante passes longos; bola neutra/restarts ainda em caracterização |
 | Game State | `0x00BA` | word unsigned | 🟢 | `0` jogo; `1` linha de fundo; `2` lateral |
 | My Side | `0x056E` | byte unsigned | 🟢 | `0` esquerda; `1` direita; validado após troca de lados |
 | CPU Side | `0x106E` | byte unsigned | 🟢 | `0` esquerda; `1` direita; validado após troca de lados |
@@ -76,7 +77,14 @@ O bot usa `Game_State` como fonte primária para detectar reposições. A geomet
 
 ## Team Possession / posse lógica por equipe
 
-Candidato forte atual: `WRAM 0x104C` (u8), ainda não validado como 🟢.
+`WRAM 0x104C` (u8) foi validado em jogo corrido como indicador do lado da posse/jogada:
+
+```text
+0 = MY
+1 = CPU
+```
+
+A validação incluiu condução e passe longo dos dois times, inclusive quando `0x00A6 = 0x0000`. O comportamento em bola verdadeiramente neutra, reposições e replay ainda está sendo caracterizado; por isso a tabela usa 🟢*.
 
 Hipótese de trabalho: existe uma flag separada de `Player Ball Possession (0x00A6)` que mantém o time responsável pela jogada mesmo quando a bola está em trânsito.
 
@@ -135,7 +143,16 @@ My_Side / CPU_Side
 
 e registra no console toda transição de `0x104C` com o contexto do frame.
 
-Próximo critério de validação: confirmar que `0x104C` mantém `0` durante passes do nosso time e `1` durante passes da CPU, inclusive em passes longos, e verificar seu comportamento em bola realmente solta, reposições, replay e troca de lados.
+Observado em execução:
+
+```text
+MY conduz       -> 0x104C = 0
+MY passe longo  -> 0x104C = 0, mesmo com 0x00A6 = 0
+CPU conduz      -> 0x104C = 1
+CPU passe longo -> 0x104C = 1, mesmo com 0x00A6 = 0
+```
+
+O bot agora usa `0x104C` como fonte primária para o lado da posse quando nenhum jogador está fisicamente ligado à bola; a heurística temporal ficou somente como fallback para valores fora de `0/1`.
 
 ## Possession
 
