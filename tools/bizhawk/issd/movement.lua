@@ -25,6 +25,12 @@ function M.new(config)
         joypad.set(obj.direction_pad(dx, dy), config.PLAYER)
     end
 
+    function obj.press_button(button)
+        local pad = {}
+        pad[button] = true
+        joypad.set(pad, config.PLAYER)
+    end
+
     function obj.stop()
         joypad.set({}, config.PLAYER)
     end
