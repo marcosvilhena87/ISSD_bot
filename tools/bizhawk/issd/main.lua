@@ -93,6 +93,14 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         attack_direction = nil,
         attack_my_side = nil,
         attack_advance_distance = nil,
+        attack_mode = nil,
+        attack_lane_direction = nil,
+        attack_lane_lock_frames = 0,
+        attack_blocker_base = nil,
+        attack_blocker_forward = nil,
+        attack_blocker_lateral = nil,
+        attack_up_clearance = nil,
+        attack_down_clearance = nil,
         gk_distance = nil,
         gk_press_threshold = nil,
         gk_should_press = nil,
@@ -135,6 +143,7 @@ local function step_bot()
         restart.clear()
         possession_context.reset()
         player_switch.reset()
+        live_attack.reset()
         movement.stop()
 
         local state = make_state(
@@ -149,6 +158,7 @@ local function step_bot()
         restart.clear()
         possession_context.reset()
         player_switch.reset()
+        live_attack.reset()
         movement.stop()
 
         local state = make_state(
@@ -163,6 +173,7 @@ local function step_bot()
         restart.clear()
         possession_context.reset()
         player_switch.reset()
+        live_attack.reset()
         movement.stop()
 
         local state = make_state(
@@ -244,8 +255,13 @@ local function step_bot()
 
                     movement.move_toward(dx, dy)
 
+                    local status =
+                        attack.mode == "LANE"
+                        and "ATTACK_LANE"
+                        or "ATTACK_ADVANCE"
+
                     local state = make_state(
-                        my_base, dx, dy, "ATTACK_ADVANCE", possession, gs
+                        my_base, dx, dy, status, possession, gs
                     )
                     state.attack_target_x = attack.target_x
                     state.attack_target_y = attack.target_y
@@ -253,6 +269,21 @@ local function step_bot()
                     state.attack_my_side = attack.my_side
                     state.attack_advance_distance =
                         attack.advance_distance
+                    state.attack_mode = attack.mode
+                    state.attack_lane_direction =
+                        attack.lane_direction
+                    state.attack_lane_lock_frames =
+                        attack.lane_lock_frames or 0
+                    state.attack_blocker_base =
+                        attack.blocker_base
+                    state.attack_blocker_forward =
+                        attack.blocker_forward
+                    state.attack_blocker_lateral =
+                        attack.blocker_lateral
+                    state.attack_up_clearance =
+                        attack.up_clearance
+                    state.attack_down_clearance =
+                        attack.down_clearance
 
                     return attach_live_state(
                         state,
@@ -262,6 +293,7 @@ local function step_bot()
                 end
             end
 
+            live_attack.reset()
             movement.stop()
 
             local status = "POSSESSION_MANUAL"
@@ -281,6 +313,7 @@ local function step_bot()
         end
 
         if players.valid_cpu_base(possession) then
+            live_attack.reset()
             local gk_policy =
                 live_defense.goalkeeper_policy(my_base, possession)
 
@@ -345,6 +378,7 @@ local function step_bot()
         -- Quando nenhum jogador esta fisicamente ligado a bola,
         -- 0x104C passa a ser a fonte primaria para o lado da posse.
         if possession == 0 and team_possession.is_cpu(team_value) then
+            live_attack.reset()
             local px, py = players.xy(my_base)
             local target = interception.target(
                 px,
@@ -390,6 +424,7 @@ local function step_bot()
         end
 
         if possession == 0 and team_possession.is_my(team_value) then
+            live_attack.reset()
             return attach_live_state(
                 make_state(
                     my_base, 0, 0, "MY_BALL_IN_FLIGHT", possession, gs
@@ -506,7 +541,7 @@ console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in, 3=foul, 4=offside
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
 console.log("[ISSD] switch event HUD: 60 frames")
-console.log("[ISSD] live: attack advance + player switch + GK press + interception")
+console.log("[ISSD] live: attack lanes + player switch + GK press + interception")
 
 while true do
     local keys = input.get()
