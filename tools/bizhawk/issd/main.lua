@@ -245,9 +245,6 @@ local function step_bot()
             state.intercept_player_ball_distance =
                 target.player_ball_distance
             state.intercept_clipped = target.clipped
-            state.intercept_player_ball_distance =
-                target.player_ball_distance
-            state.intercept_clipped = target.clipped
 
             return attach_live_state(
                 state,
@@ -293,6 +290,9 @@ local function step_bot()
             state.intercept_lead_x = target.lead_x
             state.intercept_lead_y = target.lead_y
             state.intercept_predictive = target.predictive
+            state.intercept_player_ball_distance =
+                target.player_ball_distance
+            state.intercept_clipped = target.clipped
 
             return attach_live_state(
                 state,
