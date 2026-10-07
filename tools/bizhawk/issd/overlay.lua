@@ -25,6 +25,19 @@ function M.new(players, game_state)
             state.possession or 0
         ))
 
+        if state.status == "LIVE_DEFENSE" then
+            gui.text(8, 78, string.format(
+                "Carrier: %s",
+                players.decode_any(state.live_carrier)
+            ))
+            gui.text(8, 92, string.format(
+                "Def target: (%s,%s) Side=%s",
+                tostring(state.live_target_x),
+                tostring(state.live_target_y),
+                tostring(state.live_my_side)
+            ))
+        end
+
         if state.game_state ~= nil and state.game_state ~= 0 then
             gui.text(8, 78, string.format(
                 "Restart taker: %s",
