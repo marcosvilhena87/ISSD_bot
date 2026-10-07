@@ -572,8 +572,15 @@ local function step_bot()
         if restart.taker_team == "MY" then
             if gs == 2 then
                 local plan = throw_in.plan(restart.taker, my_base)
-                local fired = throw_in.fire(plan, movement)
-                if not fired then movement.stop() end
+                local fired = false
+                if plan and plan.mode == "SWITCH_RECEIVER" then
+                    movement.press_button("R")
+                elseif plan and plan.mode == "MOVE_RECEIVER" then
+                    movement.move_toward(plan.move_dx, plan.move_dy)
+                else
+                    fired = throw_in.fire(plan, movement)
+                    if not fired then movement.stop() end
+                end
                 local state = make_state(my_base, nil, nil,
                     plan and ("THROW_IN_" .. plan.mode) or "THROW_IN_WAIT",
                     possession, gs)
@@ -588,6 +595,8 @@ local function step_bot()
                     state.throw_score = plan.receiver_score
                     state.throw_receiver_x = plan.receiver_x
                     state.throw_receiver_y = plan.receiver_y
+                    state.throw_nearest = plan.nearest
+                    state.throw_nearest_distance = plan.nearest_distance
                 end
                 return state
             end
@@ -686,7 +695,7 @@ while true do
         end
         state.restart_taker_team = restart.taker_team
         state.controller_command = movement.last_command
-        state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score)) or nil
+        state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score) .. ";nearest=" .. tostring(state.throw_nearest) .. ";nearest_distance=" .. tostring(state.throw_nearest_distance)) or nil
         report:observe(true, state)
         overlay.draw(state)
     else
