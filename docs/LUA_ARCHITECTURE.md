@@ -25,6 +25,7 @@ tools/bizhawk/issd/
 ├── geometry.lua
 ├── movement.lua
 ├── defense.lua
+├── live_defense.lua
 ├── restart.lua
 └── overlay.lua
 ```
@@ -140,6 +141,26 @@ SWITCH CPU slot 9 -> CPU slot 5 d=0.071 age=6
 
 Esse evento persiste após o frame da troca, permitindo comprovar a mudança sem precisar capturar exatamente o instante em que ela ocorreu. Trocas forçadas por mudança de cobrador ou invalidação do alvo não são registradas como evento de histerese.
 
+### live_defense.lua
+
+Implementa o primeiro baseline de defesa em jogo corrido. Quando `Game_State=0` e `Possession` pertence a um jogador da CPU, o próprio valor de `Possession` é usado como base da struct do portador.
+
+O alvo defensivo fica `goal_side_offset` unidades no lado do nosso gol em relação ao portador:
+
+```text
+My_Side = 0 -> target_x = carrier_x - offset
+My_Side = 1 -> target_x = carrier_x + offset
+target_y = carrier_y
+```
+
+Baseline atual:
+
+```text
+goal_side_offset = 48
+```
+
+Isso evita depender de uma coordenada exata do gol ainda não validada e já muda o comportamento de perseguição da bola para posicionamento entre portador e nosso lado defensivo.
+
 ### restart.lua
 
 Identifica o provável cobrador pela proximidade da bola e delega a seleção do alvo defensivo.
@@ -154,8 +175,10 @@ Contém somente a orquestração / máquina de estados:
 
 ```text
 Game_State = 0
-├─ posse própria -> POSSESSION_MANUAL
-└─ restante      -> CHASING
+├─ posse MY      -> POSSESSION_MANUAL
+├─ Possession=0  -> LOOSE_BALL_CHASE
+├─ posse CPU     -> LIVE_DEFENSE
+└─ valor estranho-> LIVE_FALLBACK_CHASE
 
 Game_State = 1/2
 ├─ cobrador MY  -> RESTART_ATTACK
