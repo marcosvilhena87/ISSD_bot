@@ -72,7 +72,15 @@ function M:observe(enabled, state)
     local status = state and state.status or "UNKNOWN"
     local previous = self.previous
     if status ~= previous then
-        self:write("STATE_CHANGE", true, state, status, "previous=" .. tostring(previous or "NONE"))
+        local detail = "previous=" .. tostring(previous or "NONE")
+        if status == "ATTACK_LANE" then
+            detail = detail .. ";reason=blocker_detected"
+        elseif status == "ATTACK_ADVANCE" and previous == "ATTACK_LANE" then
+            detail = detail .. ";reason=blocker_no_longer_detected"
+        elseif status == "RESTART_MANUAL" then
+            detail = detail .. ";reason=no_confirmed_restart_target"
+        end
+        self:write("STATE_CHANGE", true, state, status, detail)
     elseif self.frame % 300 == 0 then
         self:write("HEARTBEAT", true, state, status, "periodic")
     end
