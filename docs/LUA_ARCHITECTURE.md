@@ -23,6 +23,7 @@ tools/bizhawk/issd/
 ├── ball.lua
 ├── game_state.lua
 ├── gameplay_active.lua
+├── field_side.lua
 ├── geometry.lua
 ├── movement.lua
 ├── defense.lua
@@ -95,6 +96,26 @@ Lê `WRAM 0x0006` como guarda global:
 
 Quando o valor não é `1`, `main.lua` entra em `BOT_IDLE`, limpa estados temporários e chama `movement.stop()` antes de qualquer lógica de posse ou reposição.
 
+### field_side.lua
+
+Centraliza a orientação do campo usando `WRAM 0x106E (CPU_Side)`, validado como fonte operacional estável.
+
+```text
+CPU_Side = 0 -> derived My_Side = 1
+CPU_Side = 1 -> derived My_Side = 0
+
+My_Side = 1 - CPU_Side
+```
+
+Também fornece:
+
+```text
+attack_direction()
+goal_direction()
+```
+
+`0x056E` não é mais usado para decisões de orientação porque foi observado assumindo valores internos como `0x80/0x81/0x88/0x89`.
+
 ### geometry.lua
 
 Funções geométricas sem dependência do emulador.
@@ -118,7 +139,7 @@ score =
 
 Assim os pesos 35% / 25% / 40% deixam de ser distorcidos pelas escalas originais das distâncias e do eixo X.
 
-O cobrador é excluído. O termo territorial usa `My_Side` validado em `0x056E`:
+O cobrador é excluído. O termo territorial usa o `My_Side` derivado de `CPU_Side` validado em `0x056E`:
 
 ```text
 My_Side = 0 -> defendemos a esquerda -> X menor é mais perigoso
@@ -166,7 +187,7 @@ Esse evento persiste após o frame da troca, permitindo comprovar a mudança sem
 
 Implementa o primeiro baseline ofensivo com posse controlada.
 
-Quando `0x00A6 == MyCtrl` e o jogador controlado não é o goleiro MY, o bot conduz a bola na direção do gol adversário usando `My_Side`:
+Quando `0x00A6 == MyCtrl` e o jogador controlado não é o goleiro MY, o bot conduz a bola na direção do gol adversário usando o `My_Side` derivado de `CPU_Side`:
 
 ```text
 My_Side = 0 -> atacar para a direita
