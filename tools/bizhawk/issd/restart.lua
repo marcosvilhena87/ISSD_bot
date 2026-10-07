@@ -9,6 +9,9 @@ function M.new(config, players, geometry, defense)
         mark_dist_to_me = nil,
         mark_dist_to_ball = nil,
         mark_goal_cost = nil,
+        mark_norm_me = nil,
+        mark_norm_ball = nil,
+        mark_norm_goal = nil,
         my_side = nil,
     }
 
@@ -48,6 +51,9 @@ function M.new(config, players, geometry, defense)
         obj.mark_dist_to_me = nil
         obj.mark_dist_to_ball = nil
         obj.mark_goal_cost = nil
+        obj.mark_norm_me = nil
+        obj.mark_norm_ball = nil
+        obj.mark_norm_goal = nil
         obj.my_side = nil
     end
 
@@ -57,7 +63,15 @@ function M.new(config, players, geometry, defense)
         obj.taker_team = team
 
         if team == "CPU" and taker ~= nil then
-            local target, score, to_me, to_ball, goal_cost, my_side =
+            local target,
+                  score,
+                  to_me,
+                  to_ball,
+                  goal_cost,
+                  my_side,
+                  norm_me,
+                  norm_ball,
+                  norm_goal =
                 defense.select_mark_target(
                     my_base,
                     taker,
@@ -70,6 +84,9 @@ function M.new(config, players, geometry, defense)
             obj.mark_dist_to_me = to_me
             obj.mark_dist_to_ball = to_ball
             obj.mark_goal_cost = goal_cost
+            obj.mark_norm_me = norm_me
+            obj.mark_norm_ball = norm_ball
+            obj.mark_norm_goal = norm_goal
             obj.my_side = my_side
         else
             obj.mark_target = nil
@@ -77,6 +94,9 @@ function M.new(config, players, geometry, defense)
             obj.mark_dist_to_me = nil
             obj.mark_dist_to_ball = nil
             obj.mark_goal_cost = nil
+            obj.mark_norm_me = nil
+            obj.mark_norm_ball = nil
+            obj.mark_norm_goal = nil
             obj.my_side = nil
         end
     end
