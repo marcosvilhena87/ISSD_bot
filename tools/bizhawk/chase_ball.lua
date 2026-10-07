@@ -9,8 +9,8 @@
 --   Este script assume Player 1 como o time humano.
 --
 -- Teclas:
---   F1 = liga/desliga o bot
---   F2 = alterna stop_on_possession
+--   K = liga/desliga o bot
+--   L = alterna stop_on_possession
 --
 -- O bot para de perseguir quando o jogador controlado conquista a posse,
 -- caso stop_on_possession esteja habilitado.
@@ -131,13 +131,13 @@ local function chase()
 end
 
 console.log("[ISSD] Chase Ball carregado")
-console.log("[ISSD] F1 = bot ON/OFF")
-console.log("[ISSD] F2 = stop_on_possession ON/OFF")
+console.log("[ISSD] K = bot ON/OFF")
+console.log("[ISSD] L = stop_on_possession ON/OFF")
 
 while true do
     local keys = input.get()
 
-    if pressed(keys, "F1") then
+    if pressed(keys, "K") then
         enabled = not enabled
         clear_pad()
         console.log(string.format(
@@ -146,7 +146,7 @@ while true do
         ))
     end
 
-    if pressed(keys, "F2") then
+    if pressed(keys, "L") then
         stop_on_possession = not stop_on_possession
         console.log(string.format(
             "[ISSD] stop_on_possession %s",
@@ -173,7 +173,7 @@ while true do
         ))
     else
         clear_pad()
-        gui.text(8, 8, "ISSD CHASE BOT: OFF (F1)")
+        gui.text(8, 8, "ISSD CHASE BOT: OFF (K)")
     end
 
     previous_keys = keys
