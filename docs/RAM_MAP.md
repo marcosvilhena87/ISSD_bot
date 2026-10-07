@@ -336,6 +336,7 @@ O probe compara duas classes:
 ```text
 N = LIVE normal
 V = REPLAY
+B = PAUSED
 C = imprimir Top 30 candidatos
 R = reset
 ```
@@ -344,4 +345,4 @@ Critério: o endereço deve permanecer estável dentro de várias amostras LIVE,
 
 O ranking prioriza flags simples, especialmente `0/1`, `0/255` e pequenos valores em regiões globais da WRAM.
 
-Recomendação: capturar pelo menos 5 amostras LIVE e 5 REPLAY em momentos variados antes de imprimir candidatos.
+Recomendação: capturar pelo menos 5 amostras LIVE, 5 REPLAY e 5 PAUSED em momentos variados antes de imprimir candidatos. A terceira classe ajuda a separar uma flag específica de replay de uma flag genérica de "jogo não ativo".
