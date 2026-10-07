@@ -39,6 +39,15 @@ M.LIVE_DEFENSE = {
     goal_side_offset = 48,
 }
 
+-- Interceptacao de bola em movimento.
+-- O primeiro baseline projeta alguns frames a frente usando a velocidade
+-- observada da bola e limita o deslocamento previsto para evitar overshoot.
+M.INTERCEPTION = {
+    lead_frames = 6,
+    max_lead_distance = 96,
+    min_ball_speed = 1.0,
+}
+
 -- Contexto temporal de posse quando 0x00A6 volta para zero.
 -- Evita tratar imediatamente passe/chute como bola neutra.
 M.POSSESSION_CONTEXT = {
