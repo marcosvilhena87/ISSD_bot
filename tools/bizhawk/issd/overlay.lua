@@ -56,6 +56,22 @@ function M.new(players, game_state)
                     state.mark_goal_cost or -1,
                     tostring(state.my_side)
                 ))
+
+                local ranking = state.ranking or {}
+                local top_n = math.min(3, #ranking)
+
+                for i = 1, top_n do
+                    local candidate = ranking[i]
+                    gui.text(8, 148 + (i - 1) * 14, string.format(
+                        "#%d %s S=%.3f M=%.2f B=%.2f G=%.2f",
+                        i,
+                        players.decode_any(candidate.base),
+                        candidate.score or -1,
+                        candidate.norm_me or -1,
+                        candidate.norm_ball or -1,
+                        candidate.norm_goal or -1
+                    ))
+                end
             end
         end
     end
