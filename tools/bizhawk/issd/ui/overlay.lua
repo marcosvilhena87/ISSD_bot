@@ -4,7 +4,7 @@ function M.new(players, game_state)
     local obj = {}
 
     function obj.draw(state)
-        gui.text(8, 8, "ISSD CHASE BOT: ON")
+        gui.text(8, 8, "ISSD BOT: ON")
         gui.text(8, 22, string.format(
             "Player: %s",
             state.my_base and players.decode_my(state.my_base) or "?"
@@ -261,7 +261,7 @@ function M.new(players, game_state)
     end
 
     function obj.draw_off()
-        gui.text(8, 8, "ISSD CHASE BOT: OFF (K) - manual control")
+        gui.text(8, 8, "ISSD BOT: OFF (K) - manual control")
     end
 
     return obj
