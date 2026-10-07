@@ -12,6 +12,25 @@ function M.new(config, players, mem)
         return 0
     end
 
+    function obj.goalkeeper_policy(my_base, carrier_base)
+        if carrier_base ~= config.CPU_FIRST then
+            return nil
+        end
+
+        local px, py = players.xy(my_base)
+        local gx, gy = players.xy(carrier_base)
+        local dx = gx - px
+        local dy = gy - py
+        local distance = math.sqrt(dx * dx + dy * dy)
+        local threshold = config.LIVE_DEFENSE.gk_press_distance
+
+        return {
+            distance = distance,
+            threshold = threshold,
+            should_press = distance <= threshold,
+        }
+    end
+
     function obj.target_for_carrier(carrier_base)
         if not players.valid_cpu_base(carrier_base) then
             return nil
