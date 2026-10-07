@@ -4,7 +4,7 @@ Ao abrir `tools/bizhawk/issd/main.lua` pelo Lua Console do BizHawk, o script ten
 
 `tools/bizhawk/issd/issd_report.csv`
 
-O CSV e gravado imediatamente (flush) e pode ser aberto no Excel. A coluna `session` separa as execucoes. O arquivo nao e apagado quando o script inicia novamente.
+O CSV e gravado imediatamente (flush) e pode ser aberto no Excel. Cada nova execucao substitui o relatorio anterior para manter somente um arquivo com o formato atual.
 
 ## Eventos
 - `SESSION_START`: inicializacao do script.
@@ -27,6 +27,6 @@ O relatorio e criado somente quando o script e executado localmente no BizHawk. 
 
 ## Relatorio v2: contexto da decisao
 
-A versao atual escreve em `tools/bizhawk/issd/issd_report_v2.csv` para preservar o esquema do CSV antigo. Acrescenta `ball_x/y`, `player_x/y`, `target_x/y`, `target_distance`, `controller_command`, `attack_mode`, `lane_direction`, `blocker_base/forward/lateral`, `up/down_clearance`, `restart_taker`, `restart_taker_team`, `mark_target` e `team_possession_source`.
+A versao atual escreve exclusivamente em `tools/bizhawk/issd/issd_report.csv`, substituindo seu conteudo ao iniciar o script. Acrescenta `ball_x/y`, `player_x/y`, `target_x/y`, `target_distance`, `controller_command`, `attack_mode`, `lane_direction`, `blocker_base/forward/lateral`, `up/down_clearance`, `restart_taker`, `restart_taker_team`, `mark_target` e `team_possession_source`.
 
 O comando representa as teclas enviadas pelo modulo Movement no frame amostrado, ou NONE. Em estados sem alvo definido as coordenadas de destino ficam vazias. As justificativas em `detail` sao classificacoes da regra aplicada, nao provas de que a jogada foi correta. O sistema continua registrando transicoes e heartbeats, nao todos os frames. Nenhum destes registros muda a politica do bot.
