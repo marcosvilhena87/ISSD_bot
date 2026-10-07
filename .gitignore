@@ -16,3 +16,6 @@ roms/
 *.srm
 *.smc
 *.sfc
+
+# Local BizHawk runtime telemetry
+tools/bizhawk/issd/issd_report.csv
