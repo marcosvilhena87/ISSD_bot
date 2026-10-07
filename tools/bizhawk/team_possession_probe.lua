@@ -11,7 +11,7 @@
 --   O = CPU_PASS       (passe da CPU, bola desprendida)
 --
 -- Outros:
---   P = imprimir candidatos
+--   C = imprimir candidatos
 --   R = resetar amostras
 --
 -- Melhor resultado: capture 3+ amostras de cada classe, em jogadores,
@@ -308,7 +308,7 @@ console.log("[TEAM_POSSESSION] Y=MY_CONTROLLED")
 console.log("[TEAM_POSSESSION] U=MY_PASS")
 console.log("[TEAM_POSSESSION] I=CPU_CONTROLLED")
 console.log("[TEAM_POSSESSION] O=CPU_PASS")
-console.log("[TEAM_POSSESSION] P=print | R=reset")
+console.log("[TEAM_POSSESSION] C=print | R=reset")
 
 while true do
     local keys = input.get()
@@ -319,7 +319,7 @@ while true do
         end
     end
 
-    if pressed(keys, "P") then
+    if pressed(keys, "C") then
         print_candidates()
     end
 
