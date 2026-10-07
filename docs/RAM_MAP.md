@@ -25,7 +25,7 @@ Documento de trabalho para registrar endereços de memória descobertos no ISS D
 | CPU Controlled Player Y (camera) | `0x1ADC` | word signed | 🟡 | `ISSD_players_cam.wch` |
 | Player Ball Possession | `0x00A6` | word unsigned | 🟢 | `0x0000` = sem jogador fisicamente ligado; caso contrário base da struct do possuidor |
 | Team Possession | `0x104C` | byte unsigned | 🟢* | em jogo corrido: `0=MY`, `1=CPU`; validado também durante passes longos; bola neutra/restarts ainda em caracterização |
-| Game State | `0x00BA` | word unsigned | 🟢 | `0` jogo; `1` linha de fundo; `2` lateral |
+| Game State | `0x00BA` | word unsigned | 🟢 | `0` live; `1` endline; `2` lateral; `3` falta; `4` impedimento; `5` pós-gol |
 | My Side | `0x056E` | byte unsigned | 🟢 | `0` esquerda; `1` direita; validado após troca de lados |
 | CPU Side | `0x106E` | byte unsigned | 🟢 | `0` esquerda; `1` direita; validado após troca de lados |
 | Score For | — | — | 🔴 | ainda não localizado |
@@ -56,25 +56,32 @@ O eixo X de mundo cresce da esquerda para a direita. O módulo defensivo usa iss
 - `My_Side = 0`: X menor = mais próximo do nosso lado defensivo;
 - `My_Side = 1`: X maior = mais próximo do nosso lado defensivo.
 
-## Game_State — reposições
+## Game_State — estados da partida
 
 Validado em execução em `WRAM 0x00BA`:
 
 ```text
-0 = bola em jogo
-1 = reposição após a bola sair pela linha de fundo
-    (corner kick ou goal kick; o flag não distingue os dois)
-2 = reposição após a bola sair pela lateral
+0 = LIVE
+1 = ENDLINE_RESTART
+    corner ou goal kick; não distingue os dois
+2 = THROW_IN
+3 = FOUL_RESTART_SEQUENCE
+    falta comum, cartão, free kick e penalty kick
+4 = OFFSIDE_SEQUENCE
+    impedimento / free kick após impedimento
+5 = POST_GOAL
 ```
 
-Transições observadas:
+Observações importantes:
 
 ```text
-2 -> 0  após cobrança de lateral
-1 -> 0  após cobrança pela linha de fundo
+GS=3 pode continuar durante cartão e preparação de cobrança.
+GS=4 aparece na sequência de impedimento.
+GS=5 aparece na sequência pós-gol, inclusive gol contra.
+GS=0 pode reaparecer durante algumas fases de cobrança.
 ```
 
-O bot usa `Game_State` como fonte primária para detectar reposições. A geometria dos jogadores é usada apenas para identificar o provável cobrador e, em reposição contra, escolher um adversário sem bola para marcar.
+Por isso `Game_State` tem prioridade sobre `PlayerPoss` ao classificar a fase do jogo. O bot usa automação ativa em `0/1/2` e trata `3/4/5` conservadoramente sem movimento até a transição para outro estado.
 
 ## Team Possession / posse lógica por equipe
 
