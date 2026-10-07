@@ -319,3 +319,29 @@ Um endereço só deve virar 🟢 quando:
 - permanece válido após reiniciar a partida;
 - tipo/sinal estiverem corretos;
 - sua transformação para coordenada de campo ou tela estiver entendida.
+
+
+## Replay / gameplay ativo
+
+Problema observado em execução: durante a tela `RESUME REPLAY`, `Game_State (0x00BA)` continua em `0`, portanto ele não distingue gameplay real de replay.
+
+Foi adicionado:
+
+```text
+tools/bizhawk/replay_probe.lua
+```
+
+O probe compara duas classes:
+
+```text
+N = LIVE normal
+V = REPLAY
+C = imprimir Top 30 candidatos
+R = reset
+```
+
+Critério: o endereço deve permanecer estável dentro de várias amostras LIVE, estável dentro de várias amostras REPLAY e ter valores diferentes entre as duas classes.
+
+O ranking prioriza flags simples, especialmente `0/1`, `0/255` e pequenos valores em regiões globais da WRAM.
+
+Recomendação: capturar pelo menos 5 amostras LIVE e 5 REPLAY em momentos variados antes de imprimir candidatos.
