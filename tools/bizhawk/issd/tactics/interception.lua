@@ -82,6 +82,28 @@ function M.new(config)
         }
     end
 
+    -- Emergency defense: intercept ahead of a fast ball approaching our GK.
+    -- Goalkeeper coordinates anchor the defended end, avoiding fixed field constants.
+    function obj.danger_target(ball_x, ball_y, vx, vy, speed, gk_x, gk_y, goal_dir)
+        local c = config.INTERCEPTION
+        if goal_dir == 0 or speed < c.danger_min_speed
+            or vx * goal_dir < c.danger_min_x_speed then return nil end
+        local remaining = (gk_x - ball_x) * goal_dir
+        if remaining <= 0 or remaining > c.danger_max_goal_distance then return nil end
+        local frames_to_gk = remaining / math.max(math.abs(vx), 0.01)
+        if frames_to_gk > c.danger_max_frames then return nil end
+        local lead = math.min(c.danger_max_lead_frames,
+            math.max(c.danger_min_lead_frames, math.floor(frames_to_gk * 0.65)))
+        local x = ball_x + vx * lead
+        local y = ball_y + vy * lead
+        -- Do not run past the goalkeeper/goal line.
+        if (x - gk_x) * goal_dir > 0 then x = gk_x end
+        return {x=math.floor(x+0.5), y=math.floor(y+0.5),
+            lead_frames=lead, lead_x=x-ball_x, lead_y=y-ball_y,
+            predictive=true, clipped=false, danger=true,
+            frames_to_goal=frames_to_gk}
+    end
+
     return obj
 end
 
