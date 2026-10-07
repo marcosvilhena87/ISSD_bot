@@ -22,6 +22,7 @@ tools/bizhawk/issd/
 ├── players.lua
 ├── ball.lua
 ├── game_state.lua
+├── gameplay_active.lua
 ├── geometry.lua
 ├── movement.lua
 ├── defense.lua
@@ -75,6 +76,17 @@ Decodifica `WRAM 0x00BA`:
 1 = ENDLINE
 2 = THROW_IN
 ```
+
+### gameplay_active.lua
+
+Lê `WRAM 0x0006` como guarda global:
+
+```text
+1 = gameplay ativo
+0 = gameplay inativo (pause/replay)
+```
+
+Quando o valor não é `1`, `main.lua` entra em `BOT_IDLE`, limpa estados temporários e chama `movement.stop()` antes de qualquer lógica de posse ou reposição.
 
 ### geometry.lua
 
@@ -225,7 +237,11 @@ Centraliza o HUD de debug.
 Contém somente a orquestração / máquina de estados:
 
 ```text
-Game_State = 0
+0x0006 != 1
+└─ BOT_IDLE
+
+0x0006 == 1
+└─ Game_State = 0
 ├─ 0x00A6 = jogador MY  -> POSSESSION_MANUAL
 ├─ 0x00A6 = jogador CPU -> LIVE_DEFENSE
 └─ 0x00A6 = 0
@@ -326,4 +342,4 @@ A intenção é validar uma guarda global futura:
 0x0006 == 1 -> máquina normal
 ```
 
-Essa guarda ainda não foi integrada ao bot principal.
+A guarda foi validada em gameplay normal, pause e replay e já está integrada ao bot principal.
