@@ -144,6 +144,9 @@ M.THROW_IN = {
     receiver_ready_distance = 80,
     switch_margin = 80,
     switch_cooldown = 45,
+    target_lock_frames = 20,
+    target_tolerance = 16,
+    max_attempts = 2,
 }
 
 return M
