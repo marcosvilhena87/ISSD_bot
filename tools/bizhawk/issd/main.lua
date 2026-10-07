@@ -19,6 +19,7 @@ local Movement = dofile(DIR .. "movement.lua")
 local Geometry = dofile(DIR .. "geometry.lua")
 local Defense = dofile(DIR .. "defense.lua")
 local LiveDefense = dofile(DIR .. "live_defense.lua")
+local TeamPossession = dofile(DIR .. "team_possession.lua")
 local PossessionContext = dofile(DIR .. "possession_context.lua")
 local Restart = dofile(DIR .. "restart.lua")
 local Overlay = dofile(DIR .. "overlay.lua")
@@ -30,6 +31,7 @@ local game_state = GameState.new(config, mem)
 local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, mem)
 local live_defense = LiveDefense.new(config, players, mem)
+local team_possession = TeamPossession.new(config, mem)
 local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
 local overlay = Overlay.new(players, game_state)
@@ -76,6 +78,9 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         live_target_x = nil,
         live_target_y = nil,
         live_my_side = nil,
+        team_possession = nil,
+        team_possession_kind = nil,
+        team_possession_source = nil,
         possession_class = nil,
         context_last_team = nil,
         context_last_owner = nil,
@@ -101,11 +106,18 @@ local function step_bot()
     if game_state.is_live(gs) then
         restart.clear()
 
-        local possession_class =
+        -- Mantem a heuristica temporal aquecida apenas como fallback.
+        local fallback_class =
             possession_context.update(possession, bx, by)
 
-        local function attach_context(state)
-            state.possession_class = possession_class
+        local team_value = team_possession.read()
+        local team_kind = team_possession.kind(team_value)
+
+        local function attach_live_state(state, source, class)
+            state.team_possession = team_value
+            state.team_possession_kind = team_kind
+            state.team_possession_source = source
+            state.possession_class = class or fallback_class
             state.context_last_team = possession_context.last_team
             state.context_last_owner = possession_context.last_owner
             state.context_frames_without =
@@ -116,13 +128,19 @@ local function step_bot()
             return state
         end
 
-        if possession_class == "MY_CONTROLLED" then
-            return attach_context(make_state(
-                my_base, 0, 0, "POSSESSION_MANUAL", possession, gs
-            ))
+        -- 0x00A6 continua sendo a fonte autoritativa para o jogador
+        -- fisicamente ligado a bola.
+        if players.valid_my_base(possession) then
+            return attach_live_state(
+                make_state(
+                    my_base, 0, 0, "POSSESSION_MANUAL", possession, gs
+                ),
+                "PLAYER_POSSESSION",
+                "MY_CONTROLLED"
+            )
         end
 
-        if possession_class == "CPU_CONTROLLED" then
+        if players.valid_cpu_base(possession) then
             local live = live_defense.target_for_carrier(possession)
 
             if live ~= nil then
@@ -139,36 +157,68 @@ local function step_bot()
                 state.live_target_x = live.target_x
                 state.live_target_y = live.target_y
                 state.live_my_side = live.my_side
-                return attach_context(state)
+
+                return attach_live_state(
+                    state,
+                    "PLAYER_POSSESSION",
+                    "CPU_CONTROLLED"
+                )
             end
         end
 
-        if possession_class == "CPU_BALL_IN_FLIGHT" then
+        -- Quando nenhum jogador esta fisicamente ligado a bola,
+        -- 0x104C passa a ser a fonte primaria para o lado da posse.
+        if possession == 0 and team_possession.is_cpu(team_value) then
             local px, py = players.xy(my_base)
             local dx = bx - px
             local dy = by - py
             movement.move_toward(dx, dy)
 
-            return attach_context(make_state(
-                my_base, dx, dy, "CPU_BALL_IN_FLIGHT", possession, gs
-            ))
+            return attach_live_state(
+                make_state(
+                    my_base, dx, dy, "CPU_BALL_IN_FLIGHT", possession, gs
+                ),
+                "TEAM_POSSESSION_RAM",
+                "CPU_BALL_IN_FLIGHT"
+            )
         end
 
-        if possession_class == "MY_BALL_IN_FLIGHT" then
-            return attach_context(make_state(
-                my_base, 0, 0, "MY_BALL_IN_FLIGHT", possession, gs
-            ))
+        if possession == 0 and team_possession.is_my(team_value) then
+            return attach_live_state(
+                make_state(
+                    my_base, 0, 0, "MY_BALL_IN_FLIGHT", possession, gs
+                ),
+                "TEAM_POSSESSION_RAM",
+                "MY_BALL_IN_FLIGHT"
+            )
         end
 
-        if possession_class == "TRUE_LOOSE_BALL" then
+        -- Fallback temporal somente se 0x104C sair do dominio validado 0/1.
+        if fallback_class == "CPU_BALL_IN_FLIGHT" then
             local px, py = players.xy(my_base)
             local dx = bx - px
             local dy = by - py
             movement.move_toward(dx, dy)
 
-            return attach_context(make_state(
-                my_base, dx, dy, "LOOSE_BALL_CHASE", possession, gs
-            ))
+            return attach_live_state(
+                make_state(
+                    my_base, dx, dy, "CPU_BALL_IN_FLIGHT_FALLBACK",
+                    possession, gs
+                ),
+                "TEMPORAL_FALLBACK",
+                fallback_class
+            )
+        end
+
+        if fallback_class == "MY_BALL_IN_FLIGHT" then
+            return attach_live_state(
+                make_state(
+                    my_base, 0, 0, "MY_BALL_IN_FLIGHT_FALLBACK",
+                    possession, gs
+                ),
+                "TEMPORAL_FALLBACK",
+                fallback_class
+            )
         end
 
         local px, py = players.xy(my_base)
@@ -176,9 +226,13 @@ local function step_bot()
         local dy = by - py
         movement.move_toward(dx, dy)
 
-        return attach_context(make_state(
-            my_base, dx, dy, "LIVE_FALLBACK_CHASE", possession, gs
-        ))
+        return attach_live_state(
+            make_state(
+                my_base, dx, dy, "LIVE_FALLBACK_CHASE", possession, gs
+            ),
+            "TEMPORAL_FALLBACK",
+            fallback_class
+        )
     end
 
     possession_context.reset()
@@ -223,7 +277,7 @@ console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in")
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
 console.log("[ISSD] switch event HUD: 60 frames")
-console.log("[ISSD] live context: CPU/MY controlled, ball-in-flight, true loose")
+console.log("[ISSD] live: 0x104C team possession primary, temporal context fallback")
 
 while true do
     local keys = input.get()
