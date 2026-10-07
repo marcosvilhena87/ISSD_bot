@@ -5,17 +5,20 @@ A automação do BizHawk foi dividida em módulos para evitar que `chase_ball.lu
 ## Entrada
 
 ```text
-tools/bizhawk/main.lua
+tools/bizhawk/issd/entry/main.lua
         ↓
 tools/bizhawk/issd/app/main.lua
 ```
 
-`tools/bizhawk/main.lua` é o ponto de entrada oficial no BizHawk. `chase_ball.lua` permanece apenas como launcher de compatibilidade.
+`tools/bizhawk/issd/entry/main.lua` é o ponto de entrada oficial no BizHawk. `chase_ball.lua` permanece apenas como launcher de compatibilidade.
 
 ## Módulos
 
 ```text
 tools/bizhawk/issd/
+├── entry/
+│   ├── main.lua
+│   └── chase_ball.lua
 ├── app/
 │   └── main.lua
 ├── core/
@@ -40,18 +43,31 @@ tools/bizhawk/issd/
 │   ├── restart.lua
 │   ├── live_attack.lua
 │   └── gk_distribution.lua
-└── ui/
-    └── overlay.lua
+├── ui/
+│   └── overlay.lua
+└── probes/
+    ├── ram_scanner.lua
+    ├── player_probe.lua
+    ├── state_probe.lua
+    ├── gameplay_active_watch.lua
+    ├── replay_probe.lua
+    ├── team_possession_probe.lua
+    ├── team_possession_watch.lua
+    ├── field_side_probe.lua
+    ├── field_side_watch.lua
+    └── cpu_side_watch.lua
 ```
 
 A divisão segue responsabilidade:
 
+- `entry/`: launchers para abrir no BizHawk;
 - `app/`: orquestração / máquina principal de estados;
 - `core/`: configuração, memória e utilidades matemáticas;
 - `state/`: leitura e interpretação do estado da partida;
 - `control/`: emissão de comandos e troca de jogador;
 - `tactics/`: decisões de ataque, defesa, interceptação, reposições e goleiro;
-- `ui/`: HUD e diagnóstico visual.
+- `ui/`: HUD e diagnóstico visual;
+- `probes/`: engenharia reversa, scanners e watchers de RAM.
 
 ### config.lua
 
