@@ -46,12 +46,12 @@ Essas teclas evitam conflito com F1/F2 do BizHawk, usados para load state.
 
 ```text
 Game_State = 0
-├─ MY_CONTROLLED      -> POSSESSION_MANUAL
-├─ CPU_CONTROLLED     -> LIVE_DEFENSE
-├─ CPU_BALL_IN_FLIGHT -> intercepta/persegue a bola
-├─ MY_BALL_IN_FLIGHT  -> controle manual
-├─ TRUE_LOOSE_BALL    -> LOOSE_BALL_CHASE
-└─ fallback           -> LIVE_FALLBACK_CHASE
+├─ 0x00A6 aponta MY   -> POSSESSION_MANUAL
+├─ 0x00A6 aponta CPU  -> LIVE_DEFENSE
+└─ 0x00A6 = 0
+   ├─ 0x104C = 0 -> MY_BALL_IN_FLIGHT
+   ├─ 0x104C = 1 -> CPU_BALL_IN_FLIGHT
+   └─ outro valor -> fallback temporal
 
 Game_State = 1 ou 2
 ├─ cobrador MY  -> RESTART_ATTACK
@@ -115,3 +115,15 @@ TRUE_LOOSE_BALL
 ```
 
 Isso evita classificar imediatamente todo `Possession=0` como bola neutra.
+
+
+## Posse por equipe nativa
+
+`WRAM 0x104C` foi validado em jogo corrido:
+
+```text
+0 = MY
+1 = CPU
+```
+
+Ele permanece estável durante passes longos mesmo quando `Player Possession (0x00A6)` cai para zero. Por isso passou a ser a fonte primária para identificar o lado da jogada sem possuidor físico. `possession_context.lua` permanece apenas como fallback defensivo.
