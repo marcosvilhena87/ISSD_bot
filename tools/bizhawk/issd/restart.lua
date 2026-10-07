@@ -19,6 +19,11 @@ function M.new(config, players, geometry, defense)
         lock_frames = 0,
         switch_delta = nil,
         switch_blocked = false,
+
+        last_switch_from = nil,
+        last_switch_to = nil,
+        last_switch_delta = nil,
+        last_switch_age = nil,
     }
 
     local function nearest_player_to_point(x, y)
@@ -47,6 +52,32 @@ function M.new(config, players, geometry, defense)
         end)
 
         return best_base, best_team, best_d2
+    end
+
+    local function clear_switch_event()
+        obj.last_switch_from = nil
+        obj.last_switch_to = nil
+        obj.last_switch_delta = nil
+        obj.last_switch_age = nil
+    end
+
+    local function tick_switch_event()
+        if obj.last_switch_age == nil then
+            return
+        end
+
+        obj.last_switch_age = obj.last_switch_age + 1
+
+        if obj.last_switch_age > config.DEFENSE.switch_event_frames then
+            clear_switch_event()
+        end
+    end
+
+    local function record_switch_event(from_base, to_base, delta)
+        obj.last_switch_from = from_base
+        obj.last_switch_to = to_base
+        obj.last_switch_delta = delta
+        obj.last_switch_age = 0
     end
 
     local function clear_mark_lock()
@@ -96,9 +127,12 @@ function M.new(config, players, geometry, defense)
         obj.taker = nil
         obj.taker_team = nil
         clear_mark_lock()
+        clear_switch_event()
     end
 
     function obj.assign(ball_x, ball_y, my_base)
+        tick_switch_event()
+
         local previous_taker = obj.taker
         local taker, team = nearest_player_to_point(ball_x, ball_y)
 
@@ -107,6 +141,7 @@ function M.new(config, players, geometry, defense)
 
         if team ~= "CPU" or taker == nil then
             clear_mark_lock()
+            clear_switch_event()
             return
         end
 
@@ -114,6 +149,7 @@ function M.new(config, players, geometry, defense)
         -- reiniciamos o lock para nao carregar uma decisao antiga.
         if previous_taker ~= nil and previous_taker ~= taker then
             clear_mark_lock()
+            clear_switch_event()
         end
 
         local _, _, _, _, _, _, _, _, _, ranking =
@@ -146,6 +182,7 @@ function M.new(config, players, geometry, defense)
         -- Se o alvo atual desapareceu da lista (ex.: virou cobrador),
         -- trocamos imediatamente para o melhor candidato valido.
         if current == nil then
+            clear_switch_event()
             apply_candidate(best)
             obj.lock_frames = 1
             obj.switch_delta = nil
@@ -177,6 +214,9 @@ function M.new(config, players, geometry, defense)
 
         -- Depois do lock minimo, so troca se houver vantagem relevante.
         if delta > config.DEFENSE.switch_margin then
+            local old_target = obj.mark_target
+            record_switch_event(old_target, best.base, delta)
+
             apply_candidate(best)
             obj.lock_frames = 1
             obj.switch_blocked = false
