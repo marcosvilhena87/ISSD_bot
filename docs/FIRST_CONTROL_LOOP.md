@@ -345,3 +345,9 @@ defense.lua
 ```
 
 O antigo `0x056E` permanece apenas como endereço legado/documental e não participa mais das decisões de ataque/defesa.
+
+## Prioridade ofensiva: goleiro adversario
+
+Em `ATTACK_ADVANCE`, o waypoint e projetado sobre o vetor entre o portador e a posicao em RAM do goleiro adversario (`CPU_FIRST=0x1000`); o ataque deixa de seguir apenas o eixo X. Em `ATTACK_LANE`, bloqueadores sao detectados por projecao nesse vetor e o desvio e perpendicular a trajetoria para o goleiro. O bloqueador nao inclui o proprio goleiro. A escolha de desvio considera folga e progresso em direcao ao goleiro, com lock para diminuir oscilacao. Se a posicao do goleiro estiver atras da direcao de ataque ou coincidir com o portador, mantem fallback para o eixo ofensivo. O relatorio `issd_report.csv` recebe `goal_x`, `goal_y` e `goal_distance` na coluna detail durante transicoes ofensivas.
+
+Essa melhoria e exclusivamente de conducao. Ainda nao significa escolher momento de finalizacao ou chutar; validar no BizHawk se o goleiro de fato e uma referencia adequada perto da area.
