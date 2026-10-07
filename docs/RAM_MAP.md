@@ -24,11 +24,35 @@ Documento de trabalho para registrar endereços de memória descobertos no ISS D
 | CPU Controlled Player Y (camera) | `0x1ADC` | word signed | 🟡 | `ISSD_players_cam.wch` |
 | Player Ball Possession | `0x00A6` | word unsigned | 🟢 | `0x0000` = bola livre; caso contrário base da struct do possuidor |
 | Game State | `0x00BA` | word unsigned | 🟢 | `0` jogo; `1` linha de fundo; `2` lateral |
-| My Side | `0x056E` | byte unsigned | 🟡 | `flags.wch` |
-| CPU Side | `0x106E` | byte unsigned | 🟡 | `flags.wch` |
+| My Side | `0x056E` | byte unsigned | 🟢 | `0` esquerda; `1` direita; validado após troca de lados |
+| CPU Side | `0x106E` | byte unsigned | 🟢 | `0` esquerda; `1` direita; validado após troca de lados |
 | Score For | — | — | 🔴 | ainda não localizado |
 | Score Against | — | — | 🔴 | ainda não localizado |
 | Match Time | — | — | 🔴 | ainda não localizado |
+
+## Side / orientação do campo
+
+Validado em execução:
+
+```text
+0x056E My_Side
+0x106E CPU_Side
+
+0 = esquerda
+1 = direita
+```
+
+A troca de lados foi observada diretamente:
+
+```text
+My_Side  0 -> 1
+CPU_Side 1 -> 0
+```
+
+O eixo X de mundo cresce da esquerda para a direita. O módulo defensivo usa isso para estimar perigo territorial sem precisar assumir uma coordenada exata de gol:
+
+- `My_Side = 0`: X menor = mais próximo do nosso lado defensivo;
+- `My_Side = 1`: X maior = mais próximo do nosso lado defensivo.
 
 ## Game_State — reposições
 
