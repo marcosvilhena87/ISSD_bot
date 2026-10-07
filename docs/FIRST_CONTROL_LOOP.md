@@ -46,7 +46,9 @@ Essas teclas evitam conflito com F1/F2 do BizHawk, usados para load state.
 
 ```text
 Game_State = 0
-├─ 0x00A6 aponta MY   -> POSSESSION_MANUAL
+├─ 0x00A6 == MyCtrl e jogador de linha -> ATTACK_ADVANCE
+├─ 0x00A6 aponta outro MY              -> MY_TEAMMATE_POSSESSION
+├─ 0x00A6 aponta MY GK                 -> MY_GK_POSSESSION
 ├─ 0x00A6 aponta CPU  -> LIVE_DEFENSE
 └─ 0x00A6 = 0
    ├─ 0x104C = 0 -> MY_BALL_IN_FLIGHT
@@ -230,3 +232,32 @@ Cooldown=...
 ```
 
 Importante: `best` é a referência espacial usada para decidir se vale pedir a troca; o jogador realmente escolhido é determinado pelo mecanismo nativo de troca do ISSD.
+
+
+## Progressão ofensiva
+
+Com posse física no próprio jogador controlado, o bot agora inicia a primeira política ofensiva:
+
+```text
+My_Side=0 -> avançar para a direita
+My_Side=1 -> avançar para a esquerda
+
+advance_distance = 96
+```
+
+Estado:
+
+```text
+ATTACK_ADVANCE
+```
+
+O HUD mostra `Attack target`, direção, lado e distância de avanço.
+
+Proteções iniciais:
+
+```text
+possession != MyCtrl -> não mover automaticamente
+MyCtrl == MY GK      -> não avançar automaticamente
+```
+
+Ainda não há escolha de corredor, passe, drible ou chute; esta etapa valida somente a capacidade de ganhar território com posse.
