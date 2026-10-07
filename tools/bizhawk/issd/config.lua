@@ -7,6 +7,7 @@ M.ADDR = {
     ball_x = 0x042A,
     ball_y = 0x042C,
     possession = 0x00A6,
+    team_possession = 0x104C,
     game_state = 0x00BA,
     my_side = 0x056E,
     cpu_side = 0x106E,
