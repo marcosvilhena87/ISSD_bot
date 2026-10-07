@@ -1,7 +1,7 @@
 -- Experimental offensive throw-in. A/B are used for the throw while MyCtrl moves a receiver.
 local M = {}
 function M.new(config, players, field_side)
-    local obj = { cooldown = 0, active_taker = nil, switch_cooldown = 0, last_control = nil, stationary_frames = 0, attempts = 0 }
+    local obj = { cooldown = 0, active_taker = nil, switch_cooldown = 0, last_control = nil, stationary_frames = 0, attempts = 0, wait_frames = 0 }
     local settings = config.THROW_IN
     local function dist(ax, ay, bx, by)
         local dx, dy = bx - ax, by - ay
@@ -14,6 +14,7 @@ function M.new(config, players, field_side)
         obj.last_control = nil
         obj.stationary_frames = 0
         obj.attempts = 0
+        obj.wait_frames = 0
     end
     function obj.plan(taker, my_ctrl)
         if not players.valid_my_base(taker) then return nil end
@@ -24,7 +25,9 @@ function M.new(config, players, field_side)
             obj.last_control = nil
             obj.stationary_frames = 0
         obj.attempts = 0
+        obj.wait_frames = 0
         end
+        obj.wait_frames = obj.wait_frames + 1
         if obj.switch_cooldown > 0 then obj.switch_cooldown = obj.switch_cooldown - 1 end
         local tx, ty = players.xy(taker)
         -- On throw-ins, MyCtrl may refer to an outfield receiver, not the thrower.
@@ -94,6 +97,9 @@ function M.new(config, players, field_side)
             end
         end)
         if best == nil then
+            if obj.wait_frames >= settings.long_fallback_frames then
+                return {mode="READY", taker=taker, receiver=nil, button=settings.long_throw_button}
+            end
             return {mode="WAIT_RECEIVER", taker=taker}
         end
         -- Aiming is experimental and may require calibration against actual game controls.
