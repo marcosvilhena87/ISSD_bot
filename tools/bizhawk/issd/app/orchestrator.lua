@@ -49,7 +49,7 @@ local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
 local overlay = Overlay.new(players, game_state)
 
-local report = Report.new(DIR .. "../issd_report.csv")
+local report = Report.new(DIR .. "../issd_report_v2.csv")
 local enabled = false
 local stop_on_possession = true
 local previous_keys = {}
@@ -630,6 +630,26 @@ while true do
 
     if enabled then
         local state = step_bot()
+        -- Snapshot after the tactical decision, before the next emulated frame.
+        state.ball_x, state.ball_y = ball.world_xy()
+        if players.valid_my_base(state.my_base) then
+            state.player_x, state.player_y = players.xy(state.my_base)
+        end
+        state.target_x = state.attack_target_x or state.intercept_target_x or state.live_target_x
+        state.target_y = state.attack_target_y or state.intercept_target_y or state.live_target_y
+        if state.status == "RESTART_DEFENSE" and state.mark_target ~= nil then
+            state.target_x, state.target_y = players.xy(state.mark_target)
+        end
+        if state.status == "LIVE_FALLBACK_CHASE" then
+            state.target_x, state.target_y = state.ball_x, state.ball_y
+        end
+        if state.player_x ~= nil and state.target_x ~= nil and state.target_y ~= nil then
+            local dx = state.target_x - state.player_x
+            local dy = state.target_y - state.player_y
+            state.target_distance = math.sqrt(dx * dx + dy * dy)
+        end
+        state.restart_taker_team = restart.taker_team
+        state.controller_command = movement.last_command
         report:observe(true, state)
         overlay.draw(state)
     else
