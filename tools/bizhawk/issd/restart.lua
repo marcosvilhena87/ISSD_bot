@@ -13,6 +13,7 @@ function M.new(config, players, geometry, defense)
         mark_norm_ball = nil,
         mark_norm_goal = nil,
         my_side = nil,
+        ranking = {},
     }
 
     local function nearest_player_to_point(x, y)
@@ -55,6 +56,7 @@ function M.new(config, players, geometry, defense)
         obj.mark_norm_ball = nil
         obj.mark_norm_goal = nil
         obj.my_side = nil
+        obj.ranking = {}
     end
 
     function obj.assign(ball_x, ball_y, my_base)
@@ -71,7 +73,8 @@ function M.new(config, players, geometry, defense)
                   my_side,
                   norm_me,
                   norm_ball,
-                  norm_goal =
+                  norm_goal,
+                  ranking =
                 defense.select_mark_target(
                     my_base,
                     taker,
@@ -88,6 +91,7 @@ function M.new(config, players, geometry, defense)
             obj.mark_norm_ball = norm_ball
             obj.mark_norm_goal = norm_goal
             obj.my_side = my_side
+            obj.ranking = ranking or {}
         else
             obj.mark_target = nil
             obj.mark_score = nil
@@ -98,6 +102,7 @@ function M.new(config, players, geometry, defense)
             obj.mark_norm_ball = nil
             obj.mark_norm_goal = nil
             obj.my_side = nil
+            obj.ranking = {}
         end
     end
 
