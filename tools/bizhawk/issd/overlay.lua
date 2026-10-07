@@ -66,12 +66,26 @@ function M.new(players, game_state)
                     state.switch_blocked and "HOLD" or "FREE"
                 ))
 
+                local y = 162
+
+                if state.last_switch_from ~= nil
+                   and state.last_switch_to ~= nil then
+                    gui.text(8, y, string.format(
+                        "SWITCH %s -> %s d=%.3f age=%d",
+                        players.decode_any(state.last_switch_from),
+                        players.decode_any(state.last_switch_to),
+                        state.last_switch_delta or -1,
+                        state.last_switch_age or 0
+                    ))
+                    y = y + 14
+                end
+
                 local ranking = state.ranking or {}
                 local top_n = math.min(3, #ranking)
 
                 for i = 1, top_n do
                     local candidate = ranking[i]
-                    gui.text(8, 162 + (i - 1) * 14, string.format(
+                    gui.text(8, y + (i - 1) * 14, string.format(
                         "#%d %s S=%.3f M=%.2f B=%.2f G=%.2f",
                         i,
                         players.decode_any(candidate.base),
