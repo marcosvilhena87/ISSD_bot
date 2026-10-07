@@ -28,8 +28,8 @@ Documento de trabalho para registrar endereços de memória descobertos no ISS D
 | Game State | `0x00BA` | word unsigned | 🟢 | `0` live; `1` endline; `2` lateral; `3` falta; `4` impedimento; `5` pós-gol |
 | My Side (legacy) | `0x056E` | byte unsigned | 🔴 | instável; assume valores como `0x80/0x81/0x88/0x89` conforme estado do jogador, inclusive posse do GK; não usar para orientação |
 | CPU Side | `0x106E` | byte unsigned | 🟢 | fonte operacional validada; permaneceu em `0/1`, inverteu na troca de lados e não apresentou frames inválidos no watcher |
-| Score For | — | — | 🔴 | ainda não localizado |
-| Score Against | — | — | 🔴 | ainda não localizado |
+| Score For | `0x0DA2` | word unsigned | 🟡 | My_Goal(s), fonte fornecida pelo usuário; aguarda validação em execução |
+| Score Against | `0x0EA2` | word unsigned | 🟡 | CPU_Goal(s), fonte fornecida pelo usuário; aguarda validação em execução |
 | Match Time | — | — | 🔴 | ainda não localizado |
 
 ## Side / orientação do campo
