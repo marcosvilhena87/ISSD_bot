@@ -20,6 +20,7 @@ local Movement = dofile(DIR .. "movement.lua")
 local Geometry = dofile(DIR .. "geometry.lua")
 local Defense = dofile(DIR .. "defense.lua")
 local LiveDefense = dofile(DIR .. "live_defense.lua")
+local Interception = dofile(DIR .. "interception.lua")
 local TeamPossession = dofile(DIR .. "team_possession.lua")
 local PossessionContext = dofile(DIR .. "possession_context.lua")
 local Restart = dofile(DIR .. "restart.lua")
@@ -33,6 +34,7 @@ local gameplay_active = GameplayActive.new(config, mem)
 local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, mem)
 local live_defense = LiveDefense.new(config, players, mem)
+local interception = Interception.new(config)
 local team_possession = TeamPossession.new(config, mem)
 local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
@@ -92,6 +94,12 @@ local function make_state(my_base, dx, dy, status, possession, gs)
         ball_dx = 0,
         ball_dy = 0,
         ball_speed = 0,
+        intercept_target_x = nil,
+        intercept_target_y = nil,
+        intercept_lead_frames = 0,
+        intercept_lead_x = 0,
+        intercept_lead_y = 0,
+        intercept_predictive = false,
     }
 end
 
@@ -208,15 +216,31 @@ local function step_bot()
         -- Quando nenhum jogador esta fisicamente ligado a bola,
         -- 0x104C passa a ser a fonte primaria para o lado da posse.
         if possession == 0 and team_possession.is_cpu(team_value) then
+            local target = interception.target(
+                bx,
+                by,
+                possession_context.ball_dx,
+                possession_context.ball_dy,
+                possession_context.ball_speed
+            )
+
             local px, py = players.xy(my_base)
-            local dx = bx - px
-            local dy = by - py
+            local dx = target.x - px
+            local dy = target.y - py
             movement.move_toward(dx, dy)
 
+            local state = make_state(
+                my_base, dx, dy, "CPU_BALL_INTERCEPT", possession, gs
+            )
+            state.intercept_target_x = target.x
+            state.intercept_target_y = target.y
+            state.intercept_lead_frames = target.lead_frames
+            state.intercept_lead_x = target.lead_x
+            state.intercept_lead_y = target.lead_y
+            state.intercept_predictive = target.predictive
+
             return attach_live_state(
-                make_state(
-                    my_base, dx, dy, "CPU_BALL_IN_FLIGHT", possession, gs
-                ),
+                state,
                 "TEAM_POSSESSION_RAM",
                 "CPU_BALL_IN_FLIGHT"
             )
@@ -234,16 +258,32 @@ local function step_bot()
 
         -- Fallback temporal somente se 0x104C sair do dominio validado 0/1.
         if fallback_class == "CPU_BALL_IN_FLIGHT" then
+            local target = interception.target(
+                bx,
+                by,
+                possession_context.ball_dx,
+                possession_context.ball_dy,
+                possession_context.ball_speed
+            )
+
             local px, py = players.xy(my_base)
-            local dx = bx - px
-            local dy = by - py
+            local dx = target.x - px
+            local dy = target.y - py
             movement.move_toward(dx, dy)
 
+            local state = make_state(
+                my_base, dx, dy, "CPU_BALL_INTERCEPT_FALLBACK",
+                possession, gs
+            )
+            state.intercept_target_x = target.x
+            state.intercept_target_y = target.y
+            state.intercept_lead_frames = target.lead_frames
+            state.intercept_lead_x = target.lead_x
+            state.intercept_lead_y = target.lead_y
+            state.intercept_predictive = target.predictive
+
             return attach_live_state(
-                make_state(
-                    my_base, dx, dy, "CPU_BALL_IN_FLIGHT_FALLBACK",
-                    possession, gs
-                ),
+                state,
                 "TEMPORAL_FALLBACK",
                 fallback_class
             )
@@ -318,7 +358,7 @@ console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in, 3=foul, 4=offside
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
 console.log("[ISSD] switch event HUD: 60 frames")
-console.log("[ISSD] live: 0x104C team possession primary, temporal context fallback")
+console.log("[ISSD] live: team possession + predictive interception")
 
 while true do
     local keys = input.get()
