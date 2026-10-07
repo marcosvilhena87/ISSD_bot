@@ -11,4 +11,4 @@ local function script_dir()
     return source:match("^(.*[\\/])") or "./"
 end
 
-dofile(script_dir() .. "issd/main.lua")
+dofile(script_dir() .. "issd/app/main.lua")
