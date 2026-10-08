@@ -622,6 +622,21 @@ local function step_bot()
                 state.live_target_x = live.target_x
                 state.live_target_y = live.target_y
                 state.live_my_side = live.my_side
+                state.goal_side_distance = live.goal_distance
+                state.goal_side_emergency = live.goal_side_emergency
+                -- Projection of the actual defender onto the carrier-to-GK segment.
+                local cx,cy=live.carrier_x,live.carrier_y
+                local gx,gy=live.goalkeeper_x,live.goalkeeper_y
+                local vx,vy=gx-cx,gy-cy
+                local length2=vx*vx+vy*vy
+                if length2>1 then
+                    local t=((px-cx)*vx+(py-cy)*vy)/length2
+                    local lateral=math.abs((px-cx)*vy-(py-cy)*vx)/math.sqrt(length2)
+                    state.goal_side_between=t>0 and t<1
+                        and lateral<=config.GOAL_SIDE.offset
+                    state.goal_side_lateral=lateral
+                    state.goal_side_projection=t
+                end
 
                 if gk_policy ~= nil then
                     state.gk_distance = gk_policy.distance
@@ -1096,6 +1111,15 @@ while true do
                 ..";holder="..tostring(tackle_outcome.holder)
                 ..";distance="..tostring(tackle_outcome.distance)
                 ..";age="..tostring(tackle_outcome.age))
+        end
+        if state.goal_side_between~=nil
+            and report.frame%config.GOAL_SIDE.measure_every_frames==0 then
+            report:write("GOAL_SIDE_POSITION",true,state,state.controller_command,
+                "between="..tostring(state.goal_side_between)
+                ..";lateral="..tostring(state.goal_side_lateral)
+                ..";projection="..tostring(state.goal_side_projection)
+                ..";goal_distance="..tostring(state.goal_side_distance)
+                ..";emergency="..tostring(state.goal_side_emergency))
         end
         if state.tackle_fired then
             report:write("TACKLE_ATTEMPT",true,state,state.controller_command,
