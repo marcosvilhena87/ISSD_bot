@@ -215,6 +215,15 @@ M.BOX_PRESSURE = {
     unmarked_distance = 75,
 }
 
+M.MY_FLIGHT_INTERCEPTION = {
+    max_height = 20, -- ground / low bounce only until aerial control is calibrated
+    max_my_distance = 155,
+    min_cpu_advantage = 18, -- CPU must be clearly nearer to the target
+    max_flight_age = 150,
+    max_prediction_frames = 6,
+    max_prediction_distance = 48,
+}
+
 M.BOX_RECOVERY = {
     goal_radius = 300,
     attacker_radius = 110,
