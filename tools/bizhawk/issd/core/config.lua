@@ -174,6 +174,13 @@ M.ACTIVE_TACKLE = {
     outcome_frames = 45,
 }
 
+M.GOAL_SIDE = {
+    offset = 65, -- from carrier toward Brazilian GK
+    max_fraction = 0.65,
+    emergency_radius = 125,
+    measure_every_frames = 30,
+}
+
 M.LIVE_DEFENSE = {
     goal_side_offset = 48,
 
