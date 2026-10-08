@@ -2,7 +2,8 @@
 local M = {}
 function M.new(report, window_frames, sample_step)
     local obj = {history={}, frame=0, last_gs=nil, last_my=nil,
-        last_cpu=nil, report=report, window=window_frames or 600,
+        last_cpu=nil, last_shots_my=nil, last_shots_cpu=nil,
+        report=report, window=window_frames or 600,
         step=sample_step or 3, last_trigger=-999999}
     local function snapshot(state)
         local out = {}
@@ -54,6 +55,30 @@ function M.new(report, window_frames, sample_step)
                 obj.report:write("SCORE_JUMP", enabled, state, "SCORE", detail)
                 obj.history = {}
             end
+        end
+        -- Shot counters are independent of goal transitions.
+        local sm, sc = state.shots_my, state.shots_cpu
+        if type(sm) == "number" and type(sc) == "number" then
+            if obj.last_shots_my ~= nil and obj.last_shots_cpu ~= nil then
+                local dm = sm - obj.last_shots_my
+                local dc = sc - obj.last_shots_cpu
+                if dm == 1 and dc == 0 then
+                    obj.report:write("SHOT_FOR", enabled, state, "SHOTS",
+                        "before=" .. obj.last_shots_my .. "-" .. obj.last_shots_cpu
+                        .. ";after=" .. sm .. "-" .. sc)
+                elseif dc == 1 and dm == 0 then
+                    obj.report:write("SHOT_AGAINST", enabled, state, "SHOTS",
+                        "before=" .. obj.last_shots_my .. "-" .. obj.last_shots_cpu
+                        .. ";after=" .. sm .. "-" .. sc)
+                elseif dm ~= 0 or dc ~= 0 then
+                    obj.report:write((dm < 0 or dc < 0)
+                        and "SHOTS_RESET" or "SHOTS_JUMP", enabled, state, "SHOTS",
+                        "delta_my=" .. dm .. ";delta_cpu=" .. dc)
+                end
+            end
+            obj.last_shots_my, obj.last_shots_cpu = sm, sc
+        else
+            obj.last_shots_my, obj.last_shots_cpu = nil, nil
         end
         -- GS=5 is a diagnostic hint only; never claim a scored goal from GS alone.
         if gs == 5 and obj.last_gs ~= 5 and not changed then
