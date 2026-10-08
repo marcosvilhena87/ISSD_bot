@@ -1,59 +1,80 @@
--- Conservative goalkeeper-rebound inference. TeamPoss alone is never a save.
+-- GK rebound candidates: ball kinematics + recent CPU contact near our GK.
+-- A candidate is not proof of a save; TeamPoss is never proof of control.
 local M={}
 function M.new(config,players)
  local c=config.GK_REBOUND_RECOVERY
- local o={last_cpu_frame=nil,last_ball_x=nil,last_ball_y=nil,
-          previous_dx=nil,window_until=-1,start_frame=nil}
+ local o={last_cpu_frame=nil,last_x=nil,last_y=nil,last_dx=nil,last_dy=nil,
+          last_height=nil,window_until=-1,start_frame=nil,sequence=0,
+          candidate_frame=-9999,last_reason=nil}
  function o.reset()
-  o.last_cpu_frame=nil;o.last_ball_x=nil;o.last_ball_y=nil
-  o.previous_dx=nil;o.window_until=-1;o.start_frame=nil
+  o.last_cpu_frame=nil;o.last_x=nil;o.last_y=nil
+  o.last_dx=nil;o.last_dy=nil;o.last_height=nil
+  o.window_until=-1;o.start_frame=nil;o.sequence=0
+  o.candidate_frame=-9999;o.last_reason=nil
  end
+ function o.active(frame) return o.window_until>=frame end
  function o.update(state,frame)
   if state.game_state~=0 or state.gameplay_active~=1 then
-   local was=o.window_until>=frame
+   local was=o.active(frame)
    o.reset()
    return was and {kind="END",reason="STOPPAGE"} or nil
   end
   local gx,gy=players.xy(config.MY_FIRST)
   local bx,by=state.ball_x,state.ball_y
+  if not bx or not by then return nil end
   local near=(bx-gx)^2+(by-gy)^2<=c.goal_radius*c.goal_radius
   local cpu=players.valid_cpu_base(state.possession)
   local my=players.valid_my_base(state.possession)
-  local event=nil
-  if cpu and near then o.last_cpu_frame=frame end
-  local dx=o.last_ball_x and bx-o.last_ball_x or nil
-  -- Rebound candidate: recent CPU carrier, ball reaches keeper area, then
-  -- reverses substantial horizontal direction while individually unowned.
-  if state.possession==0 and near and o.last_cpu_frame
-   and frame-o.last_cpu_frame<=c.recent_cpu_frames
-   and dx and o.previous_dx and dx*o.previous_dx<0
-   and math.abs(dx)>=c.min_reversal_speed
-   and math.abs(o.previous_dx)>=c.min_reversal_speed
-   and state.ball_height and state.ball_height<=c.max_height then
-    o.window_until=frame+c.window_frames
-    o.start_frame=frame
-    event={kind="CANDIDATE",reason="CPU_SHOT_REVERSED_NEAR_GK"}
+  local dx=o.last_x and bx-o.last_x or nil
+  local dy=o.last_y and by-o.last_y or nil
+  local speed=dx and math.sqrt(dx*dx+dy*dy) or 0
+  local previous_speed=o.last_dx and math.sqrt(o.last_dx^2+o.last_dy^2) or 0
+  local turn=false
+  if dx and o.last_dx and speed>=c.min_speed and previous_speed>=c.min_speed then
+   local dot=dx*o.last_dx+dy*o.last_dy
+   local cos=dot/(speed*previous_speed)
+   turn=cos<=c.max_direction_cosine
   end
-  if o.window_until>=frame then
+  local acceleration=dx and o.last_dx and
+      math.sqrt((dx-o.last_dx)^2+(dy-o.last_dy)^2) or 0
+  local height=state.ball_height
+  local height_change=height and o.last_height and height-o.last_height or 0
+  -- A rapid trajectory change is stronger evidence than TeamPoss=MY.
+  local deflection=turn or (acceleration>=c.min_acceleration and
+      speed>=c.min_speed and previous_speed>=c.min_speed)
+  local recent=o.last_cpu_frame and frame-o.last_cpu_frame<=c.recent_cpu_frames
+  local event=nil
+  if state.possession==0 and near and recent and deflection
+     and height and height<=c.max_height
+     and frame-o.candidate_frame>=c.candidate_cooldown_frames then
+   o.sequence=o.sequence+1
+   o.candidate_frame=frame
+   o.window_until=frame+c.window_frames
+   o.start_frame=frame
+   o.last_reason=turn and "DIRECTION_CHANGE" or "SPEED_CHANGE"
+   event={kind="CANDIDATE",reason=o.last_reason,sequence=o.sequence,
+          speed=speed,acceleration=acceleration,height_change=height_change}
+  end
+  if o.active(frame) and not event then
    if cpu or my then
     event={kind="END",reason=cpu and "CPU_RECOVERED" or "MY_RECOVERED",
-           elapsed=frame-(o.start_frame or frame)}
+           sequence=o.sequence,elapsed=frame-(o.start_frame or frame)}
     o.window_until=-1
    elseif not near then
-    event={kind="END",reason="LEFT_GK_AREA",
+    event={kind="END",reason="LEFT_GK_AREA",sequence=o.sequence,
            elapsed=frame-(o.start_frame or frame)}
     o.window_until=-1
    end
-  elseif o.window_until>=0 then
-   event={kind="END",reason="TIMEOUT",elapsed=frame-(o.start_frame or frame)}
+  elseif o.window_until>=0 and not event then
+   event={kind="END",reason="TIMEOUT",sequence=o.sequence,
+          elapsed=frame-(o.start_frame or frame)}
    o.window_until=-1
   end
-  o.previous_dx=dx
-  o.last_ball_x,o.last_ball_y=bx,by
+  if cpu and near then o.last_cpu_frame=frame end
+  o.last_x,o.last_y=bx,by
+  o.last_dx,o.last_dy=dx,dy
+  o.last_height=height
   return event
- end
- function o.active(frame)
-  return o.window_until>=frame
  end
  return o
 end
