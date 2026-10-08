@@ -285,6 +285,9 @@ local function step_bot()
                     state.shot_fired = true
                     state.shot_button = shot.button
                     state.shot_distance = shot.distance
+                    state.shot_angle = shot.shot_angle
+                    state.shot_lateral_offset = shot.lateral_offset
+                    state.shot_nearest_defender = shot.nearest_defender
                     state.shot_goal_x = shot.goal_x
                     state.shot_goal_y = shot.goal_y
                     state.controller_command = movement.last_command
@@ -754,6 +757,9 @@ while true do
                 .. ";distance=" .. tostring(state.shot_distance)
                 .. ";goal_x=" .. tostring(state.shot_goal_x)
                 .. ";goal_y=" .. tostring(state.shot_goal_y)
+                .. ";angle_deg=" .. tostring(state.shot_angle)
+                .. ";lateral_offset=" .. tostring(state.shot_lateral_offset)
+                .. ";nearest_defender=" .. tostring(state.shot_nearest_defender)
         end
         if state.attack_goal_x ~= nil then
             state.report_detail = "goal_x=" .. tostring(state.attack_goal_x)
