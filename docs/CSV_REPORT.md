@@ -88,3 +88,7 @@ O evento `SHOT_ATTEMPT` inclui em `detail` as medidas `distance` (distancia eucl
 ## Escape com Y durante ATTACK_LANE
 
 Quando o jogador controlado carrega a bola, ha bloqueador no corredor escolhido e o cooldown permite, o bot envia simultaneamente direcionais do waypoint e um pulso `Y`. Nao e mantido pressionado em frames consecutivos: cooldown de 24 frames. O evento `LANE_ESCAPE_ATTEMPT` registra comando, base do bloqueador e waypoint no CSV unico. O `shoot_diag` agora alimenta `live_attack.target_for_carrier`, permitindo que `BLOCKED_LANE` oriente o corredor lateral. O significado/eficacia do comando Y durante condução depende de validacao pratica no BizHawk; o evento mede tentativa, nao drible bem-sucedido.
+
+## ATTACK_LANE_DASH e ATTACK_LANE_FEINT (manual Konami, pp. 16-17)
+
+O manual do ISS Deluxe confirma: direcional+Y mantido = Dash Dribble e toque leve de Y = Feint. O bot usa `LANE_DASH_START` ao iniciar 12 frames de direcional+Y (com cooldown de 24 frames) quando ha bloqueador a frente; para bloqueador bem proximo (ate 28 unidades no eixo da trajetoria), usa `LANE_FEINT` com pulso de um frame e cooldown de 32 frames. O modo ofensivo permanece `ATTACK_LANE`, e `ATTACK_SHOOT` continua sendo avaliado primeiro a cada frame. O CSV unico registra inicio das manobras, nao sucesso garantido. Comparar saidas de posse, distancia ao gol e `SHOT_FOR` para calibrar. O comportamento so se aplica ao portador controlado em jogo corrido.
