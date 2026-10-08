@@ -85,6 +85,64 @@ local defensive_carrier = nil
 local defensive_hold_age = 0
 local rebound_lock_base=nil
 local rebound_lock_frames=0
+-- Defensive sprint is deliberately separate from attack dash.
+local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=nil}
+local function defensive_dash_step(state)
+    local cfg=config.DEFENSIVE_DASH
+    local eligible={
+        LIVE_DEFENSE=true, BOX_ATTACKER_PRESSURE=true,
+        BOX_REBOUND_PRESSURE=true, CPU_DANGER_INTERCEPT=true,
+        CPU_BALL_INTERCEPT=true, CPU_BALL_INTERCEPT_FALLBACK=true,
+        MY_FLIGHT_BOX_DANGER=true, LIVE_FALLBACK_CHASE=true,
+    }
+    local active=state.game_state==0
+        and gameplay_active.is_active(state.gameplay_active)
+        and eligible[state.status]
+        and players.valid_my_base(state.my_base)
+        and state.my_base~=config.MY_FIRST
+        and type(state.dx)=="number" and type(state.dy)=="number"
+    local d=active and math.sqrt(state.dx^2+state.dy^2) or nil
+    local command=movement.last_command or ""
+    local directional=command:find("Left",1,true) or command:find("Right",1,true)
+        or command:find("Up",1,true) or command:find("Down",1,true)
+    if defensive_dash.cooldown>0 then
+        defensive_dash.cooldown=defensive_dash.cooldown-1
+    end
+    if defensive_dash.remaining>0 then
+        local ending=not active or not directional
+            or defensive_dash.base~=state.my_base or d<=cfg.stop_distance
+            or defensive_dash.remaining<=1
+        if ending then
+            report:write("DEFENSIVE_DASH_END",true,state,"Y",
+                "mode="..tostring(defensive_dash.mode)
+                ..";start_distance="..tostring(defensive_dash.start_distance)
+                ..";end_distance="..tostring(d)
+                ..";gain="..tostring(d and defensive_dash.start_distance
+                    and (defensive_dash.start_distance-d) or nil))
+            defensive_dash.remaining=0
+            defensive_dash.cooldown=cfg.cooldown_frames
+        else
+            defensive_dash.remaining=defensive_dash.remaining-1
+        end
+    end
+    if active and directional and d>=cfg.start_distance
+        and (defensive_dash.remaining>0 or defensive_dash.cooldown==0) then
+        if defensive_dash.remaining==0 then
+            defensive_dash.remaining=cfg.burst_frames
+            defensive_dash.base=state.my_base
+            defensive_dash.start_distance=d
+            defensive_dash.mode=state.status
+            report:write("DEFENSIVE_DASH_START",true,state,"Y",
+                "mode="..tostring(state.status)..";distance="..tostring(d)
+                ..";burst_frames="..tostring(cfg.burst_frames))
+        end
+        -- Preserve B tackle and R switch commands: only override movement.
+        movement.move_toward_button(state.dx,state.dy,cfg.button)
+        defensive_dash.remaining=defensive_dash.remaining-1
+        state.defensive_dash=true
+    end
+end
+
 
 local function pressed(keys, key)
     return keys[key] and not previous_keys[key]
@@ -1238,6 +1296,7 @@ while true do
 
     if enabled then
         local state = step_bot()
+        defensive_dash_step(state)
         -- Snapshot after the tactical decision, before the next emulated frame.
         state.ball_x, state.ball_y = ball.world_xy()
         if players.valid_my_base(state.my_base) then
