@@ -71,6 +71,21 @@ M.ATTACK = {
     feint_cooldown_frames = 32,
 }
 
+M.FORWARD_PASS = {
+    button = "B",
+    min_forward = 75,
+    max_forward = 260,
+    max_distance = 270,
+    max_lateral = 24, -- prefer aligned B+Right/Left, not diagonal
+    min_receiver_clearance = 72,
+    min_lane_clearance = 52,
+    cooldown_frames = 75,
+    weight_progress = 0.30,
+    weight_clearance = 0.50,
+    weight_lane = 0.65,
+    weight_lateral = 1.0,
+}
+
 M.SHOOT = {
     button = "X",
     max_distance = 310,
