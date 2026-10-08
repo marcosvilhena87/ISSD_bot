@@ -108,3 +108,7 @@ If restart assignment identifies MY goalkeeper (MY_FIRST/0x0500) as taker in GS=
 ## Player switch verification (defense)
 
 The bot now writes SWITCH_REQUEST when pressing R for defense and then checks MyCtrl over the next 8 frames. SWITCH_CONFIRMED means the actually selected player matches the predicted best player; SWITCH_MISMATCH means R selected someone else; SWITCH_UNCHANGED means MyCtrl stayed unchanged throughout the verification window. Every result includes from, expected, actual and age. A 24-frame settling window follows the verification result, preventing repeated R requests. This does not assume that R can directly select any particular player. Goal kick behavior is unchanged.
+
+## Throw-in receiver selection guard
+
+A short throw is READY only if the controlled receiver is within 160 world units of the taker AND within target tolerance AND has sufficient clearance. A nearer outfield teammate triggers an R switch when the distance improvement exceeds 32 units, with 12 frames reserved to observe the resulting player selection. The report detail includes receiver_distance_to_taker, receiver_distance_to_target, near_taker, and nearest_distance, where available. READY_LONG remains a time-based fallback and is not evidence of a short receiver nearby. Review on-screen positioning because player world coordinates may not align perfectly with camera visibility.
