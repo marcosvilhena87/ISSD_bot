@@ -136,6 +136,7 @@ M.FREE_KICK = {
     shot_button = "X",
     long_button = "A",
     stable_frames = 18,
+    offside_stable_frames = 30, -- allow offside animation to settle
     max_taker_distance = 115,
     team_margin = 16,
     shot_max_distance = 260,
