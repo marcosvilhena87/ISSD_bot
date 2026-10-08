@@ -61,6 +61,9 @@ M.ATTACK = {
     escape_button = "Y",
     escape_cooldown_frames = 24,
     escape_max_blocker_distance = 72,
+    feint_max_blocker_distance = 28,
+    dash_duration_frames = 12,
+    feint_cooldown_frames = 32,
 }
 
 M.SHOOT = {
