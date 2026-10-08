@@ -101,6 +101,9 @@ M.DEFENSIVE_EXIT = {
     pressure_radius=95, emergency_radius=38,
     reassessment_frames=60, max_reassessments=2,
     total_advance_limit=140, action_settle_frames=20,
+    hold_timeout_frames=75,
+    max_clear_attempts=3,
+    clear_buttons={"A","X","A"}, -- alternate when a clearance was not accepted
 }
 
 -- Final-third rescue when the carrier reaches the opponent endline.
