@@ -923,13 +923,50 @@ local function step_bot()
         if possession == 0 and team_possession.is_my(team_value) then
             live_attack.reset()
             gk_distribution.reset()
+            -- Team possession RAM can remain MY during a dangerous rebound.
+            -- Intervene only near our keeper when a CPU outfielder can contest
+            -- the ball and no Brazilian outfielder is already close to it.
+            local guard=config.BOX_RECOVERY
+            local gx,gy=players.xy(config.MY_FIRST)
+            local gd2=(bx-gx)^2+(by-gy)^2
+            local nearest_cpu=math.huge
+            local nearest_my=math.huge
+            if gd2<=guard.goal_radius^2 and bx~=0 and by~=0 then
+                players.each_cpu(function(base)
+                    if base~=config.CPU_FIRST then
+                        local x,y=players.xy(base)
+                        nearest_cpu=math.min(nearest_cpu,math.sqrt((bx-x)^2+(by-y)^2))
+                    end
+                end)
+                players.each_my(function(base)
+                    if base~=config.MY_FIRST then
+                        local x,y=players.xy(base)
+                        nearest_my=math.min(nearest_my,math.sqrt((bx-x)^2+(by-y)^2))
+                    end
+                end)
+            end
+            if nearest_cpu<=guard.attacker_radius
+                and nearest_my>guard.own_ball_protection_radius then
+                local threat=live_defense.box_pressure(nil,bx,by,true)
+                local tx,ty=bx,by
+                if threat then tx,ty=threat.x,threat.y end
+                local switch_state=maybe_switch_player(tx,ty,"MY_FLIGHT_BOX_DANGER")
+                if switch_state then return switch_state end
+                local px,py=players.xy(my_base)
+                local dx,dy=tx-px,ty-py
+                movement.move_toward(dx,dy)
+                local state=make_state(my_base,dx,dy,"MY_FLIGHT_BOX_DANGER",possession,gs)
+                state.box_threat=threat and threat.base or nil
+                state.box_recovery_attacker_distance=nearest_cpu
+                state.box_recovery_own_distance=nearest_my
+                state.intercept_target_x=tx
+                state.intercept_target_y=ty
+                return attach_live_state(state,"DANGER_OVERRIDE","MY_BALL_IN_FLIGHT")
+            end
+            movement.stop()
             return attach_live_state(
-                make_state(
-                    my_base, 0, 0, "MY_BALL_IN_FLIGHT", possession, gs
-                ),
-                "TEAM_POSSESSION_RAM",
-                "MY_BALL_IN_FLIGHT"
-            )
+                make_state(my_base,0,0,"MY_BALL_IN_FLIGHT",possession,gs),
+                "TEAM_POSSESSION_RAM","MY_BALL_IN_FLIGHT")
         end
 
         -- Fallback temporal somente se 0x104C sair do dominio validado 0/1.
@@ -1277,6 +1314,13 @@ while true do
                 "attacker="..tostring(state.box_threat)
                 ..";nearest_defender="..tostring(state.box_threat_nearest_defender)
                 ..";attacker_ball_distance="..tostring(state.box_threat_ball_distance))
+        end
+        if state.status=="MY_FLIGHT_BOX_DANGER" and report.frame%15==0 then
+            report:write("MY_FLIGHT_BOX_DANGER",true,state,state.controller_command,
+                "cpu_ball="..tostring(state.box_recovery_attacker_distance)
+                ..";my_ball="..tostring(state.box_recovery_own_distance)
+                ..";target_x="..tostring(state.intercept_target_x)
+                ..";target_y="..tostring(state.intercept_target_y))
         end
         if state.status=="DEFENSE_BOX_COVERAGE" and report.frame%30==0 then
             report:write("BOX_THREAT",true,state,state.controller_command,
