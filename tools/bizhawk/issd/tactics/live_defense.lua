@@ -62,6 +62,14 @@ function M.new(config, players, field_side)
     function obj.box_threat(carrier_base, ball_x, ball_y)
         local c=config.BOX_COVERAGE
         local gx,gy=players.xy(config.MY_FIRST)
+        -- A carrier at the goalmouth is the immediate threat: never abandon it.
+        if players.valid_cpu_base(carrier_base) then
+            local cx,cy=players.xy(carrier_base)
+            if (cx-gx)^2+(cy-gy)^2
+                <=c.carrier_emergency_radius*c.carrier_emergency_radius then
+                return nil
+            end
+        end
         local dx,dy=ball_x-gx,ball_y-gy
         if dx*dx+dy*dy>c.activation_radius*c.activation_radius then
             return nil
