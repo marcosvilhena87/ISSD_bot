@@ -63,6 +63,9 @@ M.ATTACK = {
 
     -- Evita oscilacao UP/DOWN enquanto contorna.
     lane_lock_frames = 12,
+    lane_progress_window = 45,
+    lane_min_progress = 24,
+    lane_abort_frames = 80,
     escape_button = "Y",
     escape_cooldown_frames = 24,
     escape_max_blocker_distance = 72,
