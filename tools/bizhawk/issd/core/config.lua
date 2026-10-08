@@ -190,6 +190,9 @@ M.THROW_IN = {
     recovery_switch_interval = 30,
     max_recovery_switches = 3,
     field_margin = 40,
+    receiver_max_taker_distance = 160,
+    receiver_switch_improvement = 32,
+    switch_verify_frames = 12,
 }
 
 return M
