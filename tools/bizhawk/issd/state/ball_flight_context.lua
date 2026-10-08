@@ -52,12 +52,22 @@ function M.new(config,mem,players)
 end
 -- Logical MY possession is independent of physical flight and last carrier.
 -- Exposed as separate axes; these labels do not authorize a chase.
-function M.classify_my_flight(flight)
+function M.classify_unowned_ball(flight,logical_team)
   local band=flight.height_band
-  local strategy=band=="AERIAL" and "TRACK_LANDING"
-    or flight.origin=="CPU" and "ASSESS_CPU_CONTEST"
-    or flight.origin=="MY" and "PROTECT_OWN_RECEPTION"
-    or "ASSESS_LOOSE_BALL"
-  return "MY_BALL_"..band,strategy,band
+  local strategy
+  if logical_team=="MY" then
+    strategy=band=="AERIAL" and "TRACK_LANDING"
+      or flight.origin=="CPU" and "ASSESS_CPU_CONTEST"
+      or flight.origin=="MY" and "PROTECT_OWN_RECEPTION"
+      or "ASSESS_LOOSE_BALL"
+  else
+    strategy=band=="AERIAL" and "TRACK_CPU_LANDING"
+      or band=="LOW" and "ASSESS_CPU_LOW_CONTEST"
+      or "ASSESS_CPU_GROUND_CONTEST"
+  end
+  return logical_team.."_BALL_"..band,strategy,band
+end
+function M.classify_my_flight(flight)
+  return M.classify_unowned_ball(flight,"MY")
 end
 return M
