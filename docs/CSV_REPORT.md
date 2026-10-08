@@ -100,3 +100,7 @@ Candidate WRAM addresses: stadium 0x0086, length 0x12A2, width 0x12A4, center X 
 ## Feasibility and emergency-defense hysteresis
 
 During CPU loose-ball flight toward our goalkeeper, defense_interception samples projected ball positions at 3-frame intervals and estimates the nearest outfield defender's arrival time using a provisional 4 world-units/frame speed. It favors the earliest reachable point (2-frame safety margin), or the least-late point when none is feasible. Emergency mode persists across up to 5 brief frames without a danger reading; preferred defender identity is held for 8 frames, but target coordinates are recalculated. State-change details include eta, slack, reachable, best_base and preferred_base. These are estimates, not measured player velocities; R selection still follows existing player-switch behavior and must be confirmed in the emulator.
+
+## Goal kick baseline (GS=1)
+
+If restart assignment identifies MY goalkeeper (MY_FIRST/0x0500) as taker in GS=1, the bot executes a conservative long kick with attack-direction+A after 10 frames. It waits 60 frames before one optional retry, capped at 2 attempts. Every command is logged as GOAL_KICK_ATTEMPT in the existing issd_report.csv, including direction and distance to nearest opponent. The game state transitioning away from GS=1 indicates restart progression but does not alone prove clean possession. GS=1 may cover other endline situations: never attempt the MY goal kick unless the goalkeeper is the detected taker. Control behavior and resulting state must be tested in BizHawk.
