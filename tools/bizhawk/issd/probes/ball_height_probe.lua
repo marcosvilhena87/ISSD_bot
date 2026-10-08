@@ -6,7 +6,10 @@
 local DOMAIN="WRAM"
 local LABEL={G="GROUND",R="ROLLING",A="AIR",H="APEX"}
 local ORDER={"GROUND","ROLLING","AIR","APEX"}
-local WATCH={0x1040B,0x1476B,0x11B4B,0x1498A,0x14959}
+-- Updated after signed-value ranking; keep original candidates as controls.
+local WATCH={0x16696,0x16D7E,0x03778,0x1430C,0x16382,
+             0x16697,0x16D7F,0x10016,
+             0x1040B,0x1476B,0x11B4B,0x1498A,0x14959}
 local MAX_FRAMES=900
 local samples,previous,frames={}, {}, {}
 local frame=0
