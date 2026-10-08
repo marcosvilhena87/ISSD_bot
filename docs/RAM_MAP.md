@@ -425,3 +425,18 @@ O CSV contém frame, Ball X/Y, posse e valores `u8/s8/u16/s16` dos candidatos
 Comece a gravação imediatamente antes de um lançamento alto, pare após o contato com o solo e exporte. Repita em lançamentos distintos. Os endereços são **hipóteses**, não variáveis confirmadas.
 
 Observação: o ranking de classes utiliza valores assinados (`s8`/`s16`) de forma conservadora; a comparação temporal fina dos CSVs continua necessária para validar subida, ápice, descida e contato com o solo.
+
+### Ball Z Probe v3 — busca temporal automática
+
+Script independente: `tools/bizhawk/issd/probes/ball_height_probe_v3.lua`.
+Não execute junto com `main.lua` ou outro probe.
+
+1. Quando a bola estiver no chão e um lançamento alto for iminente, pressione `T` para iniciar.
+2. No ápice **visual**, pressione `H` **uma vez** para marcar o ponto de maior altura.
+3. Depois do pouso e com a bola novamente no chão, pressione `T` para parar.
+4. Pressione `C` para classificar automaticamente a WRAM inteira e exportar os 20 melhores candidatos num CSV.
+5. `J` descarta a gravação atual. Reinicie e repita com lançamentos diferentes para buscar consistência.
+
+O probe grava snapshots completos da WRAM em um arquivo binário temporário a cada 6 frames (máximo 130 amostras, aproximadamente 13 segundos de jogo a 60 fps). Depois, procura valores `u8/s8/u16/s16` que saem de uma referência inicial, alcançam uma diferença no ápice e retornam próximos à referência. Uma segunda etapa pontua número de mudanças e coerência de subida/descida; falsos positivos continuam possíveis. Ele lê a RAM e escreve **somente arquivos no disco**, sem alterar a memória do jogo. A varredura completa pode reduzir a velocidade da emulação.
+
+O CSV contém `sample,relative_frame,phase,address,type,value,score,coherence,changes` para análise externa. O arquivo binário é preservado para futura auditoria. A tecla `H` é a marcação manual do ápice; se não houver marcação válida o ranking se recusa a concluir. Confirme endereços em **múltiplos** lançamentos antes de integrar à IA.
