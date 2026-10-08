@@ -22,12 +22,13 @@ function M.new(config,players,field_side,mem)
     function obj.reset()
         obj.cooldown=0;obj.last_carrier=nil
     end
-    function obj.plan(carrier)
+    function obj.plan(carrier, prefer_central)
         if obj.cooldown>0 or not players.valid_my_base(carrier)
             or carrier==config.MY_FIRST then return nil end
         local dir=field_side.attack_direction()
         if dir~=1 and dir~=-1 then return nil end
         local px,py=players.xy(carrier)
+        local _,goal_y=players.xy(config.CPU_FIRST)
         local zone=zone_for(px,dir)
         if not zone then return nil end
         local best=nil
@@ -54,6 +55,12 @@ function M.new(config,players,field_side,mem)
                         and d<=c.lateral_max_distance
                     direction=vertical<0 and "Up" or "Down"
                     intent="LATERAL"
+                end
+                -- In the final third, a centralizing lateral outlet must
+                -- move the ball closer to the goalkeeper's lateral coordinate.
+                if prefer_central then
+                    suitable=suitable and zone==3
+                        and math.abs(ry-goal_y)+20<math.abs(py-goal_y)
                 end
                 if suitable and zone_for(rx,dir)~=nil then
                     local receiver_clearance=99999
@@ -83,6 +90,9 @@ function M.new(config,players,field_side,mem)
                             score=score+0.2*math.max(forward,0)
                                 -0.5*math.abs(forward)
                                 -0.1*lateral
+                        end
+                        if prefer_central then
+                            score=score+0.7*(math.abs(py-goal_y)-math.abs(ry-goal_y))
                         end
                         if not best or score>best.score then
                             best={receiver=base,distance=d,forward=forward,
