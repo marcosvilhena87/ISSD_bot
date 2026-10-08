@@ -14,6 +14,7 @@ local config = dofile(DIR .. "../core/config.lua")
 local Memory = dofile(DIR .. "../core/memory.lua")
 local Players = dofile(DIR .. "../state/players.lua")
 local Ball = dofile(DIR .. "../state/ball.lua")
+local AerialContact = dofile(DIR .. "../state/aerial_contact.lua")
 local GameState = dofile(DIR .. "../state/game_state.lua")
 local GameplayActive = dofile(DIR .. "../state/gameplay_active.lua")
 local FieldSide = dofile(DIR .. "../state/field_side.lua")
@@ -45,6 +46,7 @@ local GoalTrace = dofile(DIR .. "../core/goal_trace.lua")
 local mem = Memory.new(config)
 local players = Players.new(config, mem)
 local ball = Ball.new(config, mem)
+local aerial_contact = AerialContact.new(config, mem, players)
 local game_state = GameState.new(config, mem)
 local gameplay_active = GameplayActive.new(config, mem)
 local field_side = FieldSide.new(config, mem)
@@ -1300,6 +1302,28 @@ while true do
             state.report_detail = "goal_x=" .. tostring(state.attack_goal_x)
                 .. ";goal_y=" .. tostring(state.attack_goal_y)
                 .. ";goal_distance=" .. tostring(state.attack_goal_distance)
+        end
+        -- Observational telemetry: never changes the selected controller action.
+        local contact=aerial_contact.update(
+            gameplay_active.is_active(state.gameplay_active),
+            state.game_state,state.possession)
+        if contact then
+            report:write("AERIAL_CONTACT_CANDIDATE",true,state,
+                "OBSERVE_AERIAL_CONTACT",
+                "height="..tostring(contact.height)
+                ..";x="..tostring(contact.x)
+                ..";y="..tostring(contact.y)
+                ..";before_vx="..tostring(contact.before_vx)
+                ..";after_vx="..tostring(contact.after_vx)
+                ..";before_vy="..tostring(contact.before_vy)
+                ..";after_vy="..tostring(contact.after_vy)
+                ..";before_vz="..tostring(contact.before_vz)
+                ..";after_vz="..tostring(contact.after_vz)
+                ..";z_reference="..tostring(contact.z_reference)
+                ..";nearest_base="..tostring(contact.nearest_base)
+                ..";nearest_team="..tostring(contact.nearest_team)
+                ..";nearest_distance="..tostring(contact.nearest_distance)
+                ..";plausible_near_player="..tostring(contact.plausible_near_player))
         end
         report:observe(true, state)
         -- Outcome monitoring only after an actual GK button pulse.
