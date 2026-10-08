@@ -103,6 +103,18 @@ M.SHOOT = {
     cooldown_frames = 90,
 }
 
+M.FREE_KICK = {
+    pass_button = "B",
+    shot_button = "X",
+    long_button = "A",
+    stable_frames = 18,
+    max_taker_distance = 115,
+    team_margin = 16,
+    shot_max_distance = 260,
+    retry_frames = 75,
+    max_attempts = 2,
+}
+
 M.GOAL_KICK = {
     button = "A", -- high kick, to be validated in GS=1
     initial_delay_frames = 10,
