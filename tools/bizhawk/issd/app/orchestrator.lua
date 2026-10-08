@@ -430,6 +430,7 @@ local function step_bot()
                             plan.button
                         )
                         gk_distribution.mark_fired(plan)
+
                     else
                         movement.stop()
                     end
@@ -437,6 +438,9 @@ local function step_bot()
                     local state = make_state(
                         my_base, 0, 0, "GK_DISTRIBUTE", possession, gs
                     )
+                    state.gk_dist_fired = gk_distribution.wait_frames == config.GK_DISTRIBUTION.retry_frames
+                    state.gk_dist_lane_clearance = plan.lane_clearance
+                    state.gk_dist_decision_reason = plan.decision_reason
                     state.gk_dist_mode = plan.mode
                     state.gk_dist_direction = plan.direction
                     state.gk_dist_button = plan.button
@@ -890,6 +894,18 @@ while true do
                 .. ";blocker=" .. tostring(state.escape_blocker)
                 .. ";target_x=" .. tostring(state.target_x)
                 .. ";target_y=" .. tostring(state.target_y))
+        end
+        if state.gk_dist_fired then
+            report:write("GK_DISTRIBUTION_ATTEMPT", true, state,
+                state.controller_command,
+                "mode="..tostring(state.gk_dist_mode)
+                ..";button="..tostring(state.gk_dist_button)
+                ..";direction="..tostring(state.gk_dist_direction)
+                ..";receiver="..tostring(state.gk_dist_receiver)
+                ..";distance="..tostring(state.gk_dist_receiver_distance)
+                ..";clearance="..tostring(state.gk_dist_receiver_clearance)
+                ..";lane_clearance="..tostring(state.gk_dist_lane_clearance)
+                ..";reason="..tostring(state.gk_dist_decision_reason))
         end
         if state.goal_kick_fired then
             report:write("GOAL_KICK_ATTEMPT",true,state,
