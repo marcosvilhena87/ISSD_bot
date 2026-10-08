@@ -373,6 +373,8 @@ local function step_bot()
                         local state=make_state(my_base,0,0,
                             "DEFENSIVE_OUTLET_PASS",possession,gs)
                         state.defensive_recovery=true
+                        state.defensive_hold_age=defensive_hold_age
+                        state.defensive_outlet_fired=true
                         state.forward_pass_fired=true
                         state.forward_pass_zone=outlet.zone
                         state.forward_pass_intent=outlet.intent
@@ -1199,6 +1201,14 @@ while true do
         if state.defensive_recovery and state.defensive_hold_age==1 then
             report:write("DEFENSIVE_RECOVERY",true,state,state.controller_command,
                 "carrier="..tostring(state.my_base)..";zone=1")
+        end
+        if state.defensive_outlet_fired then
+            report:write("DEFENSIVE_OUTLET_PASS",true,state,state.controller_command,
+                "carrier="..tostring(state.my_base)
+                ..";receiver="..tostring(state.forward_pass_receiver)
+                ..";distance="..tostring(state.forward_pass_distance)
+                ..";clearance="..tostring(state.forward_pass_clearance)
+                ..";lane_clearance="..tostring(state.forward_pass_lane_clearance))
         end
         if state.status=="DEFENSIVE_HOLD" and report.frame%60==0 then
             report:write("DEFENSIVE_HOLD",true,state,state.controller_command,
