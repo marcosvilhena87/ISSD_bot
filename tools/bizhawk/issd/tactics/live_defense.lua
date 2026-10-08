@@ -44,17 +44,24 @@ function M.new(config, players, field_side)
             return nil
         end
 
-        local tx = cx + dir * config.LIVE_DEFENSE.goal_side_offset
-        local ty = cy
-
-        return {
-            carrier = carrier_base,
-            carrier_x = cx,
-            carrier_y = cy,
-            target_x = tx,
-            target_y = ty,
-            my_side = my_side,
-        }
+        local cfg=config.GOAL_SIDE
+        local gx,gy=players.xy(config.MY_FIRST)
+        local vx,vy=gx-cx,gy-cy
+        local d=math.sqrt(vx*vx+vy*vy)
+        local tx,ty
+        local emergency=d<=cfg.emergency_radius
+        if d>1 then
+            local offset=math.min(cfg.offset,d*cfg.max_fraction)
+            tx=cx+vx/d*offset
+            ty=cy+vy/d*offset
+        else
+            tx,ty=cx,cy
+        end
+        -- GK is an approximate goalmouth anchor, not a verified goal center.
+        return {carrier=carrier_base,carrier_x=cx,carrier_y=cy,
+            target_x=tx,target_y=ty,my_side=my_side,
+            goal_distance=d,goal_side_emergency=emergency,
+            goalkeeper_x=gx,goalkeeper_y=gy}
     end
 
     -- Emergency box coverage: prioritize an unmarked second attacker near goal.
