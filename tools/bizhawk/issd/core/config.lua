@@ -14,6 +14,11 @@ M.ADDR = {
     score_cpu = 0x0EA2, -- u16 LE; user-supplied WCH candidate
     shots_my = 0x0DAA, -- u16 LE; candidate
     shots_cpu = 0x0EAA, -- u16 LE; candidate
+    stadium_id = 0x0086,
+    field_length = 0x12A2,
+    field_width = 0x12A4,
+    center_field_x = 0x12F2,
+    center_field_y = 0x12D8,
     -- Legacy/unstable: 0x056E changes with player state (e.g. GK possession).
     -- Do not use for orientation decisions.
     my_side = 0x056E,
@@ -171,6 +176,7 @@ M.THROW_IN = {
     max_attempts = 2,
     recovery_switch_interval = 30,
     max_recovery_switches = 3,
+    field_margin = 40,
 }
 
 return M
