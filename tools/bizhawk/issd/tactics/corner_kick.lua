@@ -3,12 +3,19 @@
 local M={}
 function M.new(config,players,field_side,mem)
     local c=config.CORNER_KICK
-    local obj={taker=nil,stable=0,attempts=0,cooldown=0}
+    local obj={taker=nil,stable=0,attempts=0,cooldown=0,
+        fired_x=nil,fired_y=nil,ball_moved=false}
     function obj.reset()
         obj.taker=nil;obj.stable=0;obj.attempts=0;obj.cooldown=0
+        obj.fired_x=nil;obj.fired_y=nil;obj.ball_moved=false
     end
     function obj.plan(bx,by,taker,team)
         if obj.cooldown>0 then obj.cooldown=obj.cooldown-1 end
+        local displacement=0
+        if obj.fired_x~=nil then
+            displacement=math.sqrt((bx-obj.fired_x)^2+(by-obj.fired_y)^2)
+            if displacement>=c.ball_move_threshold then obj.ball_moved=true end
+        end
         local dir=field_side.attack_direction()
         if team~="MY" or not players.valid_my_base(taker)
             or taker==config.MY_FIRST or dir==0 then
@@ -39,21 +46,24 @@ function M.new(config,players,field_side,mem)
         local direction=by>cy and "Up" or "Down"
         local mode=obj.attempts==0 and "CROSS" or "SHORT_RETRY"
         local reason="READY"
-        if obj.stable<c.stable_frames then reason="STABILIZING"
+        if obj.ball_moved then reason="BALL_MOVED"
+        elseif obj.stable<c.stable_frames then reason="STABILIZING"
         elseif obj.attempts>=c.max_attempts then reason="EXHAUSTED"
         elseif obj.cooldown>0 then reason="COOLDOWN" end
         return {mode=mode,button=obj.attempts==0 and c.cross_button or c.short_button,
             direction=direction,taker=taker,stable=obj.stable,
             end_distance=end_distance,side_distance=side_distance,
             taker_distance=taker_distance,attempts=obj.attempts,
-            cooldown=obj.cooldown,reason=reason}
+            cooldown=obj.cooldown,reason=reason,displacement=displacement,
+            ball_x=bx,ball_y=by}
     end
     function obj.fire(plan,movement)
-        if not plan or obj.stable<c.stable_frames
+        if not plan or plan.reason~="READY" or obj.stable<c.stable_frames
             or obj.cooldown>0 or obj.attempts>=c.max_attempts then return false end
         movement.press_direction_button(plan.direction,plan.button)
         obj.attempts=obj.attempts+1
         obj.cooldown=c.retry_frames
+        obj.fired_x=plan.ball_x;obj.fired_y=plan.ball_y
         return true
     end
     return obj
