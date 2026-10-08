@@ -215,6 +215,18 @@ M.BOX_PRESSURE = {
     unmarked_distance = 75,
 }
 
+-- Observational only. Player speed and ETA margin require calibration.
+M.BALL_CONTEST_FEASIBILITY = {
+    estimated_my_speed=4.0,
+    estimated_cpu_speed=4.0,
+    contested_eta_margin=6,
+    max_lead_frames=8,
+    max_lead_distance=64,
+    max_contestable_height=20,
+    max_distance=180,
+    outcome_frames=120,
+}
+
 M.OWNERSHIP_PROBE = {
     max_contestable_height=20,
     contest_radius=75,
