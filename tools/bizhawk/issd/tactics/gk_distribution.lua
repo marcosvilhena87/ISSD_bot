@@ -36,6 +36,25 @@ function M.new(config, players, field_side)
         return best or 9999
     end
 
+    -- Minimum separation from opponents along the entire passing corridor.
+    local function lane_clearance(gx, gy, rx, ry)
+        local dx,dy=rx-gx,ry-gy
+        local length2=dx*dx+dy*dy
+        if length2<1 then return 0 end
+        local best=99999
+        players.each_cpu(function(base)
+            local ox,oy=players.xy(base)
+            local projection=((ox-gx)*dx+(oy-gy)*dy)/length2
+            if projection>0.08 and projection<1.08 then
+                local t=math.max(0,math.min(1,projection))
+                local cx,cy=gx+t*dx,gy+t*dy
+                local d=distance(ox,oy,cx,cy)
+                if d<best then best=d end
+            end
+        end)
+        return best
+    end
+
     local function direction_name(gx, gy, rx, ry, attack_dir)
         local dy = ry - gy
 
@@ -58,10 +77,13 @@ function M.new(config, players, field_side)
                 local dist = distance(gx, gy, px, py)
                 local clearance = nearest_cpu_clearance(px, py)
                 local forward = (px - gx) * attack_dir
+                local corridor = lane_clearance(gx,gy,px,py)
 
                 if dist <= config.GK_DISTRIBUTION.max_throw_distance
                    and clearance >=
-                       config.GK_DISTRIBUTION.min_receiver_clearance then
+                       config.GK_DISTRIBUTION.min_receiver_clearance
+                   and corridor >= config.GK_DISTRIBUTION.min_lane_clearance
+                   and forward >= config.GK_DISTRIBUTION.min_forward then
 
                     local score =
                         config.GK_DISTRIBUTION.weight_clearance * clearance
@@ -75,6 +97,7 @@ function M.new(config, players, field_side)
                             y = py,
                             distance = dist,
                             clearance = clearance,
+                            lane_clearance = corridor,
                             forward = forward,
                             score = score,
                             direction =
@@ -119,6 +142,8 @@ function M.new(config, players, field_side)
                 receiver = receiver.base,
                 receiver_distance = receiver.distance,
                 receiver_clearance = receiver.clearance,
+                lane_clearance = receiver.lane_clearance,
+                decision_reason = "SAFE_SHORT_LANE",
                 receiver_forward = receiver.forward,
                 receiver_score = receiver.score,
                 my_side = my_side,
@@ -132,6 +157,8 @@ function M.new(config, players, field_side)
             receiver = nil,
             receiver_distance = nil,
             receiver_clearance = nil,
+            lane_clearance = nil,
+            decision_reason = "NO_SAFE_SHORT_LANE",
             receiver_forward = nil,
             receiver_score = nil,
             my_side = my_side,
