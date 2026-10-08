@@ -54,6 +54,12 @@ M.AERIAL_DEFENSIVE_CONTACT = {
 }
 
 -- Bounded final-third angle correction; never force a shot.
+M.FINAL_THIRD_ATTACK_DECISION = {
+    window_frames=24,
+    advance_step=32,
+    max_advance_frames=12,
+}
+
 M.FINAL_THIRD_REPOSITION_LOCK = {
     max_frames=42,
     max_retreat=28,
