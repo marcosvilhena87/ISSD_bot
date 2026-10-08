@@ -1,122 +1,159 @@
--- ISSD: discover candidate ball height (Z) in BizHawk WRAM.
--- Run ALONE in Lua Console, with the ROM active. Never writes game memory.
--- G=ground stationary, R=rolling pass, A=airborne, H=near apex.
--- C=rank candidates, K=reset. Capture >=3 samples per class.
--- Use visibly different field positions and ball trajectories.
+-- ISSD Ball Z Probe v2: temporal evidence, NOT a validated Z address.
+-- Run alone in BizHawk Lua Console. Reads WRAM; does not modify game memory.
+-- Capture labels: G=ground R=rolling A=air H=apex; C=class rank K=clear samples.
+-- Temporal recording: T=start/stop, V=export CSV, J=clear recording.
+-- T before a high kick; T after landing. Export and inspect the CSV.
 local DOMAIN="WRAM"
+local LABEL={G="GROUND",R="ROLLING",A="AIR",H="APEX"}
 local ORDER={"GROUND","ROLLING","AIR","APEX"}
-local HOTKEY={G="GROUND",R="ROLLING",A="AIR",H="APEX"}
-local samples={}
-local previous={}
+local WATCH={0x1040B,0x1476B,0x11B4B,0x1498A,0x14959}
+local MAX_FRAMES=900
+local samples,previous,frames={}, {}, {}
 local frame=0
+local recording=false
 for _,name in ipairs(ORDER) do samples[name]={} end
-
-local function edge(keys,key)
-    return keys[key] and not previous[key]
+local function edge(k,key) return k[key] and not previous[key] end
+local function read_all()
+  local n=memory.getmemorydomainsize(DOMAIN)
+  local a={}
+  for i=0,n-1 do a[i]=memory.read_u8(i,DOMAIN) end
+  return a,n
 end
-
-local function snapshot()
-    local size=memory.getmemorydomainsize(DOMAIN)
-    local bytes={}
-    for addr=0,size-1 do
-        bytes[addr]=memory.read_u8(addr,DOMAIN)
+local function val(a,addr,width,signed)
+  local lo=a[addr]
+  if lo==nil then return nil end
+  local v=lo
+  if width==2 then
+    local hi=a[addr+1]
+    if hi==nil then return nil end
+    v=v+256*hi
+  end
+  local limit=width==1 and 256 or 65536
+  if signed and v>=limit/2 then v=v-limit end
+  return v
+end
+local function capture(name)
+  local a=read_all()
+  samples[name][#samples[name]+1]=a
+  console.log(string.format("[BALL_Z] %s #%d at frame %d",name,#samples[name],frame))
+end
+local function rank_classes()
+  for _,name in ipairs(ORDER) do
+    if #samples[name]<3 then
+      console.log("[BALL_Z] Need >=3 samples for "..name)
+      return
     end
-    return bytes,size
-end
-
-local function stat(list,addr,width)
-    if #list==0 then return nil end
-    local minv,maxv,first
-    for _,s in ipairs(list) do
-        local v=s.bytes[addr]
-        if width==2 then
-            if s.bytes[addr+1]==nil then return nil end
-            v=v+256*s.bytes[addr+1]
-        end
-        if minv==nil or v<minv then minv=v end
-        if maxv==nil or v>maxv then maxv=v end
-        if first==nil then first=v end
-    end
-    return {low=minv,high=maxv,spread=maxv-minv,first=first}
-end
-
-local function rank(width,size)
-    local found={}
+  end
+  local _,size=read_all()
+  for _,width in ipairs({1,2}) do
+    local scores={}
     for addr=0,size-width do
-        -- Avoid known X/Y and direct possession flags. They are not Z.
-        if not (addr>=0x042A and addr<=0x042D) then
-            local g=stat(samples.GROUND,addr,width)
-            local r=stat(samples.ROLLING,addr,width)
-            local a=stat(samples.AIR,addr,width)
-            local p=stat(samples.APEX,addr,width)
-            if g and r and a and p then
-                local baseline_low=math.min(g.low,r.low)
-                local baseline_high=math.max(g.high,r.high)
-                local baseline_spread=baseline_high-baseline_low
-                local airborne_above=(a.low>baseline_high and p.low>baseline_high)
-                local airborne_below=(a.high<baseline_low and p.high<baseline_low)
-                if (airborne_above or airborne_below) and baseline_spread<=8 then
-                    local gap=airborne_above and
-                        math.min(a.low,p.low)-baseline_high or
-                        baseline_low-math.max(a.high,p.high)
-                    local apex_bonus=airborne_above and
-                        (p.low>=a.low and 1 or 0) or
-                        (p.high<=a.high and 1 or 0)
-                    local score=gap*4-baseline_spread*5+apex_bonus*4
-                    found[#found+1]={addr=addr,score=score,
-                        ground=g.first,rolling=r.first,
-                        air=a.first,apex=p.first,gap=gap}
-                end
-            end
+      if not (addr>=0x0429 and addr<=0x042D) then
+        local bmin,bmax,amin,amax,pmin,pmax
+        local ok=true
+        for _,name in ipairs(ORDER) do
+          for _,a in ipairs(samples[name]) do
+            local v=val(a,addr,width,true)
+            if v==nil then ok=false;break end
+            if name=="GROUND" or name=="ROLLING" then
+              bmin=math.min(bmin or v,v);bmax=math.max(bmax or v,v)
+            elseif name=="AIR" then
+              amin=math.min(amin or v,v);amax=math.max(amax or v,v)
+            else pmin=math.min(pmin or v,v);pmax=math.max(pmax or v,v) end
+          end
         end
+        if ok then
+          local spread=bmax-bmin
+          local gap=0
+          if amin>bmax and pmin>bmax then gap=math.min(amin,pmin)-bmax
+          elseif amax<bmin and pmax<bmin then gap=bmin-math.max(amax,pmax) end
+          if spread<=8 and gap>0 then
+            scores[#scores+1]={addr=addr,score=gap/(1+spread)}
+          end
+        end
+      end
     end
-    table.sort(found,function(a,b)
-        if a.score==b.score then return a.addr<b.addr end
-        return a.score>b.score
+    table.sort(scores,function(a,b)
+      if a.score==b.score then return a.addr<b.addr end
+      return a.score>b.score
     end)
-    return found
-end
-
-local function report()
-    for _,name in ipairs(ORDER) do
-        if #samples[name]<3 then
-            console.log(string.format("[BALL_Z] %s: %d/3; capture more",name,#samples[name]))
-            return
-        end
+    console.log(string.format("[BALL_Z] s%d candidates=%d top 15",width*8,#scores))
+    for i=1,math.min(15,#scores) do
+      local c=scores[i]
+      console.log(string.format("  $%05X score=%.2f",c.addr,c.score))
     end
-    local _,size=snapshot()
-    for _,width in ipairs({1,2}) do
-        local found=rank(width,size)
-        console.log(string.format("[BALL_Z] width=%d candidates=%d; top 30",width,#found))
-        for i=1,math.min(30,#found) do
-            local c=found[i]
-            console.log(string.format(
-                "  $%05X u%d score=%.1f ground=%d roll=%d air=%d apex=%d gap=%d",
-                c.addr,width*8,c.score,c.ground,c.rolling,c.air,c.apex,c.gap))
-        end
-    end
-    console.log("[BALL_Z] Candidates are hypotheses; verify live Z dynamics, landing, stadium and restart.")
+  end
 end
-
-console.log("[BALL_Z] G=ground R=rolling A=air H=apex C=rank K=reset")
+local function row_values(a,addr)
+  return val(a,addr,1,false),val(a,addr,1,true),
+         val(a,addr,2,false),val(a,addr,2,true)
+end
+local function export_csv()
+  if #frames==0 then console.log("[BALL_Z] No frames. Press T to record.");return end
+  local filename=os.date("issd_ball_z_%Y%m%d_%H%M%S.csv")
+  local file,err=io.open(filename,"w")
+  if not file then console.log("[BALL_Z] CSV error: "..tostring(err));return end
+  local header={"frame","ball_x","ball_y","possession"}
+  for _,addr in ipairs(WATCH) do
+    for _,typ in ipairs({"u8","s8","u16","s16"}) do
+      header[#header+1]=string.format("addr_%05X_%s",addr,typ)
+    end
+  end
+  file:write(table.concat(header,",").."\n")
+  for _,r in ipairs(frames) do
+    local line={r.frame,r.ball_x,r.ball_y,r.possession}
+    for _,addr in ipairs(WATCH) do
+      local u8,s8,u16,s16=row_values(r.bytes,addr)
+      line[#line+1]=u8 or ""
+      line[#line+1]=s8 or ""
+      line[#line+1]=u16 or ""
+      line[#line+1]=s16 or ""
+    end
+    for i=1,#line do line[i]=tostring(line[i]) end
+    file:write(table.concat(line,",").."\n")
+  end
+  file:close()
+  console.log(string.format("[BALL_Z] exported %d frames to %s",#frames,filename))
+end
+local function sample_frame()
+  if #frames>=MAX_FRAMES then
+    recording=false;console.log("[BALL_Z] auto-stopped at frame limit")
+    return
+  end
+  local a=read_all()
+  frames[#frames+1]={
+    frame=frame,bytes=a,
+    ball_x=val(a,0x042A,2,true),
+    ball_y=val(a,0x042C,2,true),
+    possession=val(a,0x00A6,2,false)
+  }
+end
+console.log("[BALL_Z v2] G ground R rolling A air H apex C rank K clear")
+console.log("[BALL_Z v2] T record/stop V CSV export J clear recording")
 while true do
-    local keys=input.get()
-    for key,name in pairs(HOTKEY) do
-        if edge(keys,key) then
-            local bytes=snapshot()
-            samples[name][#samples[name]+1]={bytes=bytes,frame=frame}
-            console.log(string.format("[BALL_Z] captured %s #%d frame=%d",
-                name,#samples[name],frame))
-        end
-    end
-    if edge(keys,"C") then report() end
-    if edge(keys,"K") then
-        for _,name in ipairs(ORDER) do samples[name]={} end
-        console.log("[BALL_Z] reset")
-    end
-    gui.text(8,8,string.format("BALL Z PROBE  G:%d R:%d A:%d H:%d",
-        #samples.GROUND,#samples.ROLLING,#samples.AIR,#samples.APEX))
-    previous=keys
-    frame=frame+1
-    emu.frameadvance()
+  local keys=input.get()
+  if edge(keys,"K") then
+    for _,name in ipairs(ORDER) do samples[name]={} end
+    console.log("[BALL_Z] class samples cleared")
+  end
+  if edge(keys,"J") then
+    recording=false;frames={}
+    console.log("[BALL_Z] recording cleared")
+  end
+  for key,name in pairs(LABEL) do
+    if edge(keys,key) then capture(name) end
+  end
+  if edge(keys,"C") then rank_classes() end
+  if edge(keys,"T") then
+    recording=not recording
+    console.log("[BALL_Z] recording="..tostring(recording)..", frames="..#frames)
+  end
+  if recording then sample_frame() end
+  if edge(keys,"V") then export_csv() end
+  gui.text(8,8,string.format("BALL Z v2 rec=%s frames=%d/%d",
+    recording and "ON" or "OFF",#frames,MAX_FRAMES))
+  gui.text(8,22,"T record V export J clear / G R A H C K")
+  previous=keys
+  frame=frame+1
+  emu.frameadvance()
 end
