@@ -83,6 +83,7 @@ M.DEFENSIVE_EXIT = {
     lane_clearance=60, hold_before_move=45,
     max_advance=70, field_margin=40, step=35,
     forward_step=12, min_escape_clearance=60,
+    pressure_radius=95, emergency_radius=38,
 }
 
 M.FORWARD_PASS = {
