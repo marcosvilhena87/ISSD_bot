@@ -3,13 +3,14 @@ local M={}
 function M.new(config,players,field_side)
  local c=config.FREE_KICK
  local o={candidate=nil,stable=0,attempts=0,cooldown=0,
-          kick_x=nil,kick_y=nil,ball_moved=false}
+          kick_x=nil,kick_y=nil,ball_moved=false,control_wait=0,switches=0}
  local function dist(ax,ay,bx,by)
   return math.sqrt((ax-bx)^2+(ay-by)^2)
  end
  function o.reset()
   o.candidate=nil;o.stable=0;o.attempts=0;o.cooldown=0
   o.kick_x=nil;o.kick_y=nil;o.ball_moved=false
+  o.control_wait=0;o.switches=0
  end
  function o.plan(bx,by,controlled)
   if o.cooldown>0 then o.cooldown=o.cooldown-1 end
@@ -41,12 +42,23 @@ function M.new(config,players,field_side)
    result.mode="WAIT_TAKER"
    return result
   end
-  if o.candidate~=my then o.candidate=my;o.stable=0 end
+  if o.candidate~=my then
+   o.candidate=my;o.stable=0;o.control_wait=0;o.switches=0
+  end
   o.stable=o.stable+1;result.stable=o.stable
   if o.ball_moved then result.mode="BALL_MOVED";return result end
   if controlled~=my then
-   result.mode="WAIT_CONTROL";return result
+   o.control_wait=o.control_wait+1
+   if o.control_wait>=c.switch_interval and o.switches<c.max_switch_attempts then
+    o.control_wait=0;o.switches=o.switches+1
+    result.mode="SWITCH_TAKER";result.button="R"
+   else
+    result.mode="WAIT_CONTROL"
+   end
+   result.switches=o.switches
+   return result
   end
+  o.control_wait=0
   if o.stable<c.stable_frames then result.mode="WAIT_STABLE";return result end
   if o.attempts>=c.max_attempts then result.mode="EXHAUSTED";return result end
   if o.cooldown>0 then result.mode="COOLDOWN";return result end
@@ -63,8 +75,13 @@ function M.new(config,players,field_side)
   return result
  end
  function o.fire(plan,movement)
-  if not plan or (plan.mode~="PASS" and plan.mode~="SHOT"
-      and plan.mode~="RETRY_LONG") then return false end
+  if not plan then return false end
+  if plan.mode=="SWITCH_TAKER" then
+   movement.press_button("R")
+   return true
+  end
+  if plan.mode~="PASS" and plan.mode~="SHOT"
+     and plan.mode~="RETRY_LONG" then return false end
   if o.cooldown>0 or o.attempts>=c.max_attempts or o.ball_moved then return false end
   movement.press_direction_button(plan.direction,plan.button)
   o.attempts=o.attempts+1
