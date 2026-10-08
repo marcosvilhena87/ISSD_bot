@@ -349,6 +349,7 @@ local function step_bot()
                     return attach_live_state(state,"PLAYER_POSSESSION","MY_CONTROLLED")
                 end
                 local attack = live_attack.target_for_carrier(my_base, shoot_diag)
+                local lane_progress_event = live_attack.take_progress_event()
 
                 if attack ~= nil then
                     local px, py = players.xy(my_base)
@@ -401,6 +402,8 @@ local function step_bot()
                     state.shot_forward = shoot_diag and shoot_diag.forward
                     state.shot_blocker = shoot_diag and shoot_diag.blocker
                     state.shot_cooldown = shoot_diag and shoot_diag.cooldown
+                    state.lane_progress_event = lane_progress_event
+                    state.lane_abort_remaining = attack.abort_remaining
                     state.lane_action = lane_action
                     state.escape_fired = escape_fired
                     state.escape_blocker = attack.blocker_base
@@ -953,6 +956,19 @@ while true do
         if state.gk_dist_fired then
             gk_pending={age=0,mode=state.gk_dist_mode,
                 receiver=state.gk_dist_receiver}
+        end
+        if state.lane_progress_event then
+            local event=state.lane_progress_event
+            report:write(event.kind,true,state,state.controller_command,
+                "carrier="..tostring(event.carrier)
+                ..";progress="..tostring(event.progress)
+                ..";elapsed="..tostring(event.elapsed)
+                ..";stalled="..tostring(event.stalled))
+            if event.kind=="LANE_STALLED" then
+                report:write("LANE_ABORTED",true,state,state.controller_command,
+                    "reason=NO_FORWARD_PROGRESS;duration="
+                    ..tostring(state.lane_abort_remaining))
+            end
         end
         if state.escape_fired then
             report:write(state.lane_action == "FEINT" and "LANE_FEINT" or "LANE_DASH_START", true, state,
