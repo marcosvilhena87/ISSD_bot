@@ -74,11 +74,8 @@ M.ATTACK = {
     feint_cooldown_frames = 32,
 }
 
-M.DEFENSIVE_TRANSITION = {
-    hold_frames = 100, -- recovery protection after possession gain in first third
-    max_hold_frames = 180,
-    safe_exit_distance = 80,
-}
+-- First-third defensive possession is handled by the field-third geometry
+-- and existing FORWARD_PASS safety thresholds.
 
 M.FORWARD_PASS = {
     button = "B",
