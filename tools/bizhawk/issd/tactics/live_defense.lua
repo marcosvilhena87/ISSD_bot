@@ -64,6 +64,31 @@ function M.new(config, players, field_side)
             goalkeeper_x=gx,goalkeeper_y=gy}
     end
 
+    -- Defensive shot lane: aim for the carrier-to-GK line near the goal.
+    -- GK position is a proxy for the goal center, not a shot prediction.
+    function obj.shot_lane(carrier_base,defender_base)
+        local c=config.SHOT_LANE
+        if not players.valid_cpu_base(carrier_base)
+            or carrier_base==config.CPU_FIRST
+            or not players.valid_my_base(defender_base)
+            or defender_base==config.MY_FIRST then return nil end
+        local cx,cy=players.xy(carrier_base)
+        local gx,gy=players.xy(config.MY_FIRST)
+        local px,py=players.xy(defender_base)
+        local vx,vy=gx-cx,gy-cy
+        local d=math.sqrt(vx*vx+vy*vy)
+        if d<1 or d>c.activation_radius then return nil end
+        local along=((px-cx)*vx+(py-cy)*vy)/d
+        local lateral=math.abs((px-cx)*vy-(py-cy)*vx)/d
+        local offset=math.min(c.intercept_offset,d*c.max_fraction)
+        local target_x=cx+vx/d*offset
+        local target_y=cy+vy/d*offset
+        return {target_x=target_x,target_y=target_y,
+            distance=d,lateral=lateral,along=along,
+            exposed=lateral>c.block_width or along<0 or along>d,
+            carrier=carrier_base}
+    end
+
     -- Emergency box coverage: prioritize an unmarked second attacker near goal.
     -- GK world position is a provisional goalmouth anchor; calibrate in play.
     function obj.box_threat(carrier_base, ball_x, ball_y)
