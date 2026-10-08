@@ -38,10 +38,15 @@ function M.new(config,players,field_side,mem)
         obj.stable=obj.stable+1
         local direction=by>cy and "Up" or "Down"
         local mode=obj.attempts==0 and "CROSS" or "SHORT_RETRY"
+        local reason="READY"
+        if obj.stable<c.stable_frames then reason="STABILIZING"
+        elseif obj.attempts>=c.max_attempts then reason="EXHAUSTED"
+        elseif obj.cooldown>0 then reason="COOLDOWN" end
         return {mode=mode,button=obj.attempts==0 and c.cross_button or c.short_button,
             direction=direction,taker=taker,stable=obj.stable,
             end_distance=end_distance,side_distance=side_distance,
-            taker_distance=taker_distance,attempts=obj.attempts}
+            taker_distance=taker_distance,attempts=obj.attempts,
+            cooldown=obj.cooldown,reason=reason}
     end
     function obj.fire(plan,movement)
         if not plan or obj.stable<c.stable_frames
