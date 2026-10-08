@@ -96,3 +96,7 @@ O manual do ISS Deluxe confirma: direcional+Y mantido = Dash Dribble e toque lev
 ## Dynamic field bounds for throw-in receiver
 
 Candidate WRAM addresses: stadium 0x0086, length 0x12A2, width 0x12A4, center X 0x12F2, center Y 0x12D8. The reception planner derives field edges from the center and dimensions, with a configurable 40-unit safety margin. It rejects receiver targets outside these bounds and reports THROW_IN_WAIT_FIELD_BOUNDS when no validated target exists. Validate coordinate origin and scale inside BizHawk before considering the boundaries confirmed.
+
+## Feasibility and emergency-defense hysteresis
+
+During CPU loose-ball flight toward our goalkeeper, defense_interception samples projected ball positions at 3-frame intervals and estimates the nearest outfield defender's arrival time using a provisional 4 world-units/frame speed. It favors the earliest reachable point (2-frame safety margin), or the least-late point when none is feasible. Emergency mode persists across up to 5 brief frames without a danger reading; preferred defender identity is held for 8 frames, but target coordinates are recalculated. State-change details include eta, slack, reachable, best_base and preferred_base. These are estimates, not measured player velocities; R selection still follows existing player-switch behavior and must be confirmed in the emulator.
