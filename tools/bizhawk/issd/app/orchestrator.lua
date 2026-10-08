@@ -48,7 +48,7 @@ local defense = Defense.new(config, players, Geometry, field_side)
 local live_defense = LiveDefense.new(config, players, field_side)
 local live_attack = LiveAttack.new(config, players, field_side)
 local shoot = Shoot.new(config, players, field_side)
-local forward_pass = ForwardPass.new(config, players, field_side)
+local forward_pass = ForwardPass.new(config, players, field_side, mem)
 local gk_distribution = GKDistribution.new(config, players, field_side)
 local goal_kick = GoalKick.new(config, players, field_side)
 local interception = Interception.new(config)
@@ -337,6 +337,8 @@ local function step_bot()
                 if pass and forward_pass.fire(pass,movement) then
                     local state=make_state(my_base,0,0,"ATTACK_FORWARD_PASS",possession,gs)
                     state.forward_pass_fired=true
+                    state.forward_pass_zone=pass.zone
+                    state.forward_pass_intent=pass.intent
                     state.forward_pass_receiver=pass.receiver
                     state.forward_pass_distance=pass.distance
                     state.forward_pass_forward=pass.forward
@@ -1007,7 +1009,9 @@ while true do
         end
         if state.forward_pass_fired then
             report:write("FORWARD_PASS_ATTEMPT",true,state,state.controller_command,
-                "receiver="..tostring(state.forward_pass_receiver)
+                "zone="..tostring(state.forward_pass_zone)
+                ..";intent="..tostring(state.forward_pass_intent)
+                ..";receiver="..tostring(state.forward_pass_receiver)
                 ..";distance="..tostring(state.forward_pass_distance)
                 ..";forward="..tostring(state.forward_pass_forward)
                 ..";lateral="..tostring(state.forward_pass_lateral)
