@@ -155,6 +155,12 @@ M.FORWARD_PASS = {
     weight_lateral = 1.0,
 }
 
+M.POSSESSION_FALLBACK = {
+    forward_step=48,
+    lateral_step=16,
+    min_goal_separation=120,
+}
+
 M.SHOOT = {
     button = "X",
     dash_shoot_calibration = true, -- alternate normal and Y+X shots
