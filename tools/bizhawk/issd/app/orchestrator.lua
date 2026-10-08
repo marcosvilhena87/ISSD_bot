@@ -1555,6 +1555,10 @@ while true do
             state.ball_flight_origin=flight.origin
             state.ball_flight_age=flight.age
             state.ball_flight_discrepancy=flight.discrepancy
+            if state.status=="MY_BALL_IN_FLIGHT" then
+                state.status,state.flight_strategy,state.flight_height_band=
+                    BallFlightContext.classify_my_flight(flight)
+            end
             if flight.discrepancy and not last_flight_discrepancy then
                 report:write("BALL_FLIGHT_POSSESSION_MISMATCH",true,state,
                     "OBSERVE_FLIGHT",
