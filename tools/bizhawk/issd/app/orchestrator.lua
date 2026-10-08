@@ -59,6 +59,7 @@ local goal_trace = GoalTrace.new(report, 600, 3)
 local enabled = false
 local stop_on_possession = true
 local previous_keys = {}
+local escape_cooldown = 0
 
 local function pressed(keys, key)
     return keys[key] and not previous_keys[key]
@@ -156,6 +157,7 @@ local function step_bot()
     player_switch.tick()
     gk_distribution.tick()
     shoot.tick()
+    if escape_cooldown > 0 then escape_cooldown = escape_cooldown - 1 end
 
     local gameplay_value = gameplay_active.read()
     local my_base = read_my_base()
@@ -295,14 +297,24 @@ local function step_bot()
                         state, "PLAYER_POSSESSION", "MY_CONTROLLED"
                     )
                 end
-                local attack = live_attack.target_for_carrier(my_base)
+                local attack = live_attack.target_for_carrier(my_base, shoot_diag)
 
                 if attack ~= nil then
                     local px, py = players.xy(my_base)
                     local dx = attack.target_x - px
                     local dy = attack.target_y - py
 
-                    movement.move_toward(dx, dy)
+                    local escape_fired = false
+                    if attack.mode == "LANE" and attack.blocker_base ~= nil
+                        and escape_cooldown == 0
+                        and (attack.blocker_forward == nil
+                            or attack.blocker_forward <= config.ATTACK.escape_max_blocker_distance) then
+                        movement.move_toward_button(dx, dy, config.ATTACK.escape_button)
+                        escape_cooldown = config.ATTACK.escape_cooldown_frames
+                        escape_fired = true
+                    else
+                        movement.move_toward(dx, dy)
+                    end
 
                     local status =
                         attack.mode == "LANE"
@@ -317,6 +329,8 @@ local function step_bot()
                     state.shot_forward = shoot_diag and shoot_diag.forward
                     state.shot_blocker = shoot_diag and shoot_diag.blocker
                     state.shot_cooldown = shoot_diag and shoot_diag.cooldown
+                    state.escape_fired = escape_fired
+                    state.escape_blocker = attack.blocker_base
                     state.attack_goal_x = attack.goal_target_x
                     state.attack_goal_y = attack.goal_target_y
                     state.attack_goal_distance = attack.goal_distance
@@ -767,6 +781,13 @@ while true do
                 .. ";goal_distance=" .. tostring(state.attack_goal_distance)
         end
         report:observe(true, state)
+        if state.escape_fired then
+            report:write("LANE_ESCAPE_ATTEMPT", true, state,
+                state.controller_command,
+                "button=Y;blocker=" .. tostring(state.escape_blocker)
+                .. ";target_x=" .. tostring(state.target_x)
+                .. ";target_y=" .. tostring(state.target_y))
+        end
         if state.shot_fired then
             report:write("SHOT_ATTEMPT", true, state,
                 state.controller_command, state.report_detail)
