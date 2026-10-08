@@ -17,6 +17,7 @@ local Ball = dofile(DIR .. "../state/ball.lua")
 local AerialContact = dofile(DIR .. "../state/aerial_contact.lua")
 local BallFlightContext = dofile(DIR .. "../state/ball_flight_context.lua")
 local OwnershipProbe = dofile(DIR .. "../state/ownership_probe.lua")
+local BallContestFeasibility = dofile(DIR .. "../state/ball_contest_feasibility.lua")
 local GameState = dofile(DIR .. "../state/game_state.lua")
 local GameplayActive = dofile(DIR .. "../state/gameplay_active.lua")
 local FieldSide = dofile(DIR .. "../state/field_side.lua")
@@ -51,6 +52,7 @@ local ball = Ball.new(config, mem)
 local aerial_contact = AerialContact.new(config, mem, players)
 local flight_context = BallFlightContext.new(config, mem, players)
 local ownership_probe = OwnershipProbe.new(config, mem, players)
+local contest_feasibility = BallContestFeasibility.new(config, players)
 local game_state = GameState.new(config, mem)
 local gameplay_active = GameplayActive.new(config, mem)
 local field_side = FieldSide.new(config, mem)
@@ -1553,6 +1555,30 @@ while true do
                 ..";my_distance="..tostring(ownership.my_distance)
                 ..";cpu_distance="..tostring(ownership.cpu_distance)
                 ..";logical_team="..tostring(ownership.logical_team))
+        end
+        local contest,contest_result=contest_feasibility.update(state,report.frame)
+        if contest and (contest.changed or report.frame%30==0) then
+            report:write(contest.changed and "BALL_CONTEST_ETA_CHANGE" or "BALL_CONTEST_ETA_SAMPLE",
+                true,state,"OBSERVE_CONTEST_ETA",
+                "class="..tostring(contest.class)
+                ..";predicted="..tostring(contest.predicted)
+                ..";my_eta="..tostring(contest.my_eta)
+                ..";cpu_eta="..tostring(contest.cpu_eta)
+                ..";eta_advantage="..tostring(contest.eta_advantage)
+                ..";target_x="..tostring(contest.target_x)
+                ..";target_y="..tostring(contest.target_y)
+                ..";lead="..tostring(contest.lead)
+                ..";height="..tostring(contest.height)
+                ..";my_base="..tostring(contest.my_base)
+                ..";cpu_base="..tostring(contest.cpu_base))
+        end
+        if contest_result then
+            report:write("BALL_CONTEST_OUTCOME",true,state,
+                "OBSERVE_CONTEST_OUTCOME",
+                "outcome="..tostring(contest_result.outcome)
+                ..";start_frame="..tostring(contest_result.start)
+                ..";predicted="..tostring(contest_result.predicted)
+                ..";elapsed="..tostring(contest_result.elapsed))
         end
         report:observe(true, state)
         -- Outcome monitoring only after an actual GK button pulse.
