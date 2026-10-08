@@ -1135,6 +1135,56 @@ local function step_bot()
 
         -- Quando nenhum jogador esta fisicamente ligado a bola,
         -- 0x104C passa a ser a fonte primaria para o lado da posse.
+        -- Rebound recovery belongs to an individually free ball, regardless
+        -- of the logical team-possession flag. Danger interception takes priority.
+        if possession==0 and gk_rebound_recovery.active(report.frame) then
+            local gx,gy=players.xy(config.MY_FIRST)
+            local cfg=config.GK_REBOUND_RECOVERY
+            local gd2=(bx-gx)^2+(by-gy)^2
+            local danger=interception.danger_target(bx,by,
+                possession_context.ball_dx,possession_context.ball_dy,
+                possession_context.ball_speed,gx,gy,field_side.goal_direction())
+            if gd2<=cfg.goal_radius^2 and not danger then
+                local best,best_d=nil,math.huge
+                players.each_my(function(base)
+                    if base~=config.MY_FIRST then
+                        local x,y=players.xy(base)
+                        local d=math.sqrt((bx-x)^2+(by-y)^2)
+                        if d<best_d then best,best_d=base,d end
+                    end
+                end)
+                if best and best_d<=cfg.max_outfielder_distance then
+                    local px,py=players.xy(my_base)
+                    local controlled_distance=math.sqrt((bx-px)^2+(by-py)^2)
+                    -- No late switch: a switch consumes a control frame
+                    -- right when the opponent may collect the rebound.
+                    local switch_state=nil
+                    if controlled_distance>best_d+cfg.switch_margin
+                        and controlled_distance>cfg.max_outfielder_distance
+                        and gk_rebound_recovery.remaining(report.frame)>cfg.no_switch_last_frames then
+                        switch_state=maybe_switch_player(bx,by,"GK_REBOUND_RECOVERY")
+                    end
+                    if switch_state then
+                        switch_state.gk_rebound_candidate=true
+                        return switch_state
+                    end
+                    if controlled_distance<=cfg.max_outfielder_distance then
+                        local guarded=field_boundary.correct(px,py,bx,by)
+                        local dx,dy=guarded.x-px,guarded.y-py
+                        movement.move_toward(dx,dy)
+                        local state=make_state(my_base,dx,dy,
+                            "GK_REBOUND_RECOVERY",possession,gs)
+                        state.intercept_target_x=guarded.x
+                        state.intercept_target_y=guarded.y
+                        state.gk_rebound_candidate=true
+                        return attach_live_state(state,"GK_REBOUND_CANDIDATE",
+                            team_possession.is_cpu(team_value)
+                            and "CPU_UNOWNED_BALL" or "MY_UNOWNED_BALL")
+                    end
+                end
+            end
+        end
+
         if possession == 0 and team_possession.is_cpu(team_value) then
             live_attack.reset()
             gk_distribution.reset()
@@ -1285,39 +1335,6 @@ local function step_bot()
         if possession == 0 and team_possession.is_my(team_value) then
             live_attack.reset()
             gk_distribution.reset()
-            -- Team possession RAM can remain MY during a dangerous rebound.
-            -- Intervene only near our keeper when a CPU outfielder can contest
-            -- the ball and no Brazilian outfielder is already close to it.
-            -- A verified rebound *candidate* temporarily prioritizes nearest
-            -- outfielder recovery, without treating TeamPoss as a save signal.
-            if gk_rebound_recovery.active(report.frame) then
-                local target_x,target_y=bx,by
-                local best,best_d=nil,math.huge
-                players.each_my(function(base)
-                    if base~=config.MY_FIRST then
-                        local x,y=players.xy(base)
-                        local d=math.sqrt((target_x-x)^2+(target_y-y)^2)
-                        if d<best_d then best,best_d=base,d end
-                    end
-                end)
-                if best and best_d<=config.GK_REBOUND_RECOVERY.max_outfielder_distance then
-                    local switch_state=maybe_switch_player(target_x,target_y,
-                        "GK_REBOUND_RECOVERY")
-                    if switch_state then
-                        switch_state.gk_rebound_candidate=true
-                        return switch_state
-                    end
-                    local px,py=players.xy(my_base)
-                    local dx,dy=target_x-px,target_y-py
-                    movement.move_toward(dx,dy)
-                    local state=make_state(my_base,dx,dy,
-                        "GK_REBOUND_RECOVERY",possession,gs)
-                    state.intercept_target_x=target_x
-                    state.intercept_target_y=target_y
-                    state.gk_rebound_candidate=true
-                    return attach_live_state(state,"GK_REBOUND_CANDIDATE","MY_UNOWNED_BALL")
-                end
-            end
             local guard=config.BOX_RECOVERY
             local gx,gy=players.xy(config.MY_FIRST)
             local gd2=(bx-gx)^2+(by-gy)^2
