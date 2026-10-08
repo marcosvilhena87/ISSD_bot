@@ -93,6 +93,7 @@ local rebound_lock_base=nil
 local rebound_lock_frames=0
 local latest_contest=nil
 local latest_contest_frame=nil
+local contest_intercept_lock=nil
 local last_flight_discrepancy=false
 local flight_interception_pending=nil
 local danger_lock=nil
@@ -292,6 +293,9 @@ local function step_bot()
     end
     local possession = ball.possession()
     local gs = game_state.read()
+    if possession~=0 or gs~=0 or not gameplay_active.is_active(gameplay_value) then
+        contest_intercept_lock=nil
+    end
 
     if not gameplay_active.is_active(gameplay_value) then
         restart.clear()
@@ -1133,6 +1137,44 @@ local function step_bot()
                 state.intercept_target_y=ty
                 return attach_live_state(state,"DANGER_OVERRIDE","MY_BALL_IN_FLIGHT")
             end
+            -- Keep an approved chase briefly; release if the defender cannot arrive.
+            local lock=contest_intercept_lock
+            if lock then
+                local lc=config.BALL_CONTEST_DECISION_GATE
+                local px,py=players.xy(my_base)
+                local dist=math.sqrt((lock.x-px)^2+(lock.y-py)^2)
+                local dx_ball,dy_ball=bx-lock.bx,by-lock.by
+                local drift=math.sqrt(dx_ball*dx_ball+dy_ball*dy_ball)
+                local my_eta=dist/config.BALL_CONTEST_FEASIBILITY.estimated_my_speed
+                local eta_deficit=my_eta-lock.cpu_eta
+                local reason=nil
+                if report.frame-lock.start>=lc.lock_frames then reason="TIMEOUT"
+                elseif math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))>lc.max_height then reason="HEIGHT"
+                elseif drift>lc.lock_target_tolerance then reason="TRAJECTORY_CHANGED"
+                elseif my_eta>lc.lock_max_defender_eta
+                    or eta_deficit>lc.lock_max_eta_deficit then reason="UNREACHABLE"
+                elseif dist<=lc.lock_stop_distance then reason="ARRIVED" end
+                if reason then
+                    report:write(reason=="UNREACHABLE" and "INTERCEPT_ABORT_UNREACHABLE"
+                        or "BALL_CONTEST_LOCK_END",true,
+                        {possession=possession,game_state=gs,my_base=my_base,
+                         ball_x=bx,ball_y=by},"OBSERVE_CONTEST_LOCK",
+                        "reason="..reason..";distance="..dist
+                        ..";my_eta="..my_eta..";cpu_eta="..lock.cpu_eta
+                        ..";age="..(report.frame-lock.start))
+                    contest_intercept_lock=nil
+                else
+                    local dx,dy=lock.x-px,lock.y-py
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,
+                        "BALL_CONTEST_INTERCEPT_LOCK",possession,gs)
+                    state.intercept_target_x=lock.x
+                    state.intercept_target_y=lock.y
+                    state.contest_my_eta=my_eta
+                    state.contest_cpu_eta=lock.cpu_eta
+                    return attach_live_state(state,"ETA_INTERCEPT_LOCK","MY_BALL_IN_FLIGHT")
+                end
+            end
             -- Previous-frame stable ETA can unlock a conservative low-ball chase.
             -- Existing goal-box danger override above retains priority.
             local gate=config.BALL_CONTEST_DECISION_GATE
@@ -1156,6 +1198,25 @@ local function step_bot()
                 else
                     reason="ALLOWED"
                     local tx,ty=eta.target_x,eta.target_y
+                    local px,py=players.xy(my_base)
+                    local distance=math.sqrt((tx-px)^2+(ty-py)^2)
+                    local defender_eta=distance/config.BALL_CONTEST_FEASIBILITY.estimated_my_speed
+                    if defender_eta>gate.lock_max_defender_eta
+                        or defender_eta-eta.cpu_eta>gate.lock_max_eta_deficit then
+                        reason="INTERCEPT_UNREACHABLE"
+                        report:write("INTERCEPT_ABORT_UNREACHABLE",true,
+                            {possession=possession,game_state=gs,my_base=my_base,
+                             ball_x=bx,ball_y=by},"OBSERVE_CONTEST_GATE",
+                            "reason=INITIAL_FEASIBILITY;my_eta="..defender_eta
+                            ..";cpu_eta="..eta.cpu_eta)
+                    else
+                    contest_intercept_lock={x=tx,y=ty,bx=bx,by=by,
+                        start=report.frame,cpu_eta=eta.cpu_eta}
+                    report:write("BALL_CONTEST_LOCK_START",true,
+                        {possession=possession,game_state=gs,my_base=my_base,
+                         ball_x=bx,ball_y=by},"OBSERVE_CONTEST_LOCK",
+                        "target_x="..tx..";target_y="..ty
+                        ..";my_eta="..defender_eta..";cpu_eta="..eta.cpu_eta)
                     local switch_state=maybe_switch_player(tx,ty,"BALL_CONTEST_DECISION_GATE")
                     if switch_state then
                         switch_state.contest_gate="ALLOWED_SWITCH"
@@ -1176,6 +1237,7 @@ local function step_bot()
                     state.contest_my_eta=eta.my_eta
                     state.contest_cpu_eta=eta.cpu_eta
                     return attach_live_state(state,"ETA_DECISION_GATE","MY_BALL_IN_FLIGHT")
+                    end
                 end
             end
             -- Denial is sampled; do not fill the CSV with a row per frame.
