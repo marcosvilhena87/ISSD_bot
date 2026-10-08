@@ -1025,7 +1025,7 @@ local function step_bot()
                 state.box_threat_nearest_defender=rebound.nearest_defender
                 state.box_threat_ball_distance=rebound.attacker_ball_distance
                 state.intercept_player_ball_distance=math.sqrt((bx-px)^2+(by-py)^2)
-                return attach_live_state(state,"BOX_PRESSURE","CPU_BALL_IN_FLIGHT")
+                return attach_live_state(state,"BOX_PRESSURE","CPU_UNOWNED_BALL")
             end
             local px, py = players.xy(my_base)
             local target = interception.target(
@@ -1057,7 +1057,7 @@ local function step_bot()
             local switch_state = maybe_switch_player(
                 target.x,
                 target.y,
-                "CPU_BALL_IN_FLIGHT"
+                "CPU_UNOWNED_BALL"
             )
             if switch_state ~= nil then
                 return switch_state
@@ -1092,7 +1092,7 @@ local function step_bot()
             return attach_live_state(
                 state,
                 "TEAM_POSSESSION_RAM",
-                "CPU_BALL_IN_FLIGHT"
+                "CPU_UNOWNED_BALL"
             )
         end
 
@@ -1137,7 +1137,7 @@ local function step_bot()
                 state.box_recovery_own_distance=nearest_my
                 state.intercept_target_x=tx
                 state.intercept_target_y=ty
-                return attach_live_state(state,"DANGER_OVERRIDE","MY_BALL_IN_FLIGHT")
+                return attach_live_state(state,"DANGER_OVERRIDE","MY_UNOWNED_BALL")
             end
             -- Keep an approved chase briefly; release if the defender cannot arrive.
             local lock=contest_intercept_lock
@@ -1175,7 +1175,7 @@ local function step_bot()
                     state.intercept_target_y=lock.y
                     state.contest_my_eta=my_eta
                     state.contest_cpu_eta=lock.cpu_eta
-                    return attach_live_state(state,"ETA_INTERCEPT_LOCK","MY_BALL_IN_FLIGHT")
+                    return attach_live_state(state,"ETA_INTERCEPT_LOCK","MY_UNOWNED_BALL")
                 end
             end
             -- Previous-frame stable ETA can unlock a conservative low-ball chase.
@@ -1240,7 +1240,7 @@ local function step_bot()
                     state.contest_gate="ALLOWED"
                     state.contest_my_eta=eta.my_eta
                     state.contest_cpu_eta=eta.cpu_eta
-                    return attach_live_state(state,"ETA_DECISION_GATE","MY_BALL_IN_FLIGHT")
+                    return attach_live_state(state,"ETA_DECISION_GATE","MY_UNOWNED_BALL")
                     end
                 end
             end
@@ -1288,17 +1288,17 @@ local function step_bot()
                     state.intercept_target_y=ty
                     state.flight_my_distance=my_nearest
                     state.flight_cpu_distance=cpu_nearest
-                    return attach_live_state(state,"ORIGIN_OVERRIDE","MY_BALL_IN_FLIGHT")
+                    return attach_live_state(state,"ORIGIN_OVERRIDE","MY_UNOWNED_BALL")
                 end
             end
             movement.stop()
             return attach_live_state(
-                make_state(my_base,0,0,"MY_BALL_IN_FLIGHT",possession,gs),
-                "TEAM_POSSESSION_RAM","MY_BALL_IN_FLIGHT")
+                make_state(my_base,0,0,"MY_UNOWNED_BALL",possession,gs),
+                "TEAM_POSSESSION_RAM","MY_UNOWNED_BALL")
         end
 
         -- Fallback temporal somente se 0x104C sair do dominio validado 0/1.
-        if fallback_class == "CPU_BALL_IN_FLIGHT" then
+        if fallback_class == "CPU_UNOWNED_BALL" then
             local px, py = players.xy(my_base)
             local target = interception.target(
                 px,
@@ -1335,10 +1335,10 @@ local function step_bot()
             )
         end
 
-        if fallback_class == "MY_BALL_IN_FLIGHT" then
+        if fallback_class == "MY_UNOWNED_BALL" then
             return attach_live_state(
                 make_state(
-                    my_base, 0, 0, "MY_BALL_IN_FLIGHT_FALLBACK",
+                    my_base, 0, 0, "MY_UNOWNED_BALL_FALLBACK",
                     possession, gs
                 ),
                 "TEMPORAL_FALLBACK",
@@ -1555,9 +1555,14 @@ while true do
             state.ball_flight_origin=flight.origin
             state.ball_flight_age=flight.age
             state.ball_flight_discrepancy=flight.discrepancy
-            if state.status=="MY_BALL_IN_FLIGHT" then
+            if state.status=="MY_UNOWNED_BALL" then
                 state.status,state.flight_strategy,state.flight_height_band=
-                    BallFlightContext.classify_my_flight(flight)
+                    BallFlightContext.classify_unowned_ball(flight,"MY")
+            elseif state.status=="CPU_BALL_INTERCEPT" then
+                -- Preserve the chosen intercept action; classify the physical
+                -- situation separately so downstream status logic remains safe.
+                state.flight_physical_status,state.flight_strategy,state.flight_height_band=
+                    BallFlightContext.classify_unowned_ball(flight,"CPU")
             end
             if flight.discrepancy and not last_flight_discrepancy then
                 report:write("BALL_FLIGHT_POSSESSION_MISMATCH",true,state,
