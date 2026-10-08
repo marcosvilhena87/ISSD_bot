@@ -43,9 +43,17 @@ function M.new(config, players)
         local pending=obj.pending
         if not pending then return end
         pending.age=pending.age+1
-        if actual~=pending.from then
-            obj.event={kind=actual==pending.best and "SWITCH_CONFIRMED" or "SWITCH_MISMATCH",
-                from=pending.from, expected=pending.best, actual=actual, age=pending.age}
+        if actual~=pending.from and players.valid_my_base(actual) then
+            -- R cycles through players; the closest candidate is not
+            -- necessarily the next player selected by the game.
+            local ax,ay=players.xy(actual)
+            local actual_distance=distance(ax,ay,pending.target_x,pending.target_y)
+            local gain=pending.current_distance-actual_distance
+            obj.event={kind=actual==pending.best and "SWITCH_CONFIRMED" or
+                (gain>0 and "SWITCH_IMPROVED" or "SWITCH_WORSENED"),
+                from=pending.from, expected=pending.best, actual=actual,
+                age=pending.age,actual_distance=actual_distance,
+                previous_distance=pending.current_distance,actual_gain=gain}
             obj.pending=nil
             obj.settle=config.PLAYER_SWITCH.settle_frames
         elseif pending.age>=config.PLAYER_SWITCH.verify_frames then
@@ -80,6 +88,10 @@ function M.new(config, players)
     end
 
     function obj.consider(my_base, target_x, target_y)
+        if not players.valid_my_base(my_base) then
+            return {should_switch=false,pending=obj.pending~=nil,
+                button=config.PLAYER_SWITCH.button}
+        end
         local px, py = players.xy(my_base)
         local current_distance = distance(px, py, target_x, target_y)
         local best_base, best_distance = best_my_player(target_x, target_y)
@@ -97,7 +109,8 @@ function M.new(config, players)
 
         if should_switch then
             obj.cooldown = config.PLAYER_SWITCH.cooldown_frames
-            obj.pending={from=my_base,best=best_base,age=0}
+            obj.pending={from=my_base,best=best_base,age=0,
+                target_x=target_x,target_y=target_y,current_distance=current_distance}
             obj.last_requested_from = my_base
             obj.last_best = best_base
             obj.last_current_distance = current_distance
