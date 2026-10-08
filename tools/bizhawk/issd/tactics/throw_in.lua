@@ -1,6 +1,6 @@
 -- Offensive throw-in: restart.taker throws; MyCtrl moves as receiver.
 local M = {}
-function M.new(config, players, field_side)
+function M.new(config, players, field_side, mem)
     local c = config.THROW_IN or {}
     local defaults = {
         throw_button="B", long_throw_button="A",
@@ -9,7 +9,8 @@ function M.new(config, players, field_side)
         retry_frames=45, switch_margin=80, switch_cooldown=45,
         target_lock_frames=20, target_tolerance=16,
         max_attempts=2, long_fallback_frames=180,
-        recovery_switch_interval=30, max_recovery_switches=3
+        recovery_switch_interval=30, max_recovery_switches=3,
+        field_margin=40
     }
     for key, value in pairs(defaults) do
         if c[key] == nil then c[key] = value end
@@ -29,6 +30,27 @@ function M.new(config, players, field_side)
             if d<best then best=d end
         end)
         return best
+    end
+    local function field_bounds()
+        if not mem then return nil end
+        local length=mem.u16(config.ADDR.field_length)
+        local width=mem.u16(config.ADDR.field_width)
+        local cx=mem.u16(config.ADDR.center_field_x)
+        local cy=mem.u16(config.ADDR.center_field_y)
+        local margin=c.field_margin
+        -- Candidate WRAM map. Reject inconsistent dimensions safely.
+        if length<300 or length>4000 or width<200 or width>2000
+            or cx<1 or cy<1 then return nil end
+        local x1=cx-length/2+margin
+        local x2=cx+length/2-margin
+        local y1=cy-width/2+margin
+        local y2=cy+width/2-margin
+        if x1>=x2 or y1>=y2 then return nil end
+        return {x1=x1,x2=x2,y1=y1,y2=y2,
+            stadium=mem.u8(config.ADDR.stadium_id)}
+    end
+    local function inside(x,y,b)
+        return b and x>=b.x1 and x<=b.x2 and y>=b.y1 and y<=b.y2
     end
     function obj.reset()
         obj.taker=nil; obj.frames=0; obj.switch_cd=0
@@ -68,6 +90,7 @@ function M.new(config, players, field_side)
         local px,py=players.xy(receiver)
         local dir=field_side.attack_direction()
         if dir==0 then return {mode="WAIT_SIDE",taker=taker,receiver=receiver} end
+        local bounds=field_bounds()
         local current_distance=dist(px,py,tx,ty)
         local nearest,nearest_d=nil,99999
         players.each_my(function(base)
@@ -92,7 +115,8 @@ function M.new(config, players, field_side)
                 local x=tx+dir*forward
                 local y=ty+lateral
                 local d=dist(x,y,tx,ty)
-                if d>=c.min_distance and d<=c.max_distance then
+                if inside(x,y,bounds)
+                    and d>=c.min_distance and d<=c.max_distance then
                     local space=clearance(x,y)
                     local travel=dist(px,py,x,y)
                     local score=math.min(space,180)*c.clearance_weight
@@ -104,8 +128,8 @@ function M.new(config, players, field_side)
                 end
             end
         end
-        if not best then return {mode="WAIT_RECEIVER",taker=taker,receiver=receiver} end
-        if obj.lock>0 and obj.target_x and obj.target_y then
+        if not best then return {mode="WAIT_FIELD_BOUNDS",taker=taker,receiver=receiver} end
+        if obj.lock>0 and inside(obj.target_x,obj.target_y,bounds) then
             obj.lock=obj.lock-1
             best.x,best.y=obj.target_x,obj.target_y
             best.space=clearance(best.x,best.y)
@@ -127,6 +151,9 @@ function M.new(config, players, field_side)
             receiver_distance=current_distance,receiver_clearance=best.space,
             receiver_score=best.score,move_dx=best.x-px,move_dy=best.y-py,
             nearest=nearest,nearest_distance=nearest_d,
+            field_x1=bounds.x1,field_x2=bounds.x2,
+            field_y1=bounds.y1,field_y2=bounds.y2,
+            stadium=bounds.stadium,
             button=mode=="READY_LONG" and c.long_throw_button or c.throw_button}
     end
     function obj.fire(plan,movement)
