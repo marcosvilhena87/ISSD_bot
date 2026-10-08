@@ -93,6 +93,14 @@ M.DEFENSIVE_EXIT = {
     total_advance_limit=140, action_settle_frames=20,
 }
 
+-- Final-third rescue when the carrier reaches the opponent endline.
+M.ATTACK_FINAL_THIRD = {
+    endline_distance = 145, -- forward distance to opponent goalkeeper (proxy)
+    min_lateral_offset = 75,
+    retreat_step = 42,
+    inward_step = 68,
+}
+
 M.FORWARD_PASS = {
     button = "B",
     min_forward = 75,
