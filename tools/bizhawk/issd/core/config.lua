@@ -173,10 +173,11 @@ M.CORNER_KICK = {
 }
 
 M.GOAL_KICK = {
-    buttons = {"A", "B", "X"}, -- try alternative legal kicks if no ball movement
+    buttons = {"X", "X", "A"}, -- kick first; retries only if GS=1 persists
+    directions = {"NONE", "FORWARD", "FORWARD"},
     ball_move_threshold = 18,
     initial_delay_frames = 10,
-    retry_frames = 60,
+    retry_frames = 90, -- allow game-state transition before retry
     max_attempts = 3,
 }
 
