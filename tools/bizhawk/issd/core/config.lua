@@ -215,6 +215,12 @@ M.BOX_PRESSURE = {
     unmarked_distance = 75,
 }
 
+M.OWNERSHIP_PROBE = {
+    max_contestable_height=20,
+    contest_radius=75,
+    max_distance_gap=38,
+}
+
 M.MY_FLIGHT_INTERCEPTION = {
     max_height = 20, -- ground / low bounce only until aerial control is calibrated
     max_my_distance = 155,
