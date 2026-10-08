@@ -305,6 +305,8 @@ M.GK_REBOUND_RECOVERY = {
     max_height=80,
     window_frames=32,
     max_outfielder_distance=160,
+    switch_margin=25,
+    no_switch_last_frames=12,
 }
 
 M.BOX_RECOVERY = {
