@@ -91,6 +91,8 @@ local defensive_carrier = nil
 local defensive_hold_age = 0
 local rebound_lock_base=nil
 local rebound_lock_frames=0
+local latest_contest=nil
+local latest_contest_frame=nil
 local last_flight_discrepancy=false
 local flight_interception_pending=nil
 local danger_lock=nil
@@ -1131,6 +1133,54 @@ local function step_bot()
                 state.intercept_target_y=ty
                 return attach_live_state(state,"DANGER_OVERRIDE","MY_BALL_IN_FLIGHT")
             end
+            -- Previous-frame stable ETA can unlock a conservative low-ball chase.
+            -- Existing goal-box danger override above retains priority.
+            local gate=config.BALL_CONTEST_DECISION_GATE
+            local eta=latest_contest
+            local reason="NO_STABLE_ETA"
+            if eta and latest_contest_frame
+                and report.frame-latest_contest_frame<=gate.max_age_frames then
+                local height=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
+                local gkx,gky=players.xy(config.MY_FIRST)
+                local near_goal=(bx-gkx)^2+(by-gky)^2<=gate.goal_proximity_radius^2
+                local origin_cpu=flight_context.origin=="CPU"
+                if height>gate.max_height then reason="BALL_TOO_HIGH"
+                elseif not (origin_cpu or near_goal) then reason="OWN_PASS_PROTECTED"
+                elseif eta.class~="CPU" or eta.raw_class~="CPU"
+                    or eta.stability<gate.min_stability_frames then
+                    reason="ETA_NOT_STABLE_CPU"
+                elseif eta.my_distance>gate.max_my_distance then
+                    reason="DEFENDER_TOO_FAR"
+                elseif eta.my_eta-eta.cpu_eta<gate.min_cpu_eta_advantage then
+                    reason="INSUFFICIENT_CPU_ADVANTAGE"
+                else
+                    reason="ALLOWED"
+                    local tx,ty=eta.target_x,eta.target_y
+                    local switch_state=maybe_switch_player(tx,ty,"BALL_CONTEST_DECISION_GATE")
+                    if switch_state then
+                        switch_state.contest_gate="ALLOWED_SWITCH"
+                        return switch_state
+                    end
+                    local px,py=players.xy(my_base)
+                    local dx,dy=tx-px,ty-py
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,
+                        "BALL_CONTEST_INTERCEPT",possession,gs)
+                    state.intercept_target_x=tx
+                    state.intercept_target_y=ty
+                    state.contest_gate="ALLOWED"
+                    state.contest_my_eta=eta.my_eta
+                    state.contest_cpu_eta=eta.cpu_eta
+                    return attach_live_state(state,"ETA_DECISION_GATE","MY_BALL_IN_FLIGHT")
+                end
+            end
+            -- Denial is sampled; do not fill the CSV with a row per frame.
+            if report.frame%gate.log_denied_every==0 then
+                report:write("BALL_CONTEST_GATE_DENIED",true,
+                    {possession=possession,game_state=gs,gameplay_active=gameplay_value,
+                     my_base=my_base,ball_x=bx,ball_y=by},
+                    "OBSERVE_GATE","reason="..reason)
+            end
             -- A logical MY flight can originate from a confirmed CPU carrier.
             -- Only contest low balls when CPU is materially closer, and a
             -- Brazilian outfielder is still within a reasonable chase range.
@@ -1557,6 +1607,17 @@ while true do
                 ..";logical_team="..tostring(ownership.logical_team))
         end
         local contest,contest_result=contest_feasibility.update(state,report.frame)
+        latest_contest=contest
+        latest_contest_frame=contest and report.frame or nil
+        if state.contest_gate=="ALLOWED" or state.contest_gate=="ALLOWED_SWITCH" then
+            report:write("BALL_CONTEST_GATE_ALLOWED",true,state,
+                state.controller_command,
+                "gate="..tostring(state.contest_gate)
+                ..";my_eta="..tostring(state.contest_my_eta)
+                ..";cpu_eta="..tostring(state.contest_cpu_eta)
+                ..";target_x="..tostring(state.intercept_target_x)
+                ..";target_y="..tostring(state.intercept_target_y))
+        end
         if contest and (contest.changed or report.frame%30==0) then
             report:write(contest.changed and "BALL_CONTEST_ETA_CHANGE" or "BALL_CONTEST_ETA_SAMPLE",
                 true,state,"OBSERVE_CONTEST_ETA",
