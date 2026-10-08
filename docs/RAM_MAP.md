@@ -405,7 +405,7 @@ Ainda vale caracterizar estados adicionais como gol/comemoração, intervalo e f
 Probe independente: `tools/bizhawk/issd/probes/ball_height_probe.lua`.
 
 1. Execute o probe **sozinho** no Lua Console do BizHawk (não simultaneamente com `main.lua`).
-2. Capture no mínimo três exemplos visuais de cada classe: `G` bola parada no chão, `R` passe rasteiro, `A` bola no ar e `P` próximo ao ápice.
+2. Capture no mínimo três exemplos visuais de cada classe: `G` bola parada no chão, `R` passe rasteiro, `A` bola no ar e `H` próximo ao ápice.
 3. Varie posições do campo e a origem do passe para evitar confundir altura com X/Y, câmera e animações.
 4. Pressione `C` para mostrar os 30 melhores candidatos `u8` e `u16`, comparando faixas de valores entre classes; `K` limpa as amostras.
 5. Para cada candidato, acompanhe o endereço com RAM Watch durante lançamento, ápice, queda, quique e bola parada. Repita em outras partidas, estádios e após reiniciar.
