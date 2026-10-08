@@ -58,6 +58,9 @@ M.ATTACK = {
 
     -- Evita oscilacao UP/DOWN enquanto contorna.
     lane_lock_frames = 12,
+    escape_button = "Y",
+    escape_cooldown_frames = 24,
+    escape_max_blocker_distance = 72,
 }
 
 M.SHOOT = {
