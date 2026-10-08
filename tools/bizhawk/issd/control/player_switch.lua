@@ -55,7 +55,8 @@ function M.new(config, players)
                 age=pending.age,actual_distance=actual_distance,
                 previous_distance=pending.current_distance,actual_gain=gain}
             obj.pending=nil
-            obj.settle=config.PLAYER_SWITCH.settle_frames
+            obj.settle=gain<=0 and config.PLAYER_SWITCH.unhelpful_settle_frames
+                or config.PLAYER_SWITCH.settle_frames
         elseif pending.age>=config.PLAYER_SWITCH.verify_frames then
             obj.event={kind="SWITCH_UNCHANGED",from=pending.from,
                 expected=pending.best,actual=actual,age=pending.age}
