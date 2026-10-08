@@ -413,6 +413,19 @@ local function step_bot()
                         state.forward_pass_direction=exit.direction
                         return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                     end
+                    if exit.mode=="CLEAR" then
+                        movement.press_direction_button(exit.direction,exit.button)
+                        local state=make_state(my_base,0,0,
+                            "DEFENSIVE_PRESSURE_CLEAR",possession,gs)
+                        state.defensive_recovery=true
+                        state.defensive_hold_age=defensive_hold_age
+                        state.defensive_pressure_distance=exit.threat
+                        state.defensive_exit_reason=exit.reason
+                        state.defensive_clear_fired=true
+                        state.defensive_clear_button=exit.button
+                        state.defensive_clear_direction=exit.direction
+                        return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
+                    end
                     if exit.mode=="MOVE" then
                         movement.move_toward(exit.dx,exit.dy)
                     else
@@ -424,6 +437,7 @@ local function step_bot()
                     state.defensive_recovery=true
                     state.defensive_hold_age=defensive_hold_age
                     state.defensive_exit_reason=exit.reason
+                    state.defensive_pressure_distance=exit.threat
                     return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                 end
                 defensive_carrier=nil; defensive_hold_age=0
@@ -1241,6 +1255,19 @@ while true do
                 ..";distance="..tostring(state.forward_pass_distance)
                 ..";clearance="..tostring(state.forward_pass_clearance)
                 ..";lane_clearance="..tostring(state.forward_pass_lane_clearance))
+        end
+        if state.defensive_clear_fired then
+            report:write("DEFENSIVE_PRESSURE_CLEAR",true,state,state.controller_command,
+                "distance="..tostring(state.defensive_pressure_distance)
+                ..";reason="..tostring(state.defensive_exit_reason)
+                ..";button="..tostring(state.defensive_clear_button)
+                ..";direction="..tostring(state.defensive_clear_direction))
+        end
+        if state.status=="DEFENSIVE_HOLD" and report.frame%30==0 then
+            report:write("DEFENSIVE_EXIT_DIAGNOSTIC",true,state,state.controller_command,
+                "reason="..tostring(state.defensive_exit_reason)
+                ..";threat_distance="..tostring(state.defensive_pressure_distance)
+                ..";age="..tostring(state.defensive_hold_age))
         end
         if state.status=="DEFENSIVE_SHORT_ESCAPE" and report.frame%30==0 then
             report:write("DEFENSIVE_SHORT_ESCAPE",true,state,state.controller_command,
