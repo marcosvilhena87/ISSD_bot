@@ -228,6 +228,15 @@ M.BOX_COVERAGE = {
     carrier_emergency_radius = 120,
 }
 
+-- Experimental defensive sprint; verified velocity benefit pending BizHawk test.
+M.DEFENSIVE_DASH = {
+    button = "Y",
+    start_distance = 105,
+    stop_distance = 55,
+    burst_frames = 10,
+    cooldown_frames = 16,
+}
+
 M.ACTIVE_TACKLE = {
     button = "B",
     max_distance = 40,
