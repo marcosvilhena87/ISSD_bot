@@ -81,6 +81,8 @@ local dash_carrier = nil
 local gk_pending = nil
 local defensive_carrier = nil
 local defensive_hold_age = 0
+local rebound_lock_base=nil
+local rebound_lock_frames=0
 
 local function pressed(keys, key)
     return keys[key] and not previous_keys[key]
@@ -854,8 +856,36 @@ local function step_bot()
                 possession_context.ball_speed,gkx,gky,field_side.goal_direction())
             -- A genuine fast shot toward goal outranks chasing a rebound.
             -- Zero-speed samples alone must not trigger a tactical reversal.
+            if rebound_lock_frames>0 then
+                rebound_lock_frames=rebound_lock_frames-1
+            end
+            if danger then
+                rebound_lock_base=nil;rebound_lock_frames=0
+            elseif rebound_lock_base and rebound_lock_frames>0
+                and players.valid_cpu_base(rebound_lock_base) then
+                local ax,ay=players.xy(rebound_lock_base)
+                local gx,gy=players.xy(config.MY_FIRST)
+                if (ax-gx)^2+(ay-gy)^2<=config.BOX_PRESSURE.attacker_goal_radius^2
+                    and (ax-bx)^2+(ay-by)^2<=config.BOX_PRESSURE.attacker_ball_radius^2 then
+                    local nearest=math.huge
+                    players.each_my(function(base)
+                        if base~=config.MY_FIRST then
+                            local mx,my=players.xy(base)
+                            nearest=math.min(nearest,math.sqrt((mx-ax)^2+(my-ay)^2))
+                        end
+                    end)
+                    rebound={base=rebound_lock_base,x=ax,y=ay,
+                        nearest_defender=nearest,
+                        attacker_ball_distance=math.sqrt((ax-bx)^2+(ay-by)^2)}
+                else
+                    rebound_lock_base=nil;rebound_lock_frames=0
+                end
+            end
             if rebound and not danger and
-                possession_context.smoothed_ball_speed<=config.BOX_RECOVERY.max_ball_speed then
+                (rebound_lock_frames>0 or
+                possession_context.smoothed_ball_speed<=config.BOX_RECOVERY.max_ball_speed) then
+                rebound_lock_base=rebound.base
+                rebound_lock_frames=config.BOX_RECOVERY.pressure_lock_frames
                 local switch_state=maybe_switch_player(rebound.x,rebound.y,
                     "BOX_REBOUND_PRESSURE")
                 if switch_state then return switch_state end
