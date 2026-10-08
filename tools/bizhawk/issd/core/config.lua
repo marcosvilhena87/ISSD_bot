@@ -321,6 +321,7 @@ M.THROW_IN = {
     switch_cooldown = 45,
     target_lock_frames = 20,
     target_tolerance = 16,
+    max_positioning_frames = 90, -- avoid indefinite MOVE_RECEIVER
     max_attempts = 2,
     recovery_switch_interval = 30,
     max_recovery_switches = 3,
