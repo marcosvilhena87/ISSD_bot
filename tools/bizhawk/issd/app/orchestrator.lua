@@ -25,6 +25,7 @@ local ActiveTackle = dofile(DIR .. "../tactics/active_tackle.lua")
 local LiveAttack = dofile(DIR .. "../tactics/live_attack.lua")
 local Shoot = dofile(DIR .. "../tactics/shoot.lua")
 local ForwardPass = dofile(DIR .. "../tactics/forward_pass.lua")
+local DefensiveExit = dofile(DIR .. "../tactics/defensive_exit.lua")
 local GKDistribution = dofile(DIR .. "../tactics/gk_distribution.lua")
 local GoalKick = dofile(DIR .. "../tactics/goal_kick.lua")
 local CornerKick = dofile(DIR .. "../tactics/corner_kick.lua")
@@ -53,6 +54,7 @@ local active_tackle = ActiveTackle.new(config, players)
 local live_attack = LiveAttack.new(config, players, field_side)
 local shoot = Shoot.new(config, players, field_side)
 local forward_pass = ForwardPass.new(config, players, field_side, mem)
+local defensive_exit = DefensiveExit.new(config, players, field_side, mem)
 local gk_distribution = GKDistribution.new(config, players, field_side)
 local goal_kick = GoalKick.new(config, players, field_side)
 local corner_kick = CornerKick.new(config, players, field_side, mem)
@@ -289,6 +291,7 @@ local function step_bot()
     end
 
     if game_state.is_live(gs) then
+        if possession~=my_base then defensive_exit.reset(); defensive_carrier=nil end
         corner_kick.reset()
         goal_kick.reset()
         throw_in.reset()
@@ -389,13 +392,42 @@ local function step_bot()
                         state.forward_pass_direction=outlet.direction
                         return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                     end
-                    movement.stop()
-                    local state=make_state(my_base,0,0,"DEFENSIVE_HOLD",possession,gs)
+                    local exit=defensive_exit.plan(my_base,forward_pass.cooldown)
+                    if exit.mode=="PASS" and forward_pass.fire(exit,movement) then
+                        local state=make_state(my_base,0,0,
+                            "DEFENSIVE_LATERAL_PASS",possession,gs)
+                        state.defensive_recovery=true
+                        state.defensive_outlet_fired=true
+                        state.defensive_hold_age=defensive_hold_age
+                        state.forward_pass_fired=true
+                        state.forward_pass_zone=1
+                        state.forward_pass_intent="DEFENSIVE_LATERAL"
+                        state.forward_pass_receiver=exit.receiver
+                        state.forward_pass_distance=exit.distance
+                        state.forward_pass_forward=0
+                        state.forward_pass_lateral=exit.distance
+                        state.forward_pass_clearance=exit.receiver_clearance
+                        state.forward_pass_lane_clearance=exit.lane_clearance
+                        state.forward_pass_score=exit.score
+                        state.forward_pass_button=exit.button
+                        state.forward_pass_direction=exit.direction
+                        return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
+                    end
+                    if exit.mode=="MOVE" then
+                        movement.move_toward(exit.dx,exit.dy)
+                    else
+                        movement.stop()
+                    end
+                    local status=exit.mode=="MOVE" and "DEFENSIVE_SHORT_ESCAPE" or "DEFENSIVE_HOLD"
+                    local state=make_state(my_base,exit.dx or 0,exit.dy or 0,
+                        status,possession,gs)
                     state.defensive_recovery=true
                     state.defensive_hold_age=defensive_hold_age
+                    state.defensive_exit_reason=exit.reason
                     return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                 end
                 defensive_carrier=nil; defensive_hold_age=0
+                defensive_exit.reset()
                 local shot = shoot.plan(my_base)
                 local shoot_diag = shoot.last_diagnostic
                 if shot and shoot.fire(shot, movement) then
@@ -1209,6 +1241,12 @@ while true do
                 ..";distance="..tostring(state.forward_pass_distance)
                 ..";clearance="..tostring(state.forward_pass_clearance)
                 ..";lane_clearance="..tostring(state.forward_pass_lane_clearance))
+        end
+        if state.status=="DEFENSIVE_SHORT_ESCAPE" and report.frame%30==0 then
+            report:write("DEFENSIVE_SHORT_ESCAPE",true,state,state.controller_command,
+                "carrier="..tostring(state.my_base)
+                ..";reason="..tostring(state.defensive_exit_reason)
+                ..";age="..tostring(state.defensive_hold_age))
         end
         if state.status=="DEFENSIVE_HOLD" and report.frame%60==0 then
             report:write("DEFENSIVE_HOLD",true,state,state.controller_command,
