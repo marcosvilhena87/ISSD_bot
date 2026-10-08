@@ -124,6 +124,10 @@ M.INTERCEPTION = {
     danger_max_frames = 28,
     danger_min_lead_frames = 3,
     danger_max_lead_frames = 16,
+    estimated_defender_speed = 4.0, -- world units/frame, provisional
+    feasibility_margin_frames = 2,
+    danger_lock_frames = 8,
+    danger_release_frames = 5,
 }
 
 -- Troca automatica do jogador controlado em defesa.
