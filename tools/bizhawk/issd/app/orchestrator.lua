@@ -732,6 +732,9 @@ local function step_bot()
                     state.throw_fired = fired
                     state.throw_direction = plan.direction
                     state.throw_button = plan.button
+                    state.throw_receiver_distance = plan.receiver_distance
+                    state.throw_receiver_to_target = plan.receiver_to_target
+                    state.throw_near_taker = plan.receiver_near_taker
                     state.throw_clearance = plan.receiver_clearance
                     state.throw_score = plan.receiver_score
                     state.throw_field_x1 = plan.field_x1
@@ -842,7 +845,10 @@ while true do
         end
         state.restart_taker_team = restart.taker_team
         state.controller_command = movement.last_command
-        state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score) .. ";nearest=" .. tostring(state.throw_nearest) .. ";nearest_distance=" .. tostring(state.throw_nearest_distance) .. ";recovery_switches=" .. tostring(state.throw_recovery_switches)
+        state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score) .. ";nearest=" .. tostring(state.throw_nearest) .. ";nearest_distance=" .. tostring(state.throw_nearest_distance) .. ";receiver_distance_to_taker=" .. tostring(state.throw_receiver_distance)
+            .. ";receiver_distance_to_target=" .. tostring(state.throw_receiver_to_target)
+            .. ";near_taker=" .. tostring(state.throw_near_taker)
+            .. ";recovery_switches=" .. tostring(state.throw_recovery_switches)
             .. ";field_x1=" .. tostring(state.throw_field_x1)
             .. ";field_x2=" .. tostring(state.throw_field_x2)
             .. ";field_y1=" .. tostring(state.throw_field_y1)
