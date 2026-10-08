@@ -230,12 +230,14 @@ local function step_bot()
         restart.taker=plan and plan.taker or nil
         restart.taker_team=plan and plan.taker and "MY" or nil
         local fired=free_kick.fire(plan,movement)
-        if fired then free_kick.remember_ball(bx,by)
-        else movement.stop() end
+        local switching=plan and plan.mode=="SWITCH_TAKER"
+        if fired and not switching then free_kick.remember_ball(bx,by)
+        elseif not fired then movement.stop() end
         local state=make_state(my_base,nil,nil,
-            fired and "FREE_KICK_ATTEMPT" or
-            ("FREE_KICK_"..(plan and plan.mode or "WAIT")),possession,gs)
-        state.free_kick_fired=fired
+            fired and (switching and "FREE_KICK_SWITCH_TAKER" or "FREE_KICK_ATTEMPT")
+            or ("FREE_KICK_"..(plan and plan.mode or "WAIT")),possession,gs)
+        state.free_kick_fired=fired and not switching
+        state.free_kick_switch_fired=fired and switching
         state.free_kick_mode=plan and plan.mode
         state.free_kick_button=plan and plan.button
         state.free_kick_direction=plan and plan.direction
@@ -1213,6 +1215,11 @@ while true do
                 ..";attempts="..tostring(state.free_kick_attempts)
                 ..";cooldown="..tostring(state.free_kick_cooldown)
                 ..";ball_displacement="..tostring(state.free_kick_displacement))
+        end
+        if state.free_kick_switch_fired then
+            report:write("FREE_KICK_SWITCH_TAKER",true,state,state.controller_command,
+                "candidate="..tostring(state.free_kick_taker)
+                ..";controlled="..tostring(state.my_base))
         end
         if state.free_kick_fired then
             report:write("FREE_KICK_ATTEMPT",true,state,state.controller_command,
