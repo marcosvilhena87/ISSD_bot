@@ -178,6 +178,7 @@ local function step_bot()
 
     if game_state.is_stoppage(gs) then
         restart.clear()
+        throw_in.reset()
         possession_context.reset()
         player_switch.reset()
         live_attack.reset()
@@ -614,6 +615,7 @@ local function step_bot()
                     state.throw_receiver_y = plan.receiver_y
                     state.throw_nearest = plan.nearest
                     state.throw_nearest_distance = plan.nearest_distance
+                    state.throw_recovery_switches = plan.recovery_switches
                 end
                 return state
             end
@@ -653,7 +655,7 @@ console.log("[ISSD] Modular bot carregado")
 console.log("[ISSD] K = bot ON/OFF")
 console.log("[ISSD] L = stop_on_possession ON/OFF")
 console.log("[ISSD] GameplayActive 0x0006: 1=active, other=BOT_IDLE")
-console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in, 3=foul, 4=offside, 5=post-goal")
+console.log("[ISSD] Game_State: 0=live, 1=endline, 2=throw-in, 3=foul, 4=offside, 5=post-goal, 6=half-time")
 console.log("[ISSD] marking_score normalized: 35% me + 25% ball + 40% goal-axis")
 console.log("[ISSD] target lock: 10 frames, switch margin=0.05")
 console.log("[ISSD] switch event HUD: 60 frames")
@@ -712,7 +714,7 @@ while true do
         end
         state.restart_taker_team = restart.taker_team
         state.controller_command = movement.last_command
-        state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score) .. ";nearest=" .. tostring(state.throw_nearest) .. ";nearest_distance=" .. tostring(state.throw_nearest_distance)) or nil
+        state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score) .. ";nearest=" .. tostring(state.throw_nearest) .. ";nearest_distance=" .. tostring(state.throw_nearest_distance) .. ";recovery_switches=" .. tostring(state.throw_recovery_switches)) or nil
         state.score_my = mem.u16(config.ADDR.score_my)
         state.score_cpu = mem.u16(config.ADDR.score_cpu)
         if state.intercept_danger then
