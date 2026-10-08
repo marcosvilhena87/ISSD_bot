@@ -8,13 +8,15 @@ function M.new(config, players, field_side)
         clearance_weight=1, forward_weight=0.25, distance_weight=0.35,
         retry_frames=45, switch_margin=80, switch_cooldown=45,
         target_lock_frames=20, target_tolerance=16,
-        max_attempts=2, long_fallback_frames=180
+        max_attempts=2, long_fallback_frames=180,
+        recovery_switch_interval=30, max_recovery_switches=3
     }
     for key, value in pairs(defaults) do
         if c[key] == nil then c[key] = value end
     end
     local obj = {taker=nil, frames=0, switch_cd=0, throw_cd=0,
-        attempts=0, target_x=nil, target_y=nil, lock=0}
+        attempts=0, target_x=nil, target_y=nil, lock=0,
+        recovery_switches=0, last_receiver=nil}
     local function dist(x,y,a,b)
         local dx,dy=x-a,y-b
         return math.sqrt(dx*dx+dy*dy)
@@ -32,6 +34,7 @@ function M.new(config, players, field_side)
         obj.taker=nil; obj.frames=0; obj.switch_cd=0
         obj.throw_cd=0; obj.attempts=0
         obj.target_x=nil; obj.target_y=nil; obj.lock=0
+        obj.recovery_switches=0; obj.last_receiver=nil
     end
     function obj.plan(taker, receiver)
         if not players.valid_my_base(taker) then return nil end
@@ -39,9 +42,27 @@ function M.new(config, players, field_side)
         obj.frames=obj.frames+1
         obj.switch_cd=math.max(0,obj.switch_cd-1)
         obj.throw_cd=math.max(0,obj.throw_cd-1)
-        if not players.valid_my_base(receiver) or receiver==taker
-            or receiver==config.MY_FIRST then
-            return {mode="WAIT_RECEIVER",taker=taker}
+        local valid = players.valid_my_base(receiver)
+            and receiver ~= taker and receiver ~= config.MY_FIRST
+        if not valid then
+            obj.last_receiver = nil
+            obj.target_x, obj.target_y, obj.lock = nil, nil, 0
+            if obj.frames >= c.long_fallback_frames and obj.attempts == 0 then
+                return {mode="READY_LONG", taker=taker, receiver=receiver,
+                    button=c.long_throw_button, recovery_switches=obj.recovery_switches}
+            end
+            if obj.switch_cd == 0 and obj.recovery_switches < c.max_recovery_switches then
+                obj.switch_cd = c.recovery_switch_interval
+                obj.recovery_switches = obj.recovery_switches + 1
+                return {mode="SWITCH_RECEIVER", taker=taker, receiver=receiver,
+                    recovery_switches=obj.recovery_switches}
+            end
+            return {mode="WAIT_RECEIVER", taker=taker, receiver=receiver,
+                recovery_switches=obj.recovery_switches}
+        end
+        if receiver ~= obj.last_receiver then
+            obj.target_x, obj.target_y, obj.lock = nil, nil, 0
+            obj.last_receiver = receiver
         end
         local tx,ty=players.xy(taker)
         local px,py=players.xy(receiver)
@@ -56,8 +77,10 @@ function M.new(config, players, field_side)
                 if d<nearest_d then nearest,nearest_d=base,d end
             end
         end)
-        if current_distance-nearest_d>c.switch_margin and obj.switch_cd==0 then
+        if nearest ~= nil and current_distance-nearest_d>c.switch_margin
+            and obj.switch_cd==0 and obj.recovery_switches<c.max_recovery_switches then
             obj.switch_cd=c.switch_cooldown
+            obj.recovery_switches=obj.recovery_switches+1
             return {mode="SWITCH_RECEIVER",taker=taker,receiver=receiver,
                 nearest=nearest,nearest_distance=nearest_d,
                 receiver_distance=current_distance}
