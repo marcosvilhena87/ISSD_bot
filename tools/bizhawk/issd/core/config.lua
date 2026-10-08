@@ -63,6 +63,9 @@ M.FINAL_THIRD_RESET = {
     min_goal_distance=320,
     cooldown_frames=210,
     arrive_distance=28,
+    midfield_margin=35,
+    rebuild_window_frames=240,
+    reposition_block_frames=160,
 }
 
 M.FINAL_THIRD_ATTACK_DECISION = {
