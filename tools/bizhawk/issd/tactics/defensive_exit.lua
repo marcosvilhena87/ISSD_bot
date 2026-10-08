@@ -1,0 +1,71 @@
+local M={}
+function M.new(config,players,field_side,mem)
+ local c=config.DEFENSIVE_EXIT
+ local o={carrier=nil,age=0,start_x=nil,start_y=nil}
+ local function d(x,y,a,b) return math.sqrt((x-a)^2+(y-b)^2) end
+ local function space(x,y)
+  local nearest=99999
+  players.each_cpu(function(base)
+   local a,b=players.xy(base);nearest=math.min(nearest,d(x,y,a,b))
+  end)
+  return nearest
+ end
+ function o.reset() o.carrier=nil;o.age=0;o.start_x=nil;o.start_y=nil end
+ function o.plan(carrier,pass_cooldown)
+  if o.carrier~=carrier then o.reset();o.carrier=carrier end
+  o.age=o.age+1
+  local x,y=players.xy(carrier)
+  local width=mem.u16(config.ADDR.field_width)
+  local center=mem.u16(config.ADDR.center_field_y)
+  local dir=field_side.attack_direction()
+  if width<200 or width>2000 or dir==0 then return {mode="HOLD",reason="BAD_FIELD"} end
+  local low,high=center-width/2+c.field_margin,center+width/2-c.field_margin
+  local best=nil
+  if pass_cooldown==0 then
+   players.each_my(function(base)
+    if base~=carrier and base~=config.MY_FIRST then
+     local rx,ry=players.xy(base)
+     local dx,dy=rx-x,ry-y
+     local dst=d(x,y,rx,ry)
+     if math.abs(dx)<=c.max_horizontal and math.abs(dy)>=c.lateral_min
+       and math.abs(dy)<=c.lateral_max and dst<=c.max_pass_distance
+       and ry>=low and ry<=high then
+      local rc=space(rx,ry)
+      local lane=99999
+      players.each_cpu(function(cpu)
+       local ex,ey=players.xy(cpu)
+       local t=((ex-x)*dx+(ey-y)*dy)/(dst*dst)
+       if t>0.05 and t<1.05 then
+        local q=math.max(0,math.min(1,t))
+        lane=math.min(lane,d(ex,ey,x+q*dx,y+q*dy))
+       end
+      end)
+      if rc>=c.receiver_clearance and lane>=c.lane_clearance then
+       local score=math.min(rc,180)+math.min(lane,180)-dst*0.2
+       if not best or score>best.score then
+        best={mode="PASS",button="B",direction=dy<0 and "Up" or "Down",
+         receiver=base,distance=dst,receiver_clearance=rc,
+         lane_clearance=lane,score=score,age=o.age}
+       end
+      end
+     end
+    end
+   end)
+  end
+  if best then return best end
+  if o.age<c.hold_before_move then return {mode="HOLD",reason="WAIT_OUTLET",age=o.age} end
+  if not o.start_x then o.start_x,o.start_y=x,y end
+  if d(x,y,o.start_x,o.start_y)>=c.max_advance then
+   return {mode="HOLD",reason="ESCAPE_LIMIT",age=o.age}
+  end
+  local up=y-c.step>=low and space(x,y-c.step) or -1
+  local down=y+c.step<=high and space(x,y+c.step) or -1
+  if math.max(up,down)<c.min_escape_clearance then
+   return {mode="HOLD",reason="NO_SAFE_SPACE",age=o.age}
+  end
+  return {mode="MOVE",dx=dir*c.forward_step,
+   dy=up>=down and -c.step or c.step,age=o.age,reason="SHORT_ESCAPE"}
+ end
+ return o
+end
+return M
