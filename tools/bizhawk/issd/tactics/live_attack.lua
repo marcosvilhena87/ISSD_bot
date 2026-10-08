@@ -62,6 +62,7 @@ function M.new(config, players, field_side)
         if obj.abort_frames>0 then obj.abort_frames=obj.abort_frames-1 end
         if obj.abort_frames>0 then return true end
         if obj.anchor_x==nil then
+            if obj.lane_direction==nil then return false end
             obj.anchor_x,obj.anchor_y=px,py
             obj.lane_frames=0
         end
