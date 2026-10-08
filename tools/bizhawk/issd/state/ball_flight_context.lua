@@ -38,4 +38,24 @@ function M.new(config,mem,players)
  end
  return o
 end
+-- Logical MY possession is independent of physical flight and last carrier.
+-- Exposed as separate axes; these labels do not authorize a chase.
+function M.classify_my_flight(flight)
+  local physical=flight.physical
+  local origin=flight.origin
+  local band=physical=="GROUND_CONTACT" and "GROUND"
+    or physical=="LOW_BOUNCING" and "LOW_BOUNCE" or "AERIAL"
+  local source=(origin=="MY" or origin=="CPU") and origin or "UNKNOWN"
+  local strategy
+  if band=="AERIAL" then
+    strategy="TRACK_LANDING"
+  elseif source=="CPU" then
+    strategy="ASSESS_CPU_CONTEST"
+  elseif source=="MY" then
+    strategy="PROTECT_OWN_RECEPTION"
+  else
+    strategy="ASSESS_LOOSE_BALL"
+  end
+  return "MY_FLIGHT_"..band.."_"..source.."_ORIGIN",strategy,band
+end
 return M
