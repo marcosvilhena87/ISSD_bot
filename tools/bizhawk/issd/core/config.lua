@@ -225,6 +225,11 @@ M.BALL_CONTEST_DECISION_GATE = {
     min_stability_frames=4,
     goal_proximity_radius=320,
     log_denied_every=60,
+    lock_frames=12, -- keep interception through transient ETA changes
+    lock_target_tolerance=65,
+    lock_max_defender_eta=30,
+    lock_max_eta_deficit=9,
+    lock_stop_distance=22,
 }
 
 M.BALL_CONTEST_FEASIBILITY = {
