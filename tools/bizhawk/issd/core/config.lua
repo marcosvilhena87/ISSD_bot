@@ -42,6 +42,16 @@ M.CPU_FIRST = 0x1000
 M.CPU_LAST = 0x1A00
 M.PLAYER_STRIDE = 0x100
 
+-- Observational detection only; candidate height addresses from BizHawk traces.
+M.AERIAL_CONTACT = {
+    height_addr=0x0410,
+    height_reference_addr=0x19E8,
+    min_height=20,
+    min_vertical_speed=2,
+    min_horizontal_speed=2,
+    near_player_radius=110,
+}
+
 M.DEADZONE_X = 8
 M.DEADZONE_Y = 8
 
