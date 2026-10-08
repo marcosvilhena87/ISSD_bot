@@ -116,6 +116,7 @@ M.BOX_COVERAGE = {
     threat_goal_radius = 220,
     threat_ball_radius = 260,
     unmarked_distance = 75,
+    carrier_emergency_radius = 120,
 }
 
 M.LIVE_DEFENSE = {
