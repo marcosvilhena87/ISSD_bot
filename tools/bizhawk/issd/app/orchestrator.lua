@@ -718,13 +718,15 @@ local function step_bot()
                 return attach_live_state(state,"BOX_PRESSURE","CPU_CONTROLLED")
             end
 
-            local tackle=active_tackle.plan(my_base,possession)
+            local tackle=active_tackle.plan(my_base,possession,bx,by)
             if tackle and active_tackle.fire(tackle,movement) then
                 local state=make_state(my_base,0,0,"DEFENSE_ACTIVE_TACKLE",possession,gs)
                 state.tackle_fired=true
                 state.tackle_carrier=tackle.carrier
                 state.tackle_defender=tackle.defender
                 state.tackle_distance=tackle.distance
+                state.tackle_defender_ball_distance=tackle.defender_ball_distance
+                state.tackle_carrier_ball_distance=tackle.carrier_ball_distance
                 return attach_live_state(state,"ACTIVE_TACKLE","CPU_CONTROLLED")
             end
 
@@ -1352,6 +1354,8 @@ while true do
                 ..";carrier="..tostring(tackle_outcome.carrier)
                 ..";holder="..tostring(tackle_outcome.holder)
                 ..";distance="..tostring(tackle_outcome.distance)
+                ..";defender_ball_distance="..tostring(tackle_outcome.defender_ball_distance)
+                ..";carrier_ball_distance="..tostring(tackle_outcome.carrier_ball_distance)
                 ..";age="..tostring(tackle_outcome.age))
         end
         if state.shot_lane_lateral~=nil
@@ -1380,6 +1384,8 @@ while true do
                 "defender="..tostring(state.tackle_defender)
                 ..";carrier="..tostring(state.tackle_carrier)
                 ..";distance="..tostring(state.tackle_distance)
+                ..";defender_ball_distance="..tostring(state.tackle_defender_ball_distance)
+                ..";carrier_ball_distance="..tostring(state.tackle_carrier_ball_distance)
                 ..";button=B")
         end
         if state.game_state==1 and state.goal_kick_mode and report.frame%30==0 then
