@@ -101,6 +101,9 @@ local contest_intercept_lock=nil
 local contest_abort_until=0
 local final_third_lock=nil
 local final_third_decision=nil
+local final_third_reset=nil
+local final_third_failures={count=0,last=-99999}
+local final_third_reset_cooldown=0
 local final_third_cooldown_until=0
 local last_flight_discrepancy=false
 local flight_interception_pending=nil
@@ -317,6 +320,13 @@ local function step_bot()
         end
         final_third_lock=nil
         final_third_decision=nil
+        if final_third_reset then
+            report:write("FINAL_THIRD_RESET_ABORT",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "RESET","reason=POSSESSION_LOST_OR_STOPPAGE")
+        end
+        final_third_reset=nil
+        final_third_failures.count=0
     end
     if gs~=1 then goal_kick.reset() end
     if possession~=0 or gs~=0 or not gameplay_active.is_active(gameplay_value) then
@@ -718,6 +728,16 @@ local function step_bot()
                             ..";angle_gain="..gain..";retreat="..retreat
                             ..";target_x="..lock.target_x..";target_y="..lock.target_y)
                         final_third_lock=nil
+                        if reason~="ANGLE_RESOLVED" then
+                            local cfg=config.FINAL_THIRD_RESET
+                            if report.frame-final_third_failures.last>cfg.stall_window_frames then
+                                final_third_failures.count=0
+                            end
+                            final_third_failures.count=final_third_failures.count+1
+                            final_third_failures.last=report.frame
+                        else
+                            final_third_failures.count=0
+                        end
                         final_third_decision={carrier=my_base,start=report.frame,
                             reason=reason}
                         report:write("FINAL_THIRD_DECISION_START",true,
@@ -787,6 +807,65 @@ local function step_bot()
                     end
                 end
 
+                -- Only reset after repeated failed reposition attempts.
+                -- Shoot and safe forward pass are evaluated before this block.
+                local reset_cfg=config.FINAL_THIRD_RESET
+                if final_third_reset and final_third_reset.carrier==my_base then
+                    local r=final_third_reset
+                    local age=report.frame-r.start
+                    local progress=(r.start_x-px_now)*r.dir
+                    local remaining=math.sqrt((r.target_x-px_now)^2
+                        +(r.target_y-py_now)^2)
+                    local finish=nil
+                    if remaining<=reset_cfg.arrive_distance then
+                        finish="TARGET_REACHED"
+                    elseif age>=reset_cfg.max_frames then
+                        finish="TIMEOUT"
+                    elseif age>=math.floor(reset_cfg.max_frames/2)
+                        and progress<reset_cfg.min_retreat_progress then
+                        finish="NO_RETREAT_PROGRESS"
+                    end
+                    if finish then
+                        report:write(finish=="TARGET_REACHED" and
+                            "FINAL_THIRD_RESET_COMPLETE" or "FINAL_THIRD_RESET_ABORT",
+                            true,{possession=possession,game_state=gs,my_base=my_base},
+                            "RESET","reason="..finish..";age="..age
+                            ..";retreat="..progress)
+                        final_third_reset=nil
+                        final_third_failures.count=0
+                        final_third_reset_cooldown=report.frame+reset_cfg.cooldown_frames
+                        live_attack.reset()
+                    else
+                        attack={mode="FINAL_THIRD_RESET",
+                            target_x=r.target_x,target_y=r.target_y,
+                            direction=r.dir}
+                    end
+                elseif not final_third_reset
+                    and final_third_failures.count>=reset_cfg.failed_attempts
+                    and report.frame>=final_third_reset_cooldown
+                    and (dir==1 or dir==-1) and shoot_diag
+                    and shoot_diag.distance
+                    and shoot_diag.distance<=reset_cfg.min_goal_distance then
+                    local target_x=px_now-dir*reset_cfg.retreat_distance
+                    local target_y=py_now
+                    local guarded=field_boundary.correct(px_now,py_now,
+                        target_x,target_y)
+                    if math.abs(guarded.x-px_now)>=reset_cfg.min_retreat_progress then
+                        final_third_reset={carrier=my_base,start=report.frame,
+                            start_x=px_now,dir=dir,target_x=guarded.x,
+                            target_y=guarded.y}
+                        final_third_lock=nil
+                        final_third_decision=nil
+                        attack={mode="FINAL_THIRD_RESET",
+                            target_x=guarded.x,target_y=guarded.y,
+                            direction=dir}
+                        report:write("FINAL_THIRD_RESET_START",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "RESET","failures="..final_third_failures.count
+                            ..";target_x="..guarded.x..";target_y="..guarded.y)
+                    end
+                end
+
                 if attack ~= nil then
                     local px, py = players.xy(my_base)
                     local guarded=field_boundary.correct(px,py,attack.target_x,attack.target_y)
@@ -830,9 +909,10 @@ local function step_bot()
                     end
 
                     local status =
-                        attack.mode == "FINAL_THIRD_REPOSITION"
+                        attack.mode == "FINAL_THIRD_RESET" and "ATTACK_FINAL_THIRD_RESET"
+                        or (attack.mode == "FINAL_THIRD_REPOSITION"
                         and "ATTACK_FINAL_THIRD_REPOSITION"
-                        or (attack.mode == "LANE" and "ATTACK_LANE" or "ATTACK_ADVANCE")
+                        or (attack.mode == "LANE" and "ATTACK_LANE" or "ATTACK_ADVANCE"))
 
                     local state = make_state(
                         my_base, dx, dy, status, possession, gs
