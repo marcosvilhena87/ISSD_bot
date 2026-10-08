@@ -210,6 +210,7 @@ local function step_bot()
     end
 
     if gs == 3 then
+        corner_kick.reset()
         goal_kick.reset()
         throw_in.reset()
         restart.clear()
@@ -234,6 +235,7 @@ local function step_bot()
     end
     free_kick.reset()
     if game_state.is_stoppage(gs) then
+        corner_kick.reset()
         goal_kick.reset()
         restart.clear()
         throw_in.reset()
@@ -776,6 +778,7 @@ local function step_bot()
         if gs ~= 2 or restart.taker_team ~= "MY" then throw_in.reset() end
 
         if gs ~= 1 then goal_kick.reset(); corner_kick.reset() end
+        if restart.taker_team ~= "MY" then corner_kick.reset() end
         if restart.taker_team == "MY" then
             if gs == 1 and restart.taker ~= config.MY_FIRST then
                 local plan=corner_kick.plan(bx,by,restart.taker,restart.taker_team)
