@@ -207,6 +207,7 @@ M.BOX_RECOVERY = {
     attacker_radius = 110,
     own_ball_protection_radius = 32, -- do not disrupt nearby Brazilian receiver
     max_ball_speed = 5.0,
+    pressure_lock_frames = 10,
 }
 
 M.BOX_COVERAGE = {
