@@ -51,7 +51,7 @@ local player_switch = PlayerSwitch.new(config, players)
 local team_possession = TeamPossession.new(config, mem)
 local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
-local throw_in = ThrowIn.new(config, players, field_side)
+local throw_in = ThrowIn.new(config, players, field_side, mem)
 local overlay = Overlay.new(players, game_state)
 
 local report = Report.new(DIR .. "../issd_report.csv")
@@ -677,6 +677,11 @@ local function step_bot()
                     state.throw_button = plan.button
                     state.throw_clearance = plan.receiver_clearance
                     state.throw_score = plan.receiver_score
+                    state.throw_field_x1 = plan.field_x1
+                    state.throw_field_x2 = plan.field_x2
+                    state.throw_field_y1 = plan.field_y1
+                    state.throw_field_y2 = plan.field_y2
+                    state.throw_stadium = plan.stadium
                     state.throw_receiver_x = plan.receiver_x
                     state.throw_receiver_y = plan.receiver_y
                     state.throw_nearest = plan.nearest
@@ -780,7 +785,12 @@ while true do
         end
         state.restart_taker_team = restart.taker_team
         state.controller_command = movement.last_command
-        state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score) .. ";nearest=" .. tostring(state.throw_nearest) .. ";nearest_distance=" .. tostring(state.throw_nearest_distance) .. ";recovery_switches=" .. tostring(state.throw_recovery_switches)) or nil
+        state.report_detail = state.throw_mode and ("taker=" .. tostring(state.throw_taker) .. ";receiver=" .. tostring(state.throw_receiver) .. ";mode=" .. state.throw_mode .. ";fired=" .. tostring(state.throw_fired) .. ";direction=" .. tostring(state.throw_direction) .. ";clearance=" .. tostring(state.throw_clearance) .. ";score=" .. tostring(state.throw_score) .. ";nearest=" .. tostring(state.throw_nearest) .. ";nearest_distance=" .. tostring(state.throw_nearest_distance) .. ";recovery_switches=" .. tostring(state.throw_recovery_switches)
+            .. ";field_x1=" .. tostring(state.throw_field_x1)
+            .. ";field_x2=" .. tostring(state.throw_field_x2)
+            .. ";field_y1=" .. tostring(state.throw_field_y1)
+            .. ";field_y2=" .. tostring(state.throw_field_y2)
+            .. ";stadium=" .. tostring(state.throw_stadium)) or nil
         state.score_my = mem.u16(config.ADDR.score_my)
         state.score_cpu = mem.u16(config.ADDR.score_cpu)
         state.shots_my = mem.u16(config.ADDR.shots_my)
