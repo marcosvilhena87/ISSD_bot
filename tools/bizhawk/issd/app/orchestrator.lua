@@ -22,6 +22,7 @@ local Geometry = dofile(DIR .. "../core/geometry.lua")
 local Defense = dofile(DIR .. "../tactics/defense.lua")
 local LiveDefense = dofile(DIR .. "../tactics/live_defense.lua")
 local LiveAttack = dofile(DIR .. "../tactics/live_attack.lua")
+local Shoot = dofile(DIR .. "../tactics/shoot.lua")
 local GKDistribution = dofile(DIR .. "../tactics/gk_distribution.lua")
 local Interception = dofile(DIR .. "../tactics/interception.lua")
 local PlayerSwitch = dofile(DIR .. "../control/player_switch.lua")
@@ -43,6 +44,7 @@ local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, field_side)
 local live_defense = LiveDefense.new(config, players, field_side)
 local live_attack = LiveAttack.new(config, players, field_side)
+local shoot = Shoot.new(config, players, field_side)
 local gk_distribution = GKDistribution.new(config, players, field_side)
 local interception = Interception.new(config)
 local player_switch = PlayerSwitch.new(config, players)
@@ -153,6 +155,7 @@ end
 local function step_bot()
     player_switch.tick()
     gk_distribution.tick()
+    shoot.tick()
 
     local gameplay_value = gameplay_active.read()
     local my_base = read_my_base()
@@ -272,6 +275,21 @@ local function step_bot()
             -- for exatamente o possuidor. Evita mover um companheiro
             -- sem bola quando a posse esta em outra struct MY.
             if possession == my_base and my_base ~= config.MY_FIRST then
+                local shot = shoot.plan(my_base)
+                if shot and shoot.fire(shot, movement) then
+                    local state = make_state(
+                        my_base, 0, 0, "ATTACK_SHOOT", possession, gs
+                    )
+                    state.shot_fired = true
+                    state.shot_button = shot.button
+                    state.shot_distance = shot.distance
+                    state.shot_goal_x = shot.goal_x
+                    state.shot_goal_y = shot.goal_y
+                    state.controller_command = movement.last_command
+                    return attach_live_state(
+                        state, "PLAYER_POSSESSION", "MY_CONTROLLED"
+                    )
+                end
                 local attack = live_attack.target_for_carrier(my_base)
 
                 if attack ~= nil then
@@ -724,12 +742,22 @@ while true do
                 .. tostring(state.intercept_frames_to_goal)
                 .. ";lead_frames=" .. tostring(state.intercept_lead_frames)
         end
+        if state.shot_fired then
+            state.report_detail = "button=" .. tostring(state.shot_button)
+                .. ";distance=" .. tostring(state.shot_distance)
+                .. ";goal_x=" .. tostring(state.shot_goal_x)
+                .. ";goal_y=" .. tostring(state.shot_goal_y)
+        end
         if state.attack_goal_x ~= nil then
             state.report_detail = "goal_x=" .. tostring(state.attack_goal_x)
                 .. ";goal_y=" .. tostring(state.attack_goal_y)
                 .. ";goal_distance=" .. tostring(state.attack_goal_distance)
         end
         report:observe(true, state)
+        if state.shot_fired then
+            report:write("SHOT_ATTEMPT", true, state,
+                state.controller_command, state.report_detail)
+        end
         goal_trace.observe(true, state)
         overlay.draw(state)
     else
