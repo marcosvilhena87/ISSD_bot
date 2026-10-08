@@ -322,7 +322,7 @@ local function step_bot()
             second_ball_sequence=second_ball_sequence+1
             second_ball_lock={start=report.frame,
                 expires=report.frame+cfg.window_frames,
-                sequence=second_ball_sequence,switches=0}
+                sequence=second_ball_sequence,switches=0,saw_unowned=false}
             report:write("BOX_SECOND_BALL_START",true,
                 {possession=possession,game_state=gs,my_base=my_base},
                 "SHOT_COUNTER","sequence="..second_ball_sequence)
@@ -333,11 +333,14 @@ local function step_bot()
     end
     second_ball_last_shots_cpu=shots_cpu
     if second_ball_lock then
+        if possession==0 then second_ball_lock.saw_unowned=true end
         local reason=nil
         if gs~=0 or not gameplay_active.is_active(gameplay_value) then
             reason="STOPPAGE"
-        elseif players.valid_my_base(possession) then reason="MY_RECOVERED"
-        elseif players.valid_cpu_base(possession) then reason="CPU_RECOVERED"
+        elseif second_ball_lock.saw_unowned and players.valid_my_base(possession) then
+            reason="MY_RECOVERED"
+        elseif second_ball_lock.saw_unowned and players.valid_cpu_base(possession) then
+            reason="CPU_RECOVERED"
         elseif report.frame>=second_ball_lock.expires then reason="TIMEOUT" end
         if reason then
             report:write(reason=="MY_RECOVERED" and
