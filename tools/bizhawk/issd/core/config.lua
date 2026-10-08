@@ -60,6 +60,14 @@ M.ATTACK = {
     lane_lock_frames = 12,
 }
 
+M.SHOOT = {
+    button = "X",
+    max_distance = 310,
+    min_forward_distance = 25,
+    lane_half_width = 46,
+    cooldown_frames = 90,
+}
+
 M.GK_DISTRIBUTION = {
     throw_button = "B",
     long_kick_button = "A",
