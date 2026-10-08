@@ -15,6 +15,7 @@ local Memory = dofile(DIR .. "../core/memory.lua")
 local Players = dofile(DIR .. "../state/players.lua")
 local Ball = dofile(DIR .. "../state/ball.lua")
 local AerialContact = dofile(DIR .. "../state/aerial_contact.lua")
+local AerialDefensiveContact = dofile(DIR .. "../state/aerial_defensive_contact.lua")
 local BallFlightContext = dofile(DIR .. "../state/ball_flight_context.lua")
 local OwnershipProbe = dofile(DIR .. "../state/ownership_probe.lua")
 local BallContestFeasibility = dofile(DIR .. "../state/ball_contest_feasibility.lua")
@@ -50,6 +51,7 @@ local mem = Memory.new(config)
 local players = Players.new(config, mem)
 local ball = Ball.new(config, mem)
 local aerial_contact = AerialContact.new(config, mem, players)
+local aerial_defensive_contact = AerialDefensiveContact.new(config, players)
 local flight_context = BallFlightContext.new(config, mem, players)
 local ownership_probe = OwnershipProbe.new(config, mem, players)
 local contest_feasibility = BallContestFeasibility.new(config, players)
@@ -1658,6 +1660,17 @@ while true do
                 .. ";goal_distance=" .. tostring(state.attack_goal_distance)
         end
         -- Observational telemetry: never changes the selected controller action.
+        local header_window=aerial_defensive_contact.update(state)
+        if header_window then
+            report:write("AERIAL_DEFENSIVE_CONTACT_"..header_window.kind,
+                true,state,"OBSERVE_HEADER_WINDOW",
+                "height="..tostring(header_window.height)
+                ..";distance="..tostring(header_window.distance)
+                ..";nearest_base="..tostring(header_window.nearest_base)
+                ..";vertical_delta="..tostring(header_window.delta)
+                ..";class="..tostring(header_window.classification)
+                ..";reason="..tostring(header_window.reason))
+        end
         local contact=aerial_contact.update(
             gameplay_active.is_active(state.gameplay_active),
             state.game_state,state.possession)
