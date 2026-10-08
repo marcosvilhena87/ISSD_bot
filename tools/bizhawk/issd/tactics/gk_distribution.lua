@@ -77,9 +77,13 @@ function M.new(config, players, field_side)
                 local dist = distance(gx, gy, px, py)
                 local clearance = nearest_cpu_clearance(px, py)
                 local forward = (px - gx) * attack_dir
-                local corridor = lane_clearance(gx,gy,px,py)
+                local lateral_offset = math.abs(py-gy)
+                -- B+Right/Left travels forward: evaluate the real straight corridor,
+                -- not an imaginary diagonal toward the selected teammate.
+                local corridor = lane_clearance(gx,gy,px,gy)
 
                 if dist <= config.GK_DISTRIBUTION.max_throw_distance
+                   and lateral_offset <= config.GK_DISTRIBUTION.forward_lane_half_width
                    and clearance >=
                        config.GK_DISTRIBUTION.min_receiver_clearance
                    and corridor >= config.GK_DISTRIBUTION.min_lane_clearance
@@ -98,12 +102,10 @@ function M.new(config, players, field_side)
                             distance = dist,
                             clearance = clearance,
                             lane_clearance = corridor,
+                            lateral_offset = lateral_offset,
                             forward = forward,
                             score = score,
-                            direction =
-                                direction_name(
-                                    gx, gy, px, py, attack_dir
-                                ),
+                            direction = attack_dir == 1 and "Right" or "Left",
                         }
                     end
                 end
@@ -143,7 +145,8 @@ function M.new(config, players, field_side)
                 receiver_distance = receiver.distance,
                 receiver_clearance = receiver.clearance,
                 lane_clearance = receiver.lane_clearance,
-                decision_reason = "SAFE_SHORT_LANE",
+                decision_reason = "SAFE_STRAIGHT_FORWARD_B",
+                receiver_lateral_offset = receiver.lateral_offset,
                 receiver_forward = receiver.forward,
                 receiver_score = receiver.score,
                 my_side = my_side,
@@ -158,7 +161,8 @@ function M.new(config, players, field_side)
             receiver_distance = nil,
             receiver_clearance = nil,
             lane_clearance = nil,
-            decision_reason = "NO_SAFE_SHORT_LANE",
+            decision_reason = "NO_SAFE_STRAIGHT_FORWARD_B",
+            receiver_lateral_offset = nil,
             receiver_forward = nil,
             receiver_score = nil,
             my_side = my_side,
