@@ -10,6 +10,7 @@ function M.new(config, players)
         ball_dx = 0,
         ball_dy = 0,
         ball_speed = 0,
+        smoothed_ball_speed = 0,
         classification = "UNKNOWN",
     }
 
@@ -34,6 +35,7 @@ function M.new(config, players)
         obj.ball_dx = 0
         obj.ball_dy = 0
         obj.ball_speed = 0
+        obj.smoothed_ball_speed = 0
         obj.classification = "UNKNOWN"
     end
 
@@ -51,6 +53,11 @@ function M.new(config, players)
             obj.ball_speed = 0
         end
 
+        -- Hold velocity through isolated zero-delta samples that arise from
+        -- the RAM update cadence; decay instead of toggling instantly to zero.
+        local alpha=config.POSSESSION_CONTEXT.speed_smoothing_alpha
+        obj.smoothed_ball_speed=alpha*obj.ball_speed
+            +(1-alpha)*obj.smoothed_ball_speed
         obj.prev_ball_x = ball_x
         obj.prev_ball_y = ball_y
 
