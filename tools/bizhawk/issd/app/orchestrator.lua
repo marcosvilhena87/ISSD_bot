@@ -225,9 +225,13 @@ local function step_bot()
         restart.clear()
         possession_context.reset()
         local bx,by=ball.world_xy()
-        local plan=free_kick.plan(bx,by)
+        local plan=free_kick.plan(bx,by,my_base)
+        -- HUD must show the free-kick candidate, not the cleared restart assignment.
+        restart.taker=plan and plan.taker or nil
+        restart.taker_team=plan and plan.taker and "MY" or nil
         local fired=free_kick.fire(plan,movement)
-        if not fired then movement.stop() end
+        if fired then free_kick.remember_ball(bx,by)
+        else movement.stop() end
         local state=make_state(my_base,nil,nil,
             fired and "FREE_KICK_ATTEMPT" or
             ("FREE_KICK_"..(plan and plan.mode or "WAIT")),possession,gs)
@@ -240,6 +244,8 @@ local function step_bot()
         state.free_kick_cpu_distance=plan and plan.cpu_distance
         state.free_kick_stable=plan and plan.stable
         state.free_kick_attempts=plan and plan.attempts
+        state.free_kick_cooldown=plan and plan.cooldown
+        state.free_kick_displacement=plan and plan.displacement
         return state
     end
     free_kick.reset()
@@ -1195,6 +1201,18 @@ while true do
                 ..";clearance="..tostring(state.gk_dist_receiver_clearance)
                 ..";lane_clearance="..tostring(state.gk_dist_lane_clearance)
                 ..";reason="..tostring(state.gk_dist_decision_reason))
+        end
+        if state.game_state==3 and state.free_kick_mode
+            and report.frame%60==0 then
+            report:write("FREE_KICK_DIAGNOSTIC",true,state,state.controller_command,
+                "mode="..tostring(state.free_kick_mode)
+                ..";taker="..tostring(state.free_kick_taker)
+                ..";controlled="..tostring(state.my_base)
+                ..";my_distance="..tostring(state.free_kick_my_distance)
+                ..";cpu_distance="..tostring(state.free_kick_cpu_distance)
+                ..";attempts="..tostring(state.free_kick_attempts)
+                ..";cooldown="..tostring(state.free_kick_cooldown)
+                ..";ball_displacement="..tostring(state.free_kick_displacement))
         end
         if state.free_kick_fired then
             report:write("FREE_KICK_ATTEMPT",true,state,state.controller_command,
