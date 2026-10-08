@@ -97,6 +97,8 @@ local latest_contest=nil
 local latest_contest_frame=nil
 local contest_intercept_lock=nil
 local contest_abort_until=0
+local final_third_lock=nil
+local final_third_cooldown_until=0
 local last_flight_discrepancy=false
 local flight_interception_pending=nil
 local danger_lock=nil
@@ -637,6 +639,75 @@ local function step_bot()
                 -- retain regular guarded movement rather than forcing a shot.
                 local attack = live_attack.target_for_carrier(my_base, shoot_diag)
                 local lane_progress_event = live_attack.take_progress_event()
+                -- Maintain a short, fixed reposition target; abandon if the
+                -- angle fails to improve or the run loses too much ground.
+                local rl=config.FINAL_THIRD_REPOSITION_LOCK
+                local px_now,py_now=players.xy(my_base)
+                local dir=field_side.attack_direction()
+                local angle=shoot_diag and shoot_diag.shot_angle
+                if final_third_lock and final_third_lock.carrier~=my_base then
+                    final_third_lock=nil
+                end
+                if final_third_lock then
+                    local lock=final_third_lock
+                    local age=report.frame-lock.start
+                    local retreat=(lock.start_x-px_now)*lock.direction
+                    local gain=(lock.start_angle or 0)-(angle or lock.start_angle or 0)
+                    local dist=math.sqrt((lock.target_x-px_now)^2+(lock.target_y-py_now)^2)
+                    local reason=nil
+                    if not poor_angle then reason="ANGLE_RESOLVED"
+                    elseif age>=rl.max_frames then reason="TIMEOUT"
+                    elseif retreat>rl.max_retreat then reason="EXCESS_RETREAT"
+                    elseif age>=rl.progress_check_frames and gain<rl.min_angle_gain then
+                        reason="NO_ANGLE_GAIN"
+                    elseif dist<=rl.arrive_distance then reason="TARGET_REACHED" end
+                    if reason then
+                        report:write(reason=="ANGLE_RESOLVED" and "REPOSITION_SUCCESS"
+                            or "REPOSITION_ABORT",true,
+                            {status="ATTACK_FINAL_THIRD_REPOSITION",
+                             possession=possession,game_state=gs,my_base=my_base},
+                            "OBSERVE_REPOSITION",
+                            "reason="..reason..";age="..age
+                            ..";angle_gain="..gain..";retreat="..retreat
+                            ..";target_x="..lock.target_x..";target_y="..lock.target_y)
+                        final_third_lock=nil
+                        final_third_cooldown_until=report.frame+rl.cooldown_frames
+                    else
+                        attack={mode="FINAL_THIRD_REPOSITION",
+                            target_x=lock.target_x,target_y=lock.target_y,
+                            direction=dir,
+                            goal_target_x=lock.goal_x,goal_target_y=lock.goal_y,
+                            goal_distance=shoot_diag and shoot_diag.distance,
+                            lateral_offset=shoot_diag and shoot_diag.lateral_offset}
+                    end
+                end
+                if not final_third_lock and attack
+                    and attack.mode=="FINAL_THIRD_REPOSITION"
+                    and poor_angle and report.frame>=final_third_cooldown_until
+                    and (dir==1 or dir==-1) then
+                    local retreat=(px_now-attack.target_x)*dir
+                    if retreat>rl.max_retreat then
+                        attack.target_x=px_now-dir*rl.max_retreat
+                    end
+                    final_third_lock={carrier=my_base,start=report.frame,
+                        start_x=px_now,start_angle=angle, direction=dir,
+                        target_x=attack.target_x,target_y=attack.target_y,
+                        goal_x=attack.goal_target_x,goal_y=attack.goal_target_y}
+                    report:write("REPOSITION_START",true,
+                        {status="ATTACK_FINAL_THIRD_REPOSITION",
+                         possession=possession,game_state=gs,my_base=my_base},
+                        "OBSERVE_REPOSITION",
+                        "angle="..tostring(angle)
+                        ..";target_x="..tostring(attack.target_x)
+                        ..";target_y="..tostring(attack.target_y))
+                elseif not final_third_lock and attack
+                    and attack.mode=="FINAL_THIRD_REPOSITION" then
+                    -- Following a failed attempt, avoid repeating the same
+                    -- reverse movement; allow the ordinary guarded advance.
+                    attack.mode="ADVANCE"
+                    attack.target_x=px_now+dir*config.FINAL_THIRD_REPOSITION_LOCK.max_retreat
+                    attack.target_y=py_now
+                end
 
                 if attack ~= nil then
                     local px, py = players.xy(my_base)
