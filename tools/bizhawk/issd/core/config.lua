@@ -216,6 +216,17 @@ M.BOX_PRESSURE = {
 }
 
 -- Observational only. Player speed and ETA margin require calibration.
+-- Conservative tactical gate; uses previous-frame stabilized ETA only.
+M.BALL_CONTEST_DECISION_GATE = {
+    max_height=20,
+    max_my_distance=145,
+    max_age_frames=2,
+    min_cpu_eta_advantage=6,
+    min_stability_frames=4,
+    goal_proximity_radius=320,
+    log_denied_every=60,
+}
+
 M.BALL_CONTEST_FEASIBILITY = {
     estimated_my_speed=4.0,
     estimated_cpu_speed=4.0,
