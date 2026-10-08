@@ -23,6 +23,7 @@ local Defense = dofile(DIR .. "../tactics/defense.lua")
 local LiveDefense = dofile(DIR .. "../tactics/live_defense.lua")
 local ActiveTackle = dofile(DIR .. "../tactics/active_tackle.lua")
 local LiveAttack = dofile(DIR .. "../tactics/live_attack.lua")
+local FieldBoundary = dofile(DIR .. "../tactics/field_boundary.lua")
 local Shoot = dofile(DIR .. "../tactics/shoot.lua")
 local ForwardPass = dofile(DIR .. "../tactics/forward_pass.lua")
 local DefensiveExit = dofile(DIR .. "../tactics/defensive_exit.lua")
@@ -52,6 +53,7 @@ local defense = Defense.new(config, players, Geometry, field_side)
 local live_defense = LiveDefense.new(config, players, field_side)
 local active_tackle = ActiveTackle.new(config, players)
 local live_attack = LiveAttack.new(config, players, field_side)
+local field_boundary = FieldBoundary.new(config, mem)
 local shoot = Shoot.new(config, players, field_side)
 local forward_pass = ForwardPass.new(config, players, field_side, mem)
 local defensive_exit = DefensiveExit.new(config, players, field_side, mem)
@@ -426,8 +428,12 @@ local function step_bot()
                         state.defensive_clear_direction=exit.direction
                         return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                     end
+                    local exit_guard=nil
                     if exit.mode=="MOVE" then
-                        movement.move_toward(exit.dx,exit.dy)
+                        local mx,my=players.xy(my_base)
+                        exit_guard=field_boundary.correct(mx,my,
+                            mx+exit.dx,my+exit.dy)
+                        movement.move_toward(exit_guard.x-mx,exit_guard.y-my)
                     else
                         movement.stop()
                     end
@@ -438,6 +444,10 @@ local function step_bot()
                     state.defensive_hold_age=defensive_hold_age
                     state.defensive_exit_reason=exit.reason
                     state.defensive_pressure_distance=exit.threat
+                    state.boundary_risk=exit_guard and exit_guard.risk
+                    state.boundary_changed=exit_guard and exit_guard.changed
+                    state.boundary_original_x=exit_guard and exit_guard.original_x
+                    state.boundary_original_y=exit_guard and exit_guard.original_y
                     return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                 end
                 defensive_carrier=nil; defensive_hold_age=0
@@ -484,8 +494,11 @@ local function step_bot()
 
                 if attack ~= nil then
                     local px, py = players.xy(my_base)
-                    local dx = attack.target_x - px
-                    local dy = attack.target_y - py
+                    local guarded=field_boundary.correct(px,py,attack.target_x,attack.target_y)
+                    local dx=guarded.x-px
+                    local dy=guarded.y-py
+                    local boundary_correction=guarded.changed
+                    local boundary_risk=guarded.risk
 
                     local lane_action = nil
                     local escape_fired = false
@@ -493,7 +506,8 @@ local function step_bot()
                         dash_frames = 0
                         dash_carrier = my_base
                     end
-                    if attack.mode == "LANE" and attack.blocker_base ~= nil then
+                    if not boundary_risk and not boundary_correction
+                        and attack.mode == "LANE" and attack.blocker_base ~= nil then
                         if dash_frames > 0 then
                             movement.move_toward_button(dx, dy, config.ATTACK.escape_button)
                             dash_frames = dash_frames - 1
@@ -541,8 +555,12 @@ local function step_bot()
                     state.attack_goal_x = attack.goal_target_x
                     state.attack_goal_y = attack.goal_target_y
                     state.attack_goal_distance = attack.goal_distance
-                    state.attack_target_x = attack.target_x
-                    state.attack_target_y = attack.target_y
+                    state.attack_target_x = guarded.x
+                    state.attack_target_y = guarded.y
+                    state.boundary_risk=boundary_risk
+                    state.boundary_changed=boundary_correction
+                    state.boundary_original_x=guarded.original_x
+                    state.boundary_original_y=guarded.original_y
                     state.attack_direction = attack.direction
                     state.attack_my_side = attack.my_side
                     state.attack_advance_distance =
@@ -1268,6 +1286,18 @@ while true do
                 "reason="..tostring(state.defensive_exit_reason)
                 ..";threat_distance="..tostring(state.defensive_pressure_distance)
                 ..";age="..tostring(state.defensive_hold_age))
+        end
+        if state.boundary_changed and report.frame%15==0 then
+            report:write("BOUNDARY_TARGET_CLAMPED",true,state,state.controller_command,
+                "original_x="..tostring(state.boundary_original_x)
+                ..";original_y="..tostring(state.boundary_original_y)
+                ..";target_x="..tostring(state.attack_target_x)
+                ..";target_y="..tostring(state.attack_target_y))
+        end
+        if state.boundary_risk and report.frame%30==0 then
+            report:write("BOUNDARY_RISK",true,state,state.controller_command,
+                "status="..tostring(state.status)
+                ..";corrected="..tostring(state.boundary_changed))
         end
         if state.status=="DEFENSIVE_SHORT_ESCAPE" and report.frame%30==0 then
             report:write("DEFENSIVE_SHORT_ESCAPE",true,state,state.controller_command,
