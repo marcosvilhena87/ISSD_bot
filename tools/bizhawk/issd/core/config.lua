@@ -196,6 +196,14 @@ M.ACTIVE_TACKLE = {
     outcome_frames = 45,
 }
 
+M.SHOT_LANE = {
+    activation_radius = 340,
+    intercept_offset = 48,
+    max_fraction = 0.60,
+    block_width = 30,
+    telemetry_frames = 15,
+}
+
 M.GOAL_SIDE = {
     offset = 65, -- from carrier toward Brazilian GK
     max_fraction = 0.65,
