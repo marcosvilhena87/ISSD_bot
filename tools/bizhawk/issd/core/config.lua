@@ -220,6 +220,7 @@ M.BALL_CONTEST_FEASIBILITY = {
     estimated_my_speed=4.0,
     estimated_cpu_speed=4.0,
     contested_eta_margin=6,
+    stability_frames=4, -- consecutive observations before scoring a prediction
     max_lead_frames=8,
     max_lead_distance=64,
     max_contestable_height=20,
