@@ -302,6 +302,11 @@ local function step_bot()
     end
     local possession = ball.possession()
     local gs = game_state.read()
+    -- A reposition attempt belongs to one confirmed attacking carrier.
+    if possession~=my_base or gs~=0
+        or not gameplay_active.is_active(gameplay_value) then
+        final_third_lock=nil
+    end
     if gs~=1 then goal_kick.reset() end
     if possession~=0 or gs~=0 or not gameplay_active.is_active(gameplay_value) then
         contest_intercept_lock=nil
