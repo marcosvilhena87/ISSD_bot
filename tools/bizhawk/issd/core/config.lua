@@ -110,6 +110,14 @@ M.GK_DISTRIBUTION = {
     retry_frames = 30,
 }
 
+-- Provisional world-unit thresholds; position of GK approximates goalmouth.
+M.BOX_COVERAGE = {
+    activation_radius = 340,
+    threat_goal_radius = 220,
+    threat_ball_radius = 260,
+    unmarked_distance = 75,
+}
+
 M.LIVE_DEFENSE = {
     goal_side_offset = 48,
 
