@@ -89,6 +89,8 @@ M.DEFENSIVE_EXIT = {
     max_advance=70, field_margin=40, step=35,
     forward_step=12, min_escape_clearance=60,
     pressure_radius=95, emergency_radius=38,
+    reassessment_frames=60, max_reassessments=2,
+    total_advance_limit=140, action_settle_frames=20,
 }
 
 M.FORWARD_PASS = {
