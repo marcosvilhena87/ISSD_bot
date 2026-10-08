@@ -480,10 +480,13 @@ local function step_bot()
                         state, "PLAYER_POSSESSION", "MY_CONTROLLED"
                     )
                 end
-                local pass = forward_pass.plan(my_base)
+                local poor_angle=shoot_diag and
+                    shoot_diag.reason=="BAD_SHOT_ANGLE"
+                local pass=forward_pass.plan(my_base,poor_angle)
                 if pass and forward_pass.fire(pass,movement) then
                     local state=make_state(my_base,0,0,"ATTACK_FORWARD_PASS",possession,gs)
                     state.forward_pass_fired=true
+                    state.centralizing_pass=poor_angle and true or false
                     state.forward_pass_zone=pass.zone
                     state.forward_pass_intent=pass.intent
                     state.forward_pass_receiver=pass.receiver
@@ -497,6 +500,8 @@ local function step_bot()
                     state.forward_pass_direction=pass.direction
                     return attach_live_state(state,"PLAYER_POSSESSION","MY_CONTROLLED")
                 end
+                -- If an angle is unsuitable and no safe central outlet exists,
+                -- retain regular guarded movement rather than forcing a shot.
                 local attack = live_attack.target_for_carrier(my_base, shoot_diag)
                 local lane_progress_event = live_attack.take_progress_event()
 
@@ -1334,6 +1339,17 @@ while true do
             report:write("DEFENSIVE_HOLD",true,state,state.controller_command,
                 "carrier="..tostring(state.my_base)
                 ..";age="..tostring(state.defensive_hold_age))
+        end
+        if state.centralizing_pass then
+            report:write("ATTACK_CENTRALIZING_PASS",true,state,state.controller_command,
+                "receiver="..tostring(state.forward_pass_receiver)
+                ..";clearance="..tostring(state.forward_pass_clearance)
+                ..";lane_clearance="..tostring(state.forward_pass_lane_clearance))
+        end
+        if state.shot_reason=="BAD_SHOT_ANGLE" and report.frame%45==0 then
+            report:write("ATTACK_SHOT_ANGLE_REJECTED",true,state,state.controller_command,
+                "distance="..tostring(state.shot_distance)
+                ..";forward="..tostring(state.shot_forward))
         end
         if state.forward_pass_fired then
             report:write("FORWARD_PASS_ATTEMPT",true,state,state.controller_command,
