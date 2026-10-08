@@ -166,6 +166,7 @@ local function step_bot()
     player_switch.tick()
     gk_distribution.tick()
     shoot.tick()
+    forward_pass.tick()
     defense_interception.tick()
     if escape_cooldown > 0 then escape_cooldown = escape_cooldown - 1 end
 
