@@ -1555,6 +1555,16 @@ while true do
             state.ball_flight_origin=flight.origin
             state.ball_flight_age=flight.age
             state.ball_flight_discrepancy=flight.discrepancy
+            -- Physical situation is orthogonal to tactical status, including
+            -- danger overrides, switches and intercept locks. No carrier must
+            -- be confirmed: team possession RAM is only the logical side.
+            if state.possession==0 and state.game_state==0 then
+                local logical_team=mem.u8(config.ADDR.team_possession)
+                if logical_team==0 or logical_team==1 then
+                    local side=logical_team==0 and "MY" or "CPU"
+                    state.ball_situation_class=side.."_BALL_"..flight.height_band
+                end
+            end
             if state.status=="MY_UNOWNED_BALL" then
                 state.status,state.flight_strategy,state.flight_height_band=
                     BallFlightContext.classify_unowned_ball(flight,"MY")
