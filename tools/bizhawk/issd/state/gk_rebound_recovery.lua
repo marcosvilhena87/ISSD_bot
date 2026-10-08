@@ -13,6 +13,7 @@ function M.new(config,players)
   o.candidate_frame=-9999;o.last_reason=nil
  end
  function o.active(frame) return o.window_until>=frame end
+ function o.remaining(frame) return math.max(0,o.window_until-frame) end
  function o.update(state,frame)
   if state.game_state~=0 or state.gameplay_active~=1 then
    local was=o.active(frame)
