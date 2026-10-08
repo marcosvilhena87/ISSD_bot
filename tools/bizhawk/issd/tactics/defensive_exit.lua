@@ -1,7 +1,8 @@
 local M={}
 function M.new(config,players,field_side,mem)
  local c=config.DEFENSIVE_EXIT
- local o={carrier=nil,age=0,start_x=nil,start_y=nil,clearance_used=false}
+ local o={carrier=nil,age=0,start_x=nil,start_y=nil,clearance_used=false,limit_age=0,
+  total_start_x=nil,total_start_y=nil,reassessments=0,pending_frames=0}
  local function d(x,y,a,b) return math.sqrt((x-a)^2+(y-b)^2) end
  local function space(x,y)
   local nearest=99999
@@ -10,11 +11,15 @@ function M.new(config,players,field_side,mem)
   end)
   return nearest
  end
- function o.reset() o.carrier=nil;o.age=0;o.start_x=nil;o.start_y=nil;o.clearance_used=false end
+ function o.reset() o.carrier=nil;o.age=0;o.start_x=nil;o.start_y=nil;o.clearance_used=false
+  o.limit_age=0;o.total_start_x=nil;o.total_start_y=nil
+  o.reassessments=0;o.pending_frames=0 end
+ function o.on_pass() o.pending_frames=c.action_settle_frames end
  function o.plan(carrier,pass_cooldown)
   if o.carrier~=carrier then o.reset();o.carrier=carrier end
   o.age=o.age+1
   local x,y=players.xy(carrier)
+  if not o.total_start_x then o.total_start_x,o.total_start_y=x,y end
   local threat=space(x,y)
   local pressured=threat<=c.pressure_radius
   local width=mem.u16(config.ADDR.field_width)
@@ -55,16 +60,39 @@ function M.new(config,players,field_side,mem)
    end)
   end
   if best then best.threat=threat;return best end
+  if o.pending_frames>0 then
+   o.pending_frames=o.pending_frames-1
+   return {mode="HOLD",reason="ACTION_SETTLING",age=o.age,threat=threat}
+  end
   if not pressured and o.age<c.hold_before_move then return {mode="HOLD",reason="WAIT_OUTLET",age=o.age,threat=threat} end
   if not o.start_x then o.start_x,o.start_y=x,y end
   if d(x,y,o.start_x,o.start_y)>=c.max_advance then
-   return {mode="HOLD",reason="ESCAPE_LIMIT",age=o.age}
+   o.limit_age=o.limit_age+1
+   -- Never allow indefinite stationary possession, but cap overall travel.
+   local total=d(x,y,o.total_start_x,o.total_start_y)
+   if o.limit_age>=c.reassessment_frames
+      and total<c.total_advance_limit
+      and o.reassessments<c.max_reassessments then
+    o.limit_age=0;o.start_x,o.start_y=x,y
+    o.reassessments=o.reassessments+1
+    return {mode="REASSESS",reason="NEW_ESCAPE_WINDOW",age=o.age,
+      threat=threat,reassessments=o.reassessments,total=total}
+   end
+   if threat<=c.emergency_radius and not o.clearance_used then
+    o.clearance_used=true;o.pending_frames=c.action_settle_frames
+    return {mode="CLEAR",button="A",
+      direction=dir==1 and "Right" or "Left",
+      reason="PRESSURE_ESCAPE_LIMIT",age=o.age,threat=threat}
+   end
+   return {mode="HOLD",reason="ESCAPE_LIMIT",
+     age=o.age,threat=threat,total=total}
   end
+  o.limit_age=0
   local up=y-c.step>=low and space(x,y-c.step) or -1
   local down=y+c.step<=high and space(x,y+c.step) or -1
   if math.max(up,down)<c.min_escape_clearance then
    if threat<=c.emergency_radius and not o.clearance_used then
-    o.clearance_used=true
+    o.clearance_used=true;o.pending_frames=c.action_settle_frames
     return {mode="CLEAR",button="A",direction=dir==1 and "Right" or "Left",reason="PRESSURE_NO_SAFE_SPACE",age=o.age,threat=threat}
    end
    return {mode="HOLD",reason="NO_SAFE_SPACE",age=o.age,threat=threat}
