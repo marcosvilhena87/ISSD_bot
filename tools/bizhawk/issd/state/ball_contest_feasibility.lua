@@ -16,9 +16,10 @@ function M.new(config,players)
   o.previous=nil;o.pending=nil;o.candidate=nil;o.candidate_age=0;o.stable=nil;o.episode_scored=false
  end
  local function finish(p,outcome,frame)
+  local correct=nil
+  if outcome=="MY" or outcome=="CPU" then correct=(p.predicted==outcome) end
   return {outcome=outcome,start=p.frame,predicted=p.predicted,
-   elapsed=frame-p.frame,correct=(outcome=="MY" or outcome=="CPU")
-      and (p.predicted==outcome) or nil,
+   elapsed=frame-p.frame,correct=correct,
    my_eta=p.my_eta,cpu_eta=p.cpu_eta,advantage=p.advantage,
    height=p.height,confidence=p.confidence}
  end
