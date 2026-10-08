@@ -66,3 +66,7 @@ Enderecos WRAM candidatos: `0x0DA2` (My_Goal(s), u16 LE) e `0x0EA2` (CPU_Goal(s)
 Quando a bola esta livre, a posse de equipe indica CPU e a bola se move com velocidade >=3 unidades/frame e componente horizontal >=2 unidades/frame em direcao ao nosso goleiro, o bot pode priorizar um ponto futuro no caminho da bola. A ativacao exige distancia horizontal ao GK de ate 300 unidades e estimativa de chegada em ate 28 frames. A projecao usa lead de 3 a 16 frames (65% do tempo ate o GK) e nao ultrapassa sua coordenada X. A troca de jogador considera o novo ponto-alvo; o status `CPU_DANGER_INTERCEPT` registra a ativacao, e a coluna `detail` de STATE_CHANGE inclui `danger_intercept=true`, `frames_to_goal` e `lead_frames`.
 
 Limites: posicao do goleiro e aproximacao horizontal sao proxies para a linha de gol; nao ha calibracao da velocidade de corrida, colisao ou defesa do goleiro. A regra nao altera a IA de goleiro nem garante prevencao de gol. Validar em BizHawk e comparar PRE_GOAL_TRACE/GOAL_AGAINST antes de afinar os thresholds.
+
+## Contadores de chutes (enderecos candidatos)
+
+`My_Shot(s)` = WRAM `0x0DAA` e `CPU_Shot(s)` = WRAM `0x0EAA`, ambos unsigned 16-bit little-endian. Um incremento unitario isolado gera `SHOT_FOR` ou `SHOT_AGAINST` no arquivo unico `issd_report.csv`; reducoes geram `SHOTS_RESET` e variacoes simultaneas ou saltos geram `SHOTS_JUMP`. O primeiro valor observado e baseline, sem evento. Confirmar durante partida se os enderecos acompanham a tela de estatisticas; nao ha finalizacao automatica ainda.
