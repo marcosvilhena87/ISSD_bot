@@ -130,6 +130,7 @@ M.FREE_KICK = {
     shot_max_distance = 260,
     retry_frames = 75,
     max_attempts = 2,
+    ball_move_threshold = 18,
 }
 
 M.CORNER_KICK = {
