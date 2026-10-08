@@ -1,9 +1,9 @@
 -- Observational ball flight metadata; TeamPoss is not evidence of the kicker.
 local M={}
 function M.new(config,mem,players)
- local o={previous_height=nil,previous_owner=nil,origin="UNKNOWN",age=0}
+ local o={previous_height=nil,previous_owner=nil,origin="UNKNOWN",age=0,height_band=nil}
  function o.reset()
-  o.previous_height=nil;o.previous_owner=nil;o.origin="UNKNOWN";o.age=0
+  o.previous_height=nil;o.previous_owner=nil;o.origin="UNKNOWN";o.age=0;o.height_band=nil
  end
  function o.update(active,game_state,owner,team_possession)
   if not active or game_state~=0 then o.reset();return nil end
@@ -29,8 +29,20 @@ function M.new(config,mem,players)
   else
    o.origin="UNKNOWN";o.age=0
   end
+  local band=o.height_band
+  if band==nil then
+    band=height<=3 and "GROUND" or height<=20 and "LOW" or "AERIAL"
+  elseif band=="GROUND" then
+    if height>=6 then band=height>=23 and "AERIAL" or "LOW" end
+  elseif band=="LOW" then
+    if height<=2 then band="GROUND"
+    elseif height>=23 then band="AERIAL" end
+  elseif band=="AERIAL" then
+    if height<=17 then band=height<=2 and "GROUND" or "LOW" end
+  end
+  o.height_band=band
   o.previous_height=height
-  return {height=height,reference_height=math.max(0,-reference),
+  return {height_band=band,height=height,reference_height=math.max(0,-reference),
     vertical_delta=dh,phase=phase,physical=physical,
     origin=o.origin,age=o.age,logical_team=team_possession,
     discrepancy=(owner==0 and ((team_possession==0 and o.origin=="CPU")
@@ -41,21 +53,11 @@ end
 -- Logical MY possession is independent of physical flight and last carrier.
 -- Exposed as separate axes; these labels do not authorize a chase.
 function M.classify_my_flight(flight)
-  local physical=flight.physical
-  local origin=flight.origin
-  local band=physical=="GROUND_CONTACT" and "GROUND"
-    or physical=="LOW_BOUNCING" and "LOW_BOUNCE" or "AERIAL"
-  local source=(origin=="MY" or origin=="CPU") and origin or "UNKNOWN"
-  local strategy
-  if band=="AERIAL" then
-    strategy="TRACK_LANDING"
-  elseif source=="CPU" then
-    strategy="ASSESS_CPU_CONTEST"
-  elseif source=="MY" then
-    strategy="PROTECT_OWN_RECEPTION"
-  else
-    strategy="ASSESS_LOOSE_BALL"
-  end
-  return "MY_FLIGHT_"..band.."_"..source.."_ORIGIN",strategy,band
+  local band=flight.height_band
+  local strategy=band=="AERIAL" and "TRACK_LANDING"
+    or flight.origin=="CPU" and "ASSESS_CPU_CONTEST"
+    or flight.origin=="MY" and "PROTECT_OWN_RECEPTION"
+    or "ASSESS_LOOSE_BALL"
+  return "MY_BALL_"..band,strategy,band
 end
 return M
