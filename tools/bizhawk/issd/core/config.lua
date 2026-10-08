@@ -50,6 +50,11 @@ M.DEADZONE_Y = 8
 -- em relacao ao portador da CPU.
 -- Ataque em jogo corrido.
 -- Primeiro baseline: conduzir reto na direcao do gol adversario.
+M.FIELD_BOUNDARY = {
+    margin_x=40, margin_y=40,
+    risk_zone=30, inward_step=48,
+}
+
 M.ATTACK = {
     advance_distance = 96,
 
