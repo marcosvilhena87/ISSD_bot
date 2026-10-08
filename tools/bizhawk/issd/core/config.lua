@@ -230,6 +230,7 @@ M.BALL_CONTEST_DECISION_GATE = {
     lock_max_defender_eta=30,
     lock_max_eta_deficit=9,
     lock_stop_distance=22,
+    abort_cooldown_frames=18,
 }
 
 M.BALL_CONTEST_FEASIBILITY = {
