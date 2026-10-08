@@ -1,7 +1,7 @@
 -- Conservative shooting policy for SNES ISS Deluxe (X = shoot).
 local M = {}
 function M.new(config, players, field_side)
-    local obj={cooldown=0, last_carrier=nil, last_diagnostic=nil}
+    local obj={cooldown=0, last_carrier=nil, last_diagnostic=nil,shot_count=0}
     function obj.tick()
         if obj.cooldown>0 then obj.cooldown=obj.cooldown-1 end
     end
@@ -9,6 +9,7 @@ function M.new(config, players, field_side)
         obj.cooldown=0
         obj.last_carrier=nil
         obj.last_diagnostic=nil
+        obj.shot_count=0
     end
     function obj.plan(carrier)
         local c=config.SHOOT
@@ -81,7 +82,14 @@ function M.new(config, players, field_side)
     end
     function obj.fire(plan,movement)
         if not plan or obj.cooldown>0 then return false end
-        movement.press_direction_button(plan.direction,plan.button)
+        local dash=config.SHOOT.dash_shoot_calibration and (obj.shot_count%2==1)
+        if dash then
+            movement.press_direction_buttons(plan.direction,{"Y",plan.button})
+        else
+            movement.press_direction_button(plan.direction,plan.button)
+        end
+        plan.variant=dash and "DASH" or "NORMAL"
+        obj.shot_count=obj.shot_count+1
         obj.cooldown=config.SHOOT.cooldown_frames
         obj.last_carrier=plan.carrier
         return true
