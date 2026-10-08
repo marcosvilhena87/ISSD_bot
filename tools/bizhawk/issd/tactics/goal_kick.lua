@@ -1,4 +1,4 @@
--- GS=1: goalkeeper approaches the restart ball before attempting a goal kick.
+-- GS=1: the goalkeeper can kick directly without moving to the ball.
 local M={}
 function M.new(config,players,field_side)
     local c=config.GOAL_KICK
@@ -13,22 +13,18 @@ function M.new(config,players,field_side)
         if obj.cooldown>0 then obj.cooldown=obj.cooldown-1 end
         local dir=field_side.attack_direction()
         if dir==0 then return {mode="WAIT_SIDE",taker=taker,elapsed=obj.frames} end
-        local gx,gy=players.xy(taker)
-        local dx,dy=bx-gx,by-gy
-        local distance=math.sqrt(dx*dx+dy*dy)
         local displacement=0
         if obj.kick_x~=nil then
             displacement=math.sqrt((bx-obj.kick_x)^2+(by-obj.kick_y)^2)
             if displacement>=c.ball_move_threshold then obj.ball_moved=true end
         end
-        local plan={taker=taker,button=c.button,
+        local button=c.buttons[math.min(obj.attempts+1,#c.buttons)]
+        local plan={taker=taker,button=button,
             direction=dir==1 and "Right" or "Left",
-            distance=distance,dx=dx,dy=dy,displacement=displacement,
+            displacement=displacement,
             controlled=controlled,attempts=obj.attempts,elapsed=obj.frames,
             cooldown=obj.cooldown}
         if obj.ball_moved then plan.mode="BALL_MOVED"
-        elseif controlled~=taker then plan.mode="WAIT_CONTROL"
-        elseif distance>c.kick_distance then plan.mode="APPROACH"
         elseif obj.frames<c.initial_delay_frames then plan.mode="STABILIZING"
         elseif obj.attempts>=c.max_attempts then plan.mode="EXHAUSTED"
         elseif obj.cooldown>0 then plan.mode="COOLDOWN"
