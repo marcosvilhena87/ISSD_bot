@@ -564,9 +564,9 @@ local function step_bot()
                     end
 
                     local status =
-                        attack.mode == "LANE"
-                        and "ATTACK_LANE"
-                        or "ATTACK_ADVANCE"
+                        attack.mode == "FINAL_THIRD_REPOSITION"
+                        and "ATTACK_FINAL_THIRD_REPOSITION"
+                        or (attack.mode == "LANE" and "ATTACK_LANE" or "ATTACK_ADVANCE")
 
                     local state = make_state(
                         my_base, dx, dy, status, possession, gs
@@ -595,6 +595,8 @@ local function step_bot()
                     state.attack_advance_distance =
                         attack.advance_distance
                     state.attack_mode = attack.mode
+                    state.attack_goal_forward = attack.goal_forward
+                    state.attack_lateral_offset = attack.lateral_offset
                     state.attack_lane_direction =
                         attack.lane_direction
                     state.attack_lane_lock_frames =
@@ -1324,6 +1326,14 @@ while true do
                 ..";my_ball="..tostring(state.box_recovery_own_distance)
                 ..";target_x="..tostring(state.intercept_target_x)
                 ..";target_y="..tostring(state.intercept_target_y))
+        end
+        if state.status=="ATTACK_FINAL_THIRD_REPOSITION" and report.frame%30==0 then
+            report:write("ATTACK_FINAL_THIRD_REPOSITION",true,state,state.controller_command,
+                "forward="..tostring(state.attack_goal_forward)
+                ..";lateral="..tostring(state.attack_lateral_offset)
+                ..";target_x="..tostring(state.attack_target_x)
+                ..";target_y="..tostring(state.attack_target_y)
+                ..";shot_reason="..tostring(state.shot_reason))
         end
         if state.status=="DEFENSE_BOX_COVERAGE" and report.frame%30==0 then
             report:write("BOX_THREAT",true,state,state.controller_command,
