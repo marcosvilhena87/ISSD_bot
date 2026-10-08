@@ -703,6 +703,21 @@ local function step_bot()
                 )
             end
 
+            -- First priority: prevent an unmarked attacker from receiving and shooting.
+            local urgent=live_defense.box_pressure(possession,bx,by,false)
+            if urgent then
+                local switch_state=maybe_switch_player(urgent.x,urgent.y,"BOX_ATTACKER_PRESSURE")
+                if switch_state then return switch_state end
+                local px,py=players.xy(my_base)
+                local dx,dy=urgent.x-px,urgent.y-py
+                movement.move_toward(dx,dy)
+                local state=make_state(my_base,dx,dy,"BOX_ATTACKER_PRESSURE",possession,gs)
+                state.box_threat=urgent.base
+                state.box_threat_nearest_defender=urgent.nearest_defender
+                state.box_threat_ball_distance=urgent.attacker_ball_distance
+                return attach_live_state(state,"BOX_PRESSURE","CPU_CONTROLLED")
+            end
+
             local tackle=active_tackle.plan(my_base,possession)
             if tackle and active_tackle.fire(tackle,movement) then
                 local state=make_state(my_base,0,0,"DEFENSE_ACTIVE_TACKLE",possession,gs)
@@ -819,39 +834,23 @@ local function step_bot()
         if possession == 0 and team_possession.is_cpu(team_value) then
             live_attack.reset()
             gk_distribution.reset()
-            -- Emergency second-ball recovery: slow or loose balls near our goal
-            -- must be contested before an attacker can settle and shoot.
-            local gkx, gky = players.xy(config.MY_FIRST)
-            local box_cfg = config.BOX_RECOVERY
-            local goal_d2 = (bx-gkx)^2 + (by-gky)^2
-            if goal_d2 <= box_cfg.goal_radius^2
-                and possession_context.ball_speed <= box_cfg.max_ball_speed then
-                local nearest_cpu = math.huge
-                players.each_cpu(function(base)
-                    if base ~= config.CPU_FIRST then
-                        local ex,ey = players.xy(base)
-                        local ds = math.sqrt((ex-bx)^2+(ey-by)^2)
-                        if ds < nearest_cpu then nearest_cpu=ds end
-                    end
-                end)
-                if nearest_cpu <= box_cfg.attacker_radius then
-                    local switch_state = maybe_switch_player(bx,by,"BOX_EMERGENCY_RECOVERY")
-                    if switch_state then
-                        switch_state.box_recovery_attacker_distance=nearest_cpu
-                        return switch_state
-                    end
-                    local px,py=players.xy(my_base)
-                    local dx,dy=bx-px,by-py
-                    movement.move_toward(dx,dy)
-                    local state=make_state(my_base,dx,dy,
-                        "BOX_EMERGENCY_RECOVERY",possession,gs)
-                    state.intercept_target_x=bx
-                    state.intercept_target_y=by
-                    state.intercept_player_ball_distance=math.sqrt(dx*dx+dy*dy)
-                    state.box_recovery_attacker_distance=nearest_cpu
-                    state.box_recovery_goal_distance=math.sqrt(goal_d2)
-                    return attach_live_state(state,"BOX_RECOVERY","CPU_BALL_IN_FLIGHT")
-                end
+            -- Contest an attacker who can collect a rebound before aiming at
+            -- the ball itself. Keep the standard interception as fallback.
+            local rebound=live_defense.box_pressure(nil,bx,by,true)
+            if rebound and possession_context.ball_speed<=config.BOX_RECOVERY.max_ball_speed then
+                local switch_state=maybe_switch_player(rebound.x,rebound.y,
+                    "BOX_REBOUND_PRESSURE")
+                if switch_state then return switch_state end
+                local px,py=players.xy(my_base)
+                local dx,dy=rebound.x-px,rebound.y-py
+                movement.move_toward(dx,dy)
+                local state=make_state(my_base,dx,dy,
+                    "BOX_REBOUND_PRESSURE",possession,gs)
+                state.box_threat=rebound.base
+                state.box_threat_nearest_defender=rebound.nearest_defender
+                state.box_threat_ball_distance=rebound.attacker_ball_distance
+                state.intercept_player_ball_distance=math.sqrt((bx-px)^2+(by-py)^2)
+                return attach_live_state(state,"BOX_PRESSURE","CPU_BALL_IN_FLIGHT")
             end
             local px, py = players.xy(my_base)
             local target = interception.target(
@@ -1269,6 +1268,13 @@ while true do
                 ..";defender_ball_distance="..tostring(state.intercept_player_ball_distance)
                 ..";target_x="..tostring(state.intercept_target_x)
                 ..";target_y="..tostring(state.intercept_target_y))
+        end
+        if (state.status=="BOX_REBOUND_PRESSURE" or state.status=="BOX_ATTACKER_PRESSURE")
+            and report.frame%15==0 then
+            report:write(state.status,true,state,state.controller_command,
+                "attacker="..tostring(state.box_threat)
+                ..";nearest_defender="..tostring(state.box_threat_nearest_defender)
+                ..";attacker_ball_distance="..tostring(state.box_threat_ball_distance))
         end
         if state.status=="DEFENSE_BOX_COVERAGE" and report.frame%30==0 then
             report:write("BOX_THREAT",true,state,state.controller_command,
