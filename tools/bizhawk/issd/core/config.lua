@@ -115,6 +115,17 @@ M.FREE_KICK = {
     max_attempts = 2,
 }
 
+M.CORNER_KICK = {
+    cross_button = "A",
+    short_button = "B",
+    stable_frames = 12,
+    retry_frames = 65,
+    max_attempts = 2,
+    endline_tolerance = 90,
+    sideline_tolerance = 90,
+    max_taker_distance = 120,
+}
+
 M.GOAL_KICK = {
     button = "A", -- high kick, to be validated in GS=1
     initial_delay_frames = 10,
