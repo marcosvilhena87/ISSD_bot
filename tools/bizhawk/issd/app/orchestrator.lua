@@ -60,6 +60,8 @@ local enabled = false
 local stop_on_possession = true
 local previous_keys = {}
 local escape_cooldown = 0
+local dash_frames = 0
+local dash_carrier = nil
 
 local function pressed(keys, key)
     return keys[key] and not previous_keys[key]
@@ -304,14 +306,35 @@ local function step_bot()
                     local dx = attack.target_x - px
                     local dy = attack.target_y - py
 
+                    local lane_action = nil
                     local escape_fired = false
-                    if attack.mode == "LANE" and attack.blocker_base ~= nil
-                        and escape_cooldown == 0
-                        and (attack.blocker_forward == nil
-                            or attack.blocker_forward <= config.ATTACK.escape_max_blocker_distance) then
-                        movement.move_toward_button(dx, dy, config.ATTACK.escape_button)
-                        escape_cooldown = config.ATTACK.escape_cooldown_frames
-                        escape_fired = true
+                    if attack.mode ~= "LANE" or dash_carrier ~= my_base then
+                        dash_frames = 0
+                        dash_carrier = my_base
+                    end
+                    if attack.mode == "LANE" and attack.blocker_base ~= nil then
+                        if dash_frames > 0 then
+                            movement.move_toward_button(dx, dy, config.ATTACK.escape_button)
+                            dash_frames = dash_frames - 1
+                            lane_action = "DASH"
+                        elseif escape_cooldown == 0 then
+                            if attack.blocker_forward ~= nil
+                                and attack.blocker_forward <= config.ATTACK.feint_max_blocker_distance then
+                                -- One-frame Y tap for feint; release on following frame.
+                                movement.move_toward_button(dx, dy, config.ATTACK.escape_button)
+                                escape_cooldown = config.ATTACK.feint_cooldown_frames
+                                lane_action = "FEINT"
+                                escape_fired = true
+                            else
+                                movement.move_toward_button(dx, dy, config.ATTACK.escape_button)
+                                dash_frames = config.ATTACK.dash_duration_frames - 1
+                                escape_cooldown = config.ATTACK.escape_cooldown_frames
+                                lane_action = "DASH"
+                                escape_fired = true
+                            end
+                        else
+                            movement.move_toward(dx, dy)
+                        end
                     else
                         movement.move_toward(dx, dy)
                     end
@@ -329,6 +352,7 @@ local function step_bot()
                     state.shot_forward = shoot_diag and shoot_diag.forward
                     state.shot_blocker = shoot_diag and shoot_diag.blocker
                     state.shot_cooldown = shoot_diag and shoot_diag.cooldown
+                    state.lane_action = lane_action
                     state.escape_fired = escape_fired
                     state.escape_blocker = attack.blocker_base
                     state.attack_goal_x = attack.goal_target_x
@@ -782,9 +806,10 @@ while true do
         end
         report:observe(true, state)
         if state.escape_fired then
-            report:write("LANE_ESCAPE_ATTEMPT", true, state,
+            report:write(state.lane_action == "FEINT" and "LANE_FEINT" or "LANE_DASH_START", true, state,
                 state.controller_command,
-                "button=Y;blocker=" .. tostring(state.escape_blocker)
+                "button=Y;action=" .. tostring(state.lane_action)
+                .. ";blocker=" .. tostring(state.escape_blocker)
                 .. ";target_x=" .. tostring(state.target_x)
                 .. ";target_y=" .. tostring(state.target_y))
         end
