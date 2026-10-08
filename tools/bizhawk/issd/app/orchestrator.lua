@@ -66,6 +66,7 @@ local previous_keys = {}
 local escape_cooldown = 0
 local dash_frames = 0
 local dash_carrier = nil
+local gk_pending = nil
 
 local function pressed(keys, key)
     return keys[key] and not previous_keys[key]
@@ -887,6 +888,31 @@ while true do
                 .. ";goal_distance=" .. tostring(state.attack_goal_distance)
         end
         report:observe(true, state)
+        -- Outcome monitoring only after an actual GK button pulse.
+        if gk_pending and not state.gk_dist_fired then
+            gk_pending.age=gk_pending.age+1
+            local outcome=nil
+            if players.valid_cpu_base(state.possession) then
+                outcome="GK_TURNOVER"
+            elseif players.valid_my_base(state.possession)
+                and state.possession~=config.MY_FIRST then
+                outcome="GK_SAFE"
+            elseif gk_pending.age>=120 or state.game_state~=0 then
+                outcome="GK_OUTCOME_UNKNOWN"
+            end
+            if outcome then
+                report:write(outcome,true,state,state.controller_command,
+                    "mode="..tostring(gk_pending.mode)
+                    ..";age="..tostring(gk_pending.age)
+                    ..";receiver="..tostring(gk_pending.receiver)
+                    ..";possession="..tostring(state.possession))
+                gk_pending=nil
+            end
+        end
+        if state.gk_dist_fired then
+            gk_pending={age=0,mode=state.gk_dist_mode,
+                receiver=state.gk_dist_receiver}
+        end
         if state.escape_fired then
             report:write(state.lane_action == "FEINT" and "LANE_FEINT" or "LANE_DASH_START", true, state,
                 state.controller_command,
@@ -930,6 +956,7 @@ while true do
         goal_trace.observe(true, state)
         overlay.draw(state)
     else
+        gk_pending=nil
         restart.clear()
         report:observe(false, nil)
         local gs = game_state.read()
