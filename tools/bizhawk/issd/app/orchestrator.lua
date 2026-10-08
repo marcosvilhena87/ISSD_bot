@@ -507,6 +507,29 @@ local function step_bot()
                 )
             end
 
+            -- Prefer closing down an unmarked secondary attacker in the box.
+            -- The selected human-controlled defender is the only movable unit.
+            local box = live_defense.box_threat(possession, bx, by)
+            if box then
+                local switch_state = maybe_switch_player(box.x, box.y, "BOX_COVERAGE")
+                if switch_state then
+                    switch_state.box_threat=box.base
+                    return switch_state
+                end
+                local px,py=players.xy(my_base)
+                local dx,dy=box.x-px,box.y-py
+                movement.move_toward(dx,dy)
+                local state=make_state(my_base,dx,dy,"DEFENSE_BOX_COVERAGE",possession,gs)
+                state.box_threat=box.base
+                state.box_threat_goal_distance=box.goal_distance
+                state.box_threat_ball_distance=box.ball_distance
+                state.box_threat_nearest_defender=box.nearest_defender
+                state.live_target_x=box.x
+                state.live_target_y=box.y
+                state.live_carrier=possession
+                return attach_live_state(state,"BOX_COVERAGE","CPU_CONTROLLED")
+            end
+
             local live = live_defense.target_for_carrier(possession)
 
             if live ~= nil then
@@ -920,6 +943,13 @@ while true do
                 .. ";blocker=" .. tostring(state.escape_blocker)
                 .. ";target_x=" .. tostring(state.target_x)
                 .. ";target_y=" .. tostring(state.target_y))
+        end
+        if state.status=="DEFENSE_BOX_COVERAGE" and report.frame%30==0 then
+            report:write("BOX_THREAT",true,state,state.controller_command,
+                "threat="..tostring(state.box_threat)
+                ..";goal_distance="..tostring(state.box_threat_goal_distance)
+                ..";ball_distance="..tostring(state.box_threat_ball_distance)
+                ..";nearest_defender="..tostring(state.box_threat_nearest_defender))
         end
         if state.gk_dist_fired then
             report:write("GK_DISTRIBUTION_ATTEMPT", true, state,
