@@ -440,3 +440,14 @@ Não execute junto com `main.lua` ou outro probe.
 O probe grava snapshots completos da WRAM em um arquivo binário temporário a cada 6 frames (máximo 130 amostras, aproximadamente 13 segundos de jogo a 60 fps). Depois, procura valores `u8/s8/u16/s16` que saem de uma referência inicial, alcançam uma diferença no ápice e retornam próximos à referência. Uma segunda etapa pontua número de mudanças e coerência de subida/descida; falsos positivos continuam possíveis. Ele lê a RAM e escreve **somente arquivos no disco**, sem alterar a memória do jogo. A varredura completa pode reduzir a velocidade da emulação.
 
 O CSV contém `sample,relative_frame,phase,address,type,value,score,coherence,changes` para análise externa. O arquivo binário é preservado para futura auditoria. A tecla `H` é a marcação manual do ápice; se não houver marcação válida o ranking se recusa a concluir. Confirme endereços em **múltiplos** lançamentos antes de integrar à IA.
+
+### Validação focal dos candidatos Z: 0x0410 / 0x19E8
+
+Use `tools/bizhawk/issd/probes/ball_height_watch.lua` no Lua Console, sem executar outros probes simultaneamente. Os endereços são candidatos s16; as alturas exibidas são **estimativas não calibradas** calculadas como `max(0, -valor_s16)`.
+
+- `T` inicia/encerra uma gravação frame a frame (até 3.600 amostras).
+- `V` exporta `issd_ball_height_watch_YYYYMMDD_HHMMSS.csv` para o diretório de trabalho.
+- `J` limpa a gravação.
+- O HUD mostra valores dos dois endereços, diferença, deltas e fases provisórias `GROUND / RISING / FALLING / APEX_OR_STABLE`.
+
+Valide em pelo menos três situações: passe rasteiro (espera-se altura próxima de zero), lançamento alto (sobe e desce) e bola quicando (várias excursões progressivamente menores). O evento de possível quique deve ser verificado visualmente; transições no monitor não provam colisão com o gramado. Compare a defasagem temporal das duas séries para identificar se uma variável é física e outra de renderização. **Não integrar à IA** antes de confirmação em várias jogadas.
