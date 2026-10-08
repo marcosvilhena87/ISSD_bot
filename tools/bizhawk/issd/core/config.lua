@@ -12,6 +12,8 @@ M.ADDR = {
     game_state = 0x00BA,
     score_my = 0x0DA2, -- u16 LE; user-supplied WCH candidate
     score_cpu = 0x0EA2, -- u16 LE; user-supplied WCH candidate
+    shots_my = 0x0DAA, -- u16 LE; candidate
+    shots_cpu = 0x0EAA, -- u16 LE; candidate
     -- Legacy/unstable: 0x056E changes with player state (e.g. GK possession).
     -- Do not use for orientation decisions.
     my_side = 0x056E,
