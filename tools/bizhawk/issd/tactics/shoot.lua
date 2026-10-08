@@ -24,6 +24,16 @@ function M.new(config, players, field_side)
         local fx=(gx-px)*dir
         local dx,dy=gx-px,gy-py
         local d=math.sqrt(dx*dx+dy*dy)
+        local nearest=99999
+        players.each_cpu(function(base)
+            if base~=config.CPU_FIRST then
+                local ex,ey=players.xy(base)
+                local dd=math.sqrt((ex-px)^2+(ey-py)^2)
+                if dd<nearest then nearest=dd end
+            end
+        end)
+        local lateral=math.abs(dy)
+        local angle=math.deg(math.atan(lateral/math.max(math.abs(dx),0.001)))
         diag.distance=d
         diag.forward=fx
         diag.goal_x,diag.goal_y=gx,gy
@@ -60,7 +70,9 @@ function M.new(config, players, field_side)
         diag.reason="READY"
         local direction=dir==1 and "Right" or "Left"
         return {button=c.button,direction=direction,distance=d,
-            goal_x=gx,goal_y=gy,carrier=carrier}
+            goal_x=gx,goal_y=gy,carrier=carrier,
+            lateral_offset=lateral, shot_angle=angle,
+            nearest_defender=nearest}
     end
     function obj.fire(plan,movement)
         if not plan or obj.cooldown>0 then return false end
