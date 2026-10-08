@@ -15,6 +15,7 @@ local Memory = dofile(DIR .. "../core/memory.lua")
 local Players = dofile(DIR .. "../state/players.lua")
 local Ball = dofile(DIR .. "../state/ball.lua")
 local AerialContact = dofile(DIR .. "../state/aerial_contact.lua")
+local BallFlightContext = dofile(DIR .. "../state/ball_flight_context.lua")
 local GameState = dofile(DIR .. "../state/game_state.lua")
 local GameplayActive = dofile(DIR .. "../state/gameplay_active.lua")
 local FieldSide = dofile(DIR .. "../state/field_side.lua")
@@ -47,6 +48,7 @@ local mem = Memory.new(config)
 local players = Players.new(config, mem)
 local ball = Ball.new(config, mem)
 local aerial_contact = AerialContact.new(config, mem, players)
+local flight_context = BallFlightContext.new(config, mem, players)
 local game_state = GameState.new(config, mem)
 local gameplay_active = GameplayActive.new(config, mem)
 local field_side = FieldSide.new(config, mem)
@@ -1357,6 +1359,19 @@ while true do
         defensive_dash_step(state)
         -- Snapshot after the tactical decision, before the next emulated frame.
         state.ball_x, state.ball_y = ball.world_xy()
+        local flight=flight_context.update(
+            gameplay_active.is_active(state.gameplay_active),
+            state.game_state,state.possession,mem.u8(config.ADDR.team_possession))
+        if flight then
+            state.ball_height=flight.height
+            state.ball_height_reference=flight.reference_height
+            state.ball_vertical_delta=flight.vertical_delta
+            state.ball_vertical_phase=flight.phase
+            state.ball_physical_class=flight.physical
+            state.ball_flight_origin=flight.origin
+            state.ball_flight_age=flight.age
+            state.ball_flight_discrepancy=flight.discrepancy
+        end
         if players.valid_my_base(state.my_base) then
             state.player_x, state.player_y = players.xy(state.my_base)
         end
