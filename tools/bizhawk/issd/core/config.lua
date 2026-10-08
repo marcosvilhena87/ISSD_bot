@@ -53,6 +53,16 @@ M.AERIAL_DEFENSIVE_CONTACT = {
     cooldown_frames=30,
 }
 
+-- Bounded final-third angle correction; never force a shot.
+M.FINAL_THIRD_REPOSITION_LOCK = {
+    max_frames=42,
+    max_retreat=28,
+    min_angle_gain=2.0,
+    progress_check_frames=16,
+    cooldown_frames=65,
+    arrive_distance=16,
+}
+
 M.AERIAL_CONTACT = {
     height_addr=0x0410,
     height_reference_addr=0x19E8,
