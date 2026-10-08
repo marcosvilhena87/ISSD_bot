@@ -608,7 +608,14 @@ local function step_bot()
                     )
                     state.shot_reason = shoot_diag and shoot_diag.reason
                     state.shot_fired = true
+                    state.shot_variant = shot.variant
                     state.shot_button = shot.button
+                    report:write("ATTACK_SHOOT_"..shot.variant,true,state,
+                        movement.last_command,
+                        "distance="..tostring(shot.distance)
+                        ..";angle="..tostring(shot.shot_angle)
+                        ..";lateral="..tostring(shot.lateral_offset)
+                        ..";carrier="..tostring(my_base))
                     state.shot_distance = shot.distance
                     state.shot_angle = shot.shot_angle
                     state.shot_lateral_offset = shot.lateral_offset
