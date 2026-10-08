@@ -42,13 +42,41 @@ function M.new(config, players, field_side)
         obj.lane_direction, obj.lane_lock_frames = nil, 0
     end
 
-    function obj.target_for_carrier(carrier_base)
+    function obj.target_for_carrier(carrier_base, shot_diag)
         if not players.valid_my_base(carrier_base) then obj.reset(); return nil end
         local px, py = players.xy(carrier_base)
         local my_side, dir = field_side.my_side(), field_side.attack_direction()
         if my_side == nil or dir == 0 then obj.reset(); return nil end
 
         local gx, gy = players.xy(config.CPU_FIRST)
+        if shot_diag and shot_diag.reason == "BLOCKED_LANE" then
+            local offset = config.ATTACK.lane_offset_y
+            local up_y, down_y = py - offset, py + offset
+            local up_clearance = clearance_at(px, up_y)
+            local down_clearance = clearance_at(px, down_y)
+            local lane_dir
+            if obj.lane_direction ~= nil and obj.lane_lock_frames > 0 then
+                lane_dir = obj.lane_direction
+                obj.lane_lock_frames = obj.lane_lock_frames - 1
+            else
+                local up_score = up_clearance - 0.25 * distance(px, up_y, gx, gy)
+                local down_score = down_clearance - 0.25 * distance(px, down_y, gx, gy)
+                lane_dir = up_score >= down_score and -1 or 1
+                obj.lane_direction = lane_dir
+                obj.lane_lock_frames = config.ATTACK.lane_lock_frames
+            end
+            return {
+                mode="LANE", carrier=carrier_base, player_x=px, player_y=py,
+                target_x=px, target_y=py + lane_dir * offset,
+                direction=dir, my_side=my_side, advance_distance=0,
+                lane_direction=lane_dir, lane_lock_frames=obj.lane_lock_frames,
+                blocker_base=shot_diag.blocker, blocker_forward=nil,
+                blocker_lateral=nil, up_clearance=up_clearance,
+                down_clearance=down_clearance, lane_reason="SHOT_BLOCKED",
+                goal_target_x=gx, goal_target_y=gy,
+                goal_distance=distance(px, py, gx, gy)
+            }
+        end
         local vx, vy = gx - px, gy - py
         local d = distance(px, py, gx, gy)
         -- Prevent moving backwards if the goalkeeper position is invalid or behind us.
