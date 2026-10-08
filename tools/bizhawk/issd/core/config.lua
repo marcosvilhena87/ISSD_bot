@@ -152,6 +152,8 @@ M.CORNER_KICK = {
 
 M.GOAL_KICK = {
     button = "A", -- high kick, to be validated in GS=1
+    kick_distance = 42, -- provisional world units
+    ball_move_threshold = 18,
     initial_delay_frames = 10,
     retry_frames = 60,
     max_attempts = 2,
