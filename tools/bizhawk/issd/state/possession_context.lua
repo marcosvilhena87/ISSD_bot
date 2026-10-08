@@ -95,10 +95,10 @@ function M.new(config, players)
 
         if within_grace and (moving or initial_grace) then
             if obj.last_team == "CPU" then
-                obj.classification = "CPU_BALL_IN_FLIGHT"
+                obj.classification = "CPU_UNOWNED_BALL"
                 return obj.classification
             elseif obj.last_team == "MY" then
-                obj.classification = "MY_BALL_IN_FLIGHT"
+                obj.classification = "MY_UNOWNED_BALL"
                 return obj.classification
             end
         end
