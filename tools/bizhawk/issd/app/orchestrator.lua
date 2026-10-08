@@ -98,6 +98,7 @@ local latest_contest_frame=nil
 local contest_intercept_lock=nil
 local contest_abort_until=0
 local final_third_lock=nil
+local final_third_decision=nil
 local final_third_cooldown_until=0
 local last_flight_discrepancy=false
 local flight_interception_pending=nil
@@ -305,7 +306,15 @@ local function step_bot()
     -- A reposition attempt belongs to one confirmed attacking carrier.
     if possession~=my_base or gs~=0
         or not gameplay_active.is_active(gameplay_value) then
+        if final_third_lock then
+            report:write("REPOSITION_ABORT",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "OBSERVE_REPOSITION",
+                "reason="..(gs~=0 and "STOPPAGE" or "POSSESSION_LOST")
+                ..";age="..(report.frame-final_third_lock.start))
+        end
         final_third_lock=nil
+        final_third_decision=nil
     end
     if gs~=1 then goal_kick.reset() end
     if possession~=0 or gs~=0 or not gameplay_active.is_active(gameplay_value) then
@@ -603,6 +612,18 @@ local function step_bot()
                 local shot = shoot.plan(my_base)
                 local shoot_diag = shoot.last_diagnostic
                 if shot and shoot.fire(shot, movement) then
+                    if final_third_decision then
+                        report:write("FINAL_THIRD_DECISION",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "SHOT","reason=VALID_SHOOT_WINDOW")
+                        final_third_decision=nil
+                    end
+                    if final_third_lock then
+                        report:write("REPOSITION_SUCCESS",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "OBSERVE_REPOSITION","reason=SHOT_AFTER_REPOSITION")
+                        final_third_lock=nil
+                    end
                     local state = make_state(
                         my_base, 0, 0, "ATTACK_SHOOT", possession, gs
                     )
@@ -631,6 +652,18 @@ local function step_bot()
                     shoot_diag.reason=="BAD_SHOT_ANGLE"
                 local pass=forward_pass.plan(my_base,poor_angle)
                 if pass and forward_pass.fire(pass,movement) then
+                    if final_third_decision then
+                        report:write("FINAL_THIRD_DECISION",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "PASS","reason=SAFE_FORWARD_OUTLET")
+                        final_third_decision=nil
+                    end
+                    if final_third_lock then
+                        report:write("REPOSITION_ABORT",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "OBSERVE_REPOSITION","reason=PASS_OPTION")
+                        final_third_lock=nil
+                    end
                     local state=make_state(my_base,0,0,"ATTACK_FORWARD_PASS",possession,gs)
                     state.forward_pass_fired=true
                     state.centralizing_pass=poor_angle and true or false
@@ -683,6 +716,11 @@ local function step_bot()
                             ..";angle_gain="..gain..";retreat="..retreat
                             ..";target_x="..lock.target_x..";target_y="..lock.target_y)
                         final_third_lock=nil
+                        final_third_decision={carrier=my_base,start=report.frame,
+                            reason=reason}
+                        report:write("FINAL_THIRD_DECISION_START",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "OBSERVE_FINAL_THIRD","reason="..reason)
                         final_third_cooldown_until=report.frame+rl.cooldown_frames
                     else
                         attack={mode="FINAL_THIRD_REPOSITION",
@@ -719,6 +757,32 @@ local function step_bot()
                     attack.mode="ADVANCE"
                     attack.target_x=px_now+dir*config.FINAL_THIRD_REPOSITION_LOCK.max_retreat
                     attack.target_y=py_now
+                end
+
+                if final_third_decision then
+                    local decision=final_third_decision
+                    local cfg=config.FINAL_THIRD_ATTACK_DECISION
+                    local elapsed=report.frame-decision.start
+                    if elapsed>=cfg.window_frames then
+                        report:write("FINAL_THIRD_DECISION",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "END","reason=WINDOW_EXPIRED;elapsed="..elapsed)
+                        final_third_decision=nil
+                    elseif attack and (attack.mode=="FINAL_THIRD_REPOSITION"
+                        or attack.mode=="LANE") then
+                        -- Shoot/pass were already evaluated above this branch.
+                        -- Avoid another backwards lane cycle during the window.
+                        local dir=field_side.attack_direction()
+                        if (dir==1 or dir==-1) and elapsed<cfg.max_advance_frames then
+                            attack.mode="ADVANCE"
+                            attack.target_x=px_now+dir*cfg.advance_step
+                            attack.target_y=py_now
+                        else
+                            attack.mode="ADVANCE"
+                            attack.target_x=px_now
+                            attack.target_y=py_now
+                        end
+                    end
                 end
 
                 if attack ~= nil then
