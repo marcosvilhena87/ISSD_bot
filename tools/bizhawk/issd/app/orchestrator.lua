@@ -21,6 +21,7 @@ local Movement = dofile(DIR .. "../control/movement.lua")
 local Geometry = dofile(DIR .. "../core/geometry.lua")
 local Defense = dofile(DIR .. "../tactics/defense.lua")
 local LiveDefense = dofile(DIR .. "../tactics/live_defense.lua")
+local ActiveTackle = dofile(DIR .. "../tactics/active_tackle.lua")
 local LiveAttack = dofile(DIR .. "../tactics/live_attack.lua")
 local Shoot = dofile(DIR .. "../tactics/shoot.lua")
 local ForwardPass = dofile(DIR .. "../tactics/forward_pass.lua")
@@ -48,6 +49,7 @@ local field_side = FieldSide.new(config, mem)
 local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, field_side)
 local live_defense = LiveDefense.new(config, players, field_side)
+local active_tackle = ActiveTackle.new(config, players)
 local live_attack = LiveAttack.new(config, players, field_side)
 local shoot = Shoot.new(config, players, field_side)
 local forward_pass = ForwardPass.new(config, players, field_side, mem)
@@ -168,6 +170,7 @@ end
 
 local function step_bot()
     player_switch.tick()
+    active_tackle.tick()
     gk_distribution.tick()
     shoot.tick()
     forward_pass.tick()
@@ -559,6 +562,16 @@ local function step_bot()
                     "PLAYER_POSSESSION",
                     "CPU_CONTROLLED"
                 )
+            end
+
+            local tackle=active_tackle.plan(my_base,possession)
+            if tackle and active_tackle.fire(tackle,movement) then
+                local state=make_state(my_base,0,0,"DEFENSE_ACTIVE_TACKLE",possession,gs)
+                state.tackle_fired=true
+                state.tackle_carrier=tackle.carrier
+                state.tackle_defender=tackle.defender
+                state.tackle_distance=tackle.distance
+                return attach_live_state(state,"ACTIVE_TACKLE","CPU_CONTROLLED")
             end
 
             -- Prefer closing down an unmarked secondary attacker in the box.
@@ -1074,6 +1087,22 @@ while true do
                 ..";taker_distance="..tostring(state.corner_taker_distance)
                 ..";stable="..tostring(state.corner_stable)
                 ..";attempts_before="..tostring(state.corner_attempts))
+        end
+        local tackle_outcome=active_tackle.observe(state.possession)
+        if tackle_outcome then
+            report:write(tackle_outcome.kind,true,state,state.controller_command,
+                "defender="..tostring(tackle_outcome.defender)
+                ..";carrier="..tostring(tackle_outcome.carrier)
+                ..";holder="..tostring(tackle_outcome.holder)
+                ..";distance="..tostring(tackle_outcome.distance)
+                ..";age="..tostring(tackle_outcome.age))
+        end
+        if state.tackle_fired then
+            report:write("TACKLE_ATTEMPT",true,state,state.controller_command,
+                "defender="..tostring(state.tackle_defender)
+                ..";carrier="..tostring(state.tackle_carrier)
+                ..";distance="..tostring(state.tackle_distance)
+                ..";button=B")
         end
         if state.goal_kick_fired then
             report:write("GOAL_KICK_ATTEMPT",true,state,
