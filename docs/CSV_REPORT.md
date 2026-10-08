@@ -80,3 +80,7 @@ No jogo corrido, apenas se o jogador controlado for o portador real da bola, o b
 Quando o portador e exatamente o jogador controlado, o modulo shoot avalia a decisao a cada frame. Uma amostra a cada 60 frames durante posse ofensiva e escrita no CSV unico como `SHOT_EVALUATION`. O campo `action` recebe `TOO_FAR`, `GOAL_BEHIND`, `BLOCKED_LANE`, `COOLDOWN`, `INVALID_SIDE` ou `GOAL_TOO_CLOSE`. `detail` inclui `reason`, `distance`, `forward`, `blocker` (base WRAM) e `cooldown`. Chutes realmente comandados continuam como `SHOT_ATTEMPT`, enquanto `SHOT_FOR` depende do contador WRAM. A instrumentacao **nao** altera os limiares ou o comportamento de chute.
 
 Importante: `SHOT_EVALUATION` e amostragem, nao contagem exaustiva de frames; estados sem posse ofensiva do jogador controlado nao geram avaliacao. Para entender zero tentativas, verificar tambem o tempo real em posse controlada.
+
+## Geometria da finalizacao (linha de base 310)
+
+O evento `SHOT_ATTEMPT` inclui em `detail` as medidas `distance` (distancia euclidiana ao goleiro CPU), `angle_deg` (angulo absoluto da linha ao goleiro em relacao ao eixo horizontal), `lateral_offset` (diferenca absoluta Y) e `nearest_defender` (distancia ate o adversario de linha mais proximo). As unidades sao coordenadas de mundo do jogo. Essas medidas nao sao xG e nao garantem que o chute seja no alvo. `SHOT_FOR` segue sendo incrementado apenas quando a RAM `0x0DAA` confirma um chute; compare frames para associar comando e estatistica. Os thresholds de chute seguem inalterados, com distancia maxima de 310.
