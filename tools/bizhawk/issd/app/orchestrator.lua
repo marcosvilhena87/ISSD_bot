@@ -25,6 +25,7 @@ local LiveAttack = dofile(DIR .. "../tactics/live_attack.lua")
 local Shoot = dofile(DIR .. "../tactics/shoot.lua")
 local GKDistribution = dofile(DIR .. "../tactics/gk_distribution.lua")
 local Interception = dofile(DIR .. "../tactics/interception.lua")
+local DefenseInterception = dofile(DIR .. "../tactics/defense_interception.lua")
 local PlayerSwitch = dofile(DIR .. "../control/player_switch.lua")
 local TeamPossession = dofile(DIR .. "../state/team_possession.lua")
 local PossessionContext = dofile(DIR .. "../state/possession_context.lua")
@@ -47,6 +48,7 @@ local live_attack = LiveAttack.new(config, players, field_side)
 local shoot = Shoot.new(config, players, field_side)
 local gk_distribution = GKDistribution.new(config, players, field_side)
 local interception = Interception.new(config)
+local defense_interception = DefenseInterception.new(config, players)
 local player_switch = PlayerSwitch.new(config, players)
 local team_possession = TeamPossession.new(config, mem)
 local possession_context = PossessionContext.new(config, players)
@@ -159,6 +161,7 @@ local function step_bot()
     player_switch.tick()
     gk_distribution.tick()
     shoot.tick()
+    defense_interception.tick()
     if escape_cooldown > 0 then escape_cooldown = escape_cooldown - 1 end
 
     local gameplay_value = gameplay_active.read()
@@ -275,6 +278,7 @@ local function step_bot()
         -- 0x00A6 continua sendo a fonte autoritativa para o jogador
         -- fisicamente ligado a bola.
         if players.valid_my_base(possession) then
+            defense_interception.reset()
             -- So automatiza a progressao se o jogador controlado
             -- for exatamente o possuidor. Evita mover um companheiro
             -- sem bola quando a posse esta em outra struct MY.
@@ -448,6 +452,7 @@ local function step_bot()
         end
 
         if players.valid_cpu_base(possession) then
+            defense_interception.reset()
             live_attack.reset()
             gk_distribution.reset()
             local gk_policy =
@@ -532,10 +537,13 @@ local function step_bot()
                 bx, by, possession_context.ball_dx, possession_context.ball_dy,
                 possession_context.ball_speed, gkx, gky, field_side.goal_direction()
             )
-            if danger then
-                danger.player_ball_distance = target.player_ball_distance
-                target = danger
-            end
+            local feasible
+            target, feasible = defense_interception.choose(
+                my_base, bx, by, possession_context.ball_dx,
+                possession_context.ball_dy, danger, target
+            )
+            target.player_ball_distance = target.player_ball_distance
+                or math.sqrt((bx-px)^2+(by-py)^2)
 
             local switch_state = maybe_switch_player(
                 target.x,
@@ -564,6 +572,13 @@ local function step_bot()
             state.intercept_clipped = target.clipped
             state.intercept_danger = target.danger
             state.intercept_frames_to_goal = target.frames_to_goal
+            if feasible then
+                state.feasibility_eta = feasible.eta
+                state.feasibility_slack = feasible.slack
+                state.feasibility_reachable = feasible.reachable
+                state.feasibility_best_base = feasible.best_base
+                state.feasibility_preferred_base = feasible.preferred_base
+            end
 
             return attach_live_state(
                 state,
@@ -648,6 +663,7 @@ local function step_bot()
     end
 
     possession_context.reset()
+    defense_interception.reset()
 
     if game_state.is_restart(gs) then
         restart.assign(bx, by, my_base)
@@ -799,6 +815,11 @@ while true do
             state.report_detail = "danger_intercept=true;frames_to_goal="
                 .. tostring(state.intercept_frames_to_goal)
                 .. ";lead_frames=" .. tostring(state.intercept_lead_frames)
+                .. ";eta=" .. tostring(state.feasibility_eta)
+                .. ";slack=" .. tostring(state.feasibility_slack)
+                .. ";reachable=" .. tostring(state.feasibility_reachable)
+                .. ";best_base=" .. tostring(state.feasibility_best_base)
+                .. ";preferred_base=" .. tostring(state.feasibility_preferred_base)
         end
         if state.shot_fired then
             state.report_detail = "button=" .. tostring(state.shot_button)
