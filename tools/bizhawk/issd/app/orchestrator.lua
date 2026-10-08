@@ -867,19 +867,50 @@ local function step_bot()
             end
 
             gk_distribution.reset()
-            movement.stop()
-
-            local status = "POSSESSION_MANUAL"
-            if possession ~= my_base then
-                status = "MY_TEAMMATE_POSSESSION"
+            -- A confirmed controlled outfielder must not become permanently
+            -- idle merely because the normal lane planner returned nil.
+            if possession==my_base and my_base~=config.MY_FIRST then
+                local px,py=players.xy(my_base)
+                local gx,gy=players.xy(config.CPU_FIRST)
+                local dir=field_side.attack_direction()
+                local source="FIELD_SIDE"
+                if dir~=1 and dir~=-1 then
+                    -- Only infer attacking direction if goals are clearly
+                    -- separated; never use an arbitrary sign near midfield.
+                    if math.abs(gx-px)>=config.POSSESSION_FALLBACK.min_goal_separation then
+                        dir=gx>px and 1 or -1
+                        source="OPPONENT_GK"
+                    end
+                end
+                if dir==1 or dir==-1 then
+                    local cfg=config.POSSESSION_FALLBACK
+                    local tx=px+dir*cfg.forward_step
+                    local lateral=gy-py
+                    local ty=py+math.max(-cfg.lateral_step,
+                        math.min(cfg.lateral_step,lateral))
+                    local guarded=field_boundary.correct(px,py,tx,ty)
+                    local dx,dy=guarded.x-px,guarded.y-py
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,
+                        "POSSESSION_SAFE_ADVANCE",possession,gs)
+                    state.attack_target_x=guarded.x
+                    state.attack_target_y=guarded.y
+                    state.report_detail="source="..source
+                    return attach_live_state(state,"POSSESSION_FALLBACK","MY_CONTROLLED")
+                end
+                movement.stop()
+                local state=make_state(my_base,0,0,
+                    "POSSESSION_WAIT_DIRECTION",possession,gs)
+                state.report_detail="reason=attacking_direction_unavailable"
+                return attach_live_state(state,"POSSESSION_FALLBACK","MY_CONTROLLED")
             end
 
+            movement.stop()
             return attach_live_state(
-                make_state(
-                    my_base, 0, 0, status, possession, gs
-                ),
-                "PLAYER_POSSESSION",
-                "MY_CONTROLLED"
+                make_state(my_base,0,0,
+                    possession==my_base and "GK_DISTRIBUTION_WAIT"
+                    or "MY_TEAMMATE_POSSESSION",possession,gs),
+                "PLAYER_POSSESSION","MY_CONTROLLED"
             )
         end
 
