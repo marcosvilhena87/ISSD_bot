@@ -79,6 +79,13 @@ M.SHOOT = {
     cooldown_frames = 90,
 }
 
+M.GOAL_KICK = {
+    button = "A", -- high kick, to be validated in GS=1
+    initial_delay_frames = 10,
+    retry_frames = 60,
+    max_attempts = 2,
+}
+
 M.GK_DISTRIBUTION = {
     throw_button = "B",
     long_kick_button = "A",
