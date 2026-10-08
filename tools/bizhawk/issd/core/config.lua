@@ -210,6 +210,7 @@ M.BOX_COVERAGE = {
 M.ACTIVE_TACKLE = {
     button = "B",
     max_distance = 40,
+    max_ball_distance = 24, -- experimental: only tackle near actual ball
     cooldown_frames = 30,
     outcome_frames = 45,
 }
