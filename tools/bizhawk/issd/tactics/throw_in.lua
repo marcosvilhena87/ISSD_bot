@@ -110,6 +110,24 @@ function M.new(config, players, field_side, mem)
         if dir==0 then return {mode="WAIT_SIDE",taker=taker,receiver=receiver} end
         local bounds=field_bounds()
         local current_distance=dist(px,py,tx,ty)
+        -- A throw can fail to register even when a receiver is already ready.
+        -- Do not return to indefinite receiver movement after failed B pulses.
+        -- Use a timed long-throw fallback without moving the thrower.
+        if obj.frames>=c.force_throw_after_frames
+            and obj.attempts>0 then
+            if obj.attempts>=c.max_attempts then
+                return {mode="EXHAUSTED",taker=taker,receiver=receiver,
+                    attempts=obj.attempts,positioning_frames=obj.positioning_frames,
+                    reason="RESTART_NOT_ACCEPTED"}
+            end
+            local button=(obj.attempts%2==1) and c.long_throw_button or c.throw_button
+            return {mode="READY_LONG",taker=taker,receiver=receiver,
+                button=button,reason="FAILED_THROW_FALLBACK",
+                receiver_distance=current_distance,
+                receiver_clearance=clearance(px,py),
+                positioning_frames=obj.positioning_frames,
+                attempts=obj.attempts}
+        end
         -- Decide A actively for a safe distant receiver, independently of B.
         local receiver_space=clearance(px,py)
         if inside(px,py,bounds)
