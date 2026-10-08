@@ -276,10 +276,12 @@ local function step_bot()
             -- sem bola quando a posse esta em outra struct MY.
             if possession == my_base and my_base ~= config.MY_FIRST then
                 local shot = shoot.plan(my_base)
+                local shoot_diag = shoot.last_diagnostic
                 if shot and shoot.fire(shot, movement) then
                     local state = make_state(
                         my_base, 0, 0, "ATTACK_SHOOT", possession, gs
                     )
+                    state.shot_reason = shoot_diag and shoot_diag.reason
                     state.shot_fired = true
                     state.shot_button = shot.button
                     state.shot_distance = shot.distance
@@ -307,6 +309,11 @@ local function step_bot()
                     local state = make_state(
                         my_base, dx, dy, status, possession, gs
                     )
+                    state.shot_reason = shoot_diag and shoot_diag.reason
+                    state.shot_distance = shoot_diag and shoot_diag.distance
+                    state.shot_forward = shoot_diag and shoot_diag.forward
+                    state.shot_blocker = shoot_diag and shoot_diag.blocker
+                    state.shot_cooldown = shoot_diag and shoot_diag.cooldown
                     state.attack_goal_x = attack.goal_target_x
                     state.attack_goal_y = attack.goal_target_y
                     state.attack_goal_distance = attack.goal_distance
@@ -757,6 +764,14 @@ while true do
         if state.shot_fired then
             report:write("SHOT_ATTEMPT", true, state,
                 state.controller_command, state.report_detail)
+        end
+        if state.shot_reason and not state.shot_fired and report.frame % 60 == 0 then
+            report:write("SHOT_EVALUATION", true, state, state.shot_reason,
+                "reason=" .. tostring(state.shot_reason)
+                .. ";distance=" .. tostring(state.shot_distance)
+                .. ";forward=" .. tostring(state.shot_forward)
+                .. ";blocker=" .. tostring(state.shot_blocker)
+                .. ";cooldown=" .. tostring(state.shot_cooldown))
         end
         goal_trace.observe(true, state)
         overlay.draw(state)
