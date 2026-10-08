@@ -43,6 +43,16 @@ M.CPU_LAST = 0x1A00
 M.PLAYER_STRIDE = 0x100
 
 -- Observational detection only; candidate height addresses from BizHawk traces.
+-- Observational only: do not press X until headers are calibrated.
+M.AERIAL_DEFENSIVE_CONTACT = {
+    min_height=21,
+    max_height=80,
+    max_distance=100,
+    max_rising_delta=0,
+    confirm_frames=3,
+    cooldown_frames=30,
+}
+
 M.AERIAL_CONTACT = {
     height_addr=0x0410,
     height_reference_addr=0x19E8,
