@@ -74,3 +74,9 @@ Limites: posicao do goleiro e aproximacao horizontal sao proxies para a linha de
 ## Primeira finalizacao automatica: ATTACK_SHOOT
 
 No jogo corrido, apenas se o jogador controlado for o portador real da bola, o bot avalia chute com `X` (controle SNES). Criterios iniciais: distancia para o goleiro adversario <=310 unidades, pelo menos 25 unidades de progresso horizontal e corredor de largura 46 unidades livre de jogadores de linha adversarios. Ao disparar, o bot registra `SHOT_ATTEMPT` (comando enviado) e status `ATTACK_SHOOT`, com cooldown de 90 frames. O evento `SHOT_FOR` continua vindo **exclusivamente** do incremento da RAM `My_Shot(s)` (`0x0DAA`), permitindo separar acao do bot de finalizacao contabilizada. O chute usa o direcional horizontal na direcao do goleiro; forca e mira ainda nao calibradas. Validar no BizHawk antes de considerar sucesso.
+
+## Diagnostico de elegibilidade de chute (SHOT_EVALUATION)
+
+Quando o portador e exatamente o jogador controlado, o modulo shoot avalia a decisao a cada frame. Uma amostra a cada 60 frames durante posse ofensiva e escrita no CSV unico como `SHOT_EVALUATION`. O campo `action` recebe `TOO_FAR`, `GOAL_BEHIND`, `BLOCKED_LANE`, `COOLDOWN`, `INVALID_SIDE` ou `GOAL_TOO_CLOSE`. `detail` inclui `reason`, `distance`, `forward`, `blocker` (base WRAM) e `cooldown`. Chutes realmente comandados continuam como `SHOT_ATTEMPT`, enquanto `SHOT_FOR` depende do contador WRAM. A instrumentacao **nao** altera os limiares ou o comportamento de chute.
+
+Importante: `SHOT_EVALUATION` e amostragem, nao contagem exaustiva de frames; estados sem posse ofensiva do jogador controlado nao geram avaliacao. Para entender zero tentativas, verificar tambem o tempo real em posse controlada.
