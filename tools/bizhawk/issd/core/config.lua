@@ -153,6 +153,8 @@ M.THROW_IN = {
     target_lock_frames = 20,
     target_tolerance = 16,
     max_attempts = 2,
+    recovery_switch_interval = 30,
+    max_recovery_switches = 3,
 }
 
 return M
