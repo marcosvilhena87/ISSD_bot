@@ -77,6 +77,14 @@ M.ATTACK = {
 -- First-third defensive possession is handled by the field-third geometry
 -- and existing FORWARD_PASS safety thresholds.
 
+M.DEFENSIVE_EXIT = {
+    lateral_min=65, lateral_max=190, max_horizontal=30,
+    max_pass_distance=210, receiver_clearance=80,
+    lane_clearance=60, hold_before_move=45,
+    max_advance=70, field_margin=40, step=35,
+    forward_step=12, min_escape_clearance=60,
+}
+
 M.FORWARD_PASS = {
     button = "B",
     min_forward = 75,
