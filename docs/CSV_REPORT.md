@@ -104,3 +104,7 @@ During CPU loose-ball flight toward our goalkeeper, defense_interception samples
 ## Goal kick baseline (GS=1)
 
 If restart assignment identifies MY goalkeeper (MY_FIRST/0x0500) as taker in GS=1, the bot executes a conservative long kick with attack-direction+A after 10 frames. It waits 60 frames before one optional retry, capped at 2 attempts. Every command is logged as GOAL_KICK_ATTEMPT in the existing issd_report.csv, including direction and distance to nearest opponent. The game state transitioning away from GS=1 indicates restart progression but does not alone prove clean possession. GS=1 may cover other endline situations: never attempt the MY goal kick unless the goalkeeper is the detected taker. Control behavior and resulting state must be tested in BizHawk.
+
+## Player switch verification (defense)
+
+The bot now writes SWITCH_REQUEST when pressing R for defense and then checks MyCtrl over the next 8 frames. SWITCH_CONFIRMED means the actually selected player matches the predicted best player; SWITCH_MISMATCH means R selected someone else; SWITCH_UNCHANGED means MyCtrl stayed unchanged throughout the verification window. Every result includes from, expected, actual and age. A 24-frame settling window follows the verification result, preventing repeated R requests. This does not assume that R can directly select any particular player. Goal kick behavior is unchanged.
