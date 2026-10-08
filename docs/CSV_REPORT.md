@@ -92,3 +92,7 @@ Quando o jogador controlado carrega a bola, ha bloqueador no corredor escolhido 
 ## ATTACK_LANE_DASH e ATTACK_LANE_FEINT (manual Konami, pp. 16-17)
 
 O manual do ISS Deluxe confirma: direcional+Y mantido = Dash Dribble e toque leve de Y = Feint. O bot usa `LANE_DASH_START` ao iniciar 12 frames de direcional+Y (com cooldown de 24 frames) quando ha bloqueador a frente; para bloqueador bem proximo (ate 28 unidades no eixo da trajetoria), usa `LANE_FEINT` com pulso de um frame e cooldown de 32 frames. O modo ofensivo permanece `ATTACK_LANE`, e `ATTACK_SHOOT` continua sendo avaliado primeiro a cada frame. O CSV unico registra inicio das manobras, nao sucesso garantido. Comparar saidas de posse, distancia ao gol e `SHOT_FOR` para calibrar. O comportamento so se aplica ao portador controlado em jogo corrido.
+
+## Dynamic field bounds for throw-in receiver
+
+Candidate WRAM addresses: stadium 0x0086, length 0x12A2, width 0x12A4, center X 0x12F2, center Y 0x12D8. The reception planner derives field edges from the center and dimensions, with a configurable 40-unit safety margin. It rejects receiver targets outside these bounds and reports THROW_IN_WAIT_FIELD_BOUNDS when no validated target exists. Validate coordinate origin and scale inside BizHawk before considering the boundaries confirmed.
