@@ -1561,6 +1561,9 @@ while true do
             report:write(contest.changed and "BALL_CONTEST_ETA_CHANGE" or "BALL_CONTEST_ETA_SAMPLE",
                 true,state,"OBSERVE_CONTEST_ETA",
                 "class="..tostring(contest.class)
+                ..";raw_class="..tostring(contest.raw_class)
+                ..";stability="..tostring(contest.stability)
+                ..";pending="..tostring(contest.pending)
                 ..";predicted="..tostring(contest.predicted)
                 ..";my_eta="..tostring(contest.my_eta)
                 ..";cpu_eta="..tostring(contest.cpu_eta)
@@ -1578,7 +1581,12 @@ while true do
                 "outcome="..tostring(contest_result.outcome)
                 ..";start_frame="..tostring(contest_result.start)
                 ..";predicted="..tostring(contest_result.predicted)
-                ..";elapsed="..tostring(contest_result.elapsed))
+                ..";elapsed="..tostring(contest_result.elapsed)
+                ..";correct="..tostring(contest_result.correct)
+                ..";initial_my_eta="..tostring(contest_result.my_eta)
+                ..";initial_cpu_eta="..tostring(contest_result.cpu_eta)
+                ..";initial_eta_advantage="..tostring(contest_result.advantage)
+                ..";initial_height="..tostring(contest_result.height))
         end
         report:observe(true, state)
         -- Outcome monitoring only after an actual GK button pulse.
