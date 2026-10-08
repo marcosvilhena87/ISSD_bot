@@ -383,6 +383,7 @@ local function step_bot()
                     -- No forward dribble or Y dash while holding the defensive line.
                     local outlet=forward_pass.plan(my_base)
                     if outlet and forward_pass.fire(outlet,movement) then
+                        defensive_exit.on_pass()
                         local state=make_state(my_base,0,0,
                             "DEFENSIVE_OUTLET_PASS",possession,gs)
                         state.defensive_recovery=true
@@ -404,6 +405,7 @@ local function step_bot()
                     end
                     local exit=defensive_exit.plan(my_base,forward_pass.cooldown)
                     if exit.mode=="PASS" and forward_pass.fire(exit,movement) then
+                        defensive_exit.on_pass()
                         local state=make_state(my_base,0,0,
                             "DEFENSIVE_LATERAL_PASS",possession,gs)
                         state.defensive_recovery=true
@@ -421,6 +423,17 @@ local function step_bot()
                         state.forward_pass_score=exit.score
                         state.forward_pass_button=exit.button
                         state.forward_pass_direction=exit.direction
+                        return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
+                    end
+                    if exit.mode=="REASSESS" then
+                        movement.stop()
+                        local state=make_state(my_base,0,0,
+                            "DEFENSIVE_HOLD_REASSESSMENT",possession,gs)
+                        state.defensive_recovery=true
+                        state.defensive_hold_age=defensive_hold_age
+                        state.defensive_pressure_distance=exit.threat
+                        state.defensive_reassessments=exit.reassessments
+                        state.defensive_total_distance=exit.total
                         return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                     end
                     if exit.mode=="CLEAR" then
@@ -1338,6 +1351,13 @@ while true do
                 ..";distance="..tostring(state.forward_pass_distance)
                 ..";clearance="..tostring(state.forward_pass_clearance)
                 ..";lane_clearance="..tostring(state.forward_pass_lane_clearance))
+        end
+        if state.status=="DEFENSIVE_HOLD_REASSESSMENT" then
+            report:write("DEFENSIVE_HOLD_REASSESSMENT",true,state,state.controller_command,
+                "carrier="..tostring(state.my_base)
+                ..";count="..tostring(state.defensive_reassessments)
+                ..";total="..tostring(state.defensive_total_distance)
+                ..";threat="..tostring(state.defensive_pressure_distance))
         end
         if state.defensive_clear_fired then
             report:write("DEFENSIVE_PRESSURE_CLEAR",true,state,state.controller_command,
