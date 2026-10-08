@@ -104,6 +104,9 @@ local final_third_decision=nil
 local final_third_reset=nil
 local final_third_failures={count=0,last=-99999}
 local final_third_reset_cooldown=0
+local second_ball_last_shots_cpu=nil
+local second_ball_lock=nil
+local second_ball_sequence=0
 local final_third_cooldown_until=0
 local last_flight_discrepancy=false
 local flight_interception_pending=nil
@@ -119,7 +122,7 @@ local function defensive_dash_step(state)
         CPU_GROUND_INTERCEPT=true, CPU_LOW_INTERCEPT=true,
         CPU_AERIAL_INTERCEPT=true, CPU_BALL_INTERCEPT=true,
         CPU_BALL_INTERCEPT_FALLBACK=true,
-        GK_REBOUND_RECOVERY=true, MY_FLIGHT_BOX_DANGER=true, MY_BOX_GROUND_RECOVERY=true,
+        GK_REBOUND_RECOVERY=true, BOX_SECOND_BALL_CONTINUITY=true, MY_FLIGHT_BOX_DANGER=true, MY_BOX_GROUND_RECOVERY=true,
         MY_BOX_LOW_RECOVERY=true, MY_BOX_AERIAL_COVER=true,
         LIVE_FALLBACK_CHASE=true,
     }
@@ -308,6 +311,44 @@ local function step_bot()
     end
     local possession = ball.possession()
     local gs = game_state.read()
+    -- Shot counter is an event signal, not evidence of a keeper save.
+    local shots_cpu=mem.u16(config.ADDR.shots_cpu)
+    if second_ball_last_shots_cpu and shots_cpu==second_ball_last_shots_cpu+1
+        and gs==0 then
+        local bx0,by0=ball.world_xy()
+        local gx0,gy0=players.xy(config.MY_FIRST)
+        local cfg=config.BOX_SECOND_BALL
+        if (bx0-gx0)^2+(by0-gy0)^2<=cfg.goal_radius^2 then
+            second_ball_sequence=second_ball_sequence+1
+            second_ball_lock={start=report.frame,
+                expires=report.frame+cfg.window_frames,
+                sequence=second_ball_sequence,switches=0}
+            report:write("BOX_SECOND_BALL_START",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "SHOT_COUNTER","sequence="..second_ball_sequence)
+        end
+    end
+    if second_ball_last_shots_cpu and shots_cpu<second_ball_last_shots_cpu then
+        second_ball_lock=nil
+    end
+    second_ball_last_shots_cpu=shots_cpu
+    if second_ball_lock then
+        local reason=nil
+        if gs~=0 or not gameplay_active.is_active(gameplay_value) then
+            reason="STOPPAGE"
+        elseif players.valid_my_base(possession) then reason="MY_RECOVERED"
+        elseif players.valid_cpu_base(possession) then reason="CPU_RECOVERED"
+        elseif report.frame>=second_ball_lock.expires then reason="TIMEOUT" end
+        if reason then
+            report:write(reason=="MY_RECOVERED" and
+                "BOX_SECOND_BALL_RECOVERED" or "BOX_SECOND_BALL_LOST",
+                true,{possession=possession,game_state=gs,my_base=my_base},
+                "SECOND_BALL","reason="..reason..";sequence="
+                ..second_ball_lock.sequence..";elapsed="
+                ..(report.frame-second_ball_lock.start))
+            second_ball_lock=nil
+        end
+    end
     -- A reposition attempt belongs to one confirmed attacking carrier.
     if possession~=my_base or gs~=0
         or not gameplay_active.is_active(gameplay_value) then
@@ -1217,6 +1258,52 @@ local function step_bot()
         -- 0x104C passa a ser a fonte primaria para o lado da posse.
         -- Rebound recovery belongs to an individually free ball, regardless
         -- of the logical team-possession flag. Danger interception takes priority.
+        -- Stable response to individually unowned second balls, TeamPoss agnostic.
+        if possession==0 and second_ball_lock then
+            local cfg=config.BOX_SECOND_BALL
+            local gx,gy=players.xy(config.MY_FIRST)
+            local danger=interception.danger_target(bx,by,
+                possession_context.ball_dx,possession_context.ball_dy,
+                possession_context.ball_speed,gx,gy,field_side.goal_direction())
+            if (bx-gx)^2+(by-gy)^2<=cfg.goal_radius^2 and not danger then
+                local best,best_dist=nil,math.huge
+                players.each_my(function(base)
+                    if base~=config.MY_FIRST then
+                        local x,y=players.xy(base)
+                        local d=math.sqrt((bx-x)^2+(by-y)^2)
+                        if d<best_dist then best,best_dist=base,d end
+                    end
+                end)
+                if best and best_dist<=cfg.max_outfielder_distance then
+                    local px,py=players.xy(my_base)
+                    local controlled_dist=math.sqrt((bx-px)^2+(by-py)^2)
+                    if controlled_dist>cfg.max_outfielder_distance
+                        and controlled_dist-best_dist>=cfg.min_switch_gain
+                        and second_ball_lock.expires-report.frame>=cfg.switch_min_remaining
+                        and second_ball_lock.switches<cfg.max_switches then
+                        local switched=maybe_switch_player(bx,by,
+                            "BOX_SECOND_BALL_CONTINUITY")
+                        if switched then
+                            second_ball_lock.switches=second_ball_lock.switches+1
+                            return switched
+                        end
+                    end
+                    if controlled_dist<=cfg.max_outfielder_distance then
+                        local guarded=field_boundary.correct(px,py,bx,by)
+                        local dx,dy=guarded.x-px,guarded.y-py
+                        movement.move_toward(dx,dy)
+                        local state=make_state(my_base,dx,dy,
+                            "BOX_SECOND_BALL_CONTINUITY",possession,gs)
+                        state.intercept_target_x=guarded.x
+                        state.intercept_target_y=guarded.y
+                        state.second_ball_sequence=second_ball_lock.sequence
+                        return attach_live_state(state,"SHOT_COUNTER",
+                            team_possession.is_cpu(team_value)
+                            and "CPU_UNOWNED_BALL" or "MY_UNOWNED_BALL")
+                    end
+                end
+            end
+        end
         if possession==0 and gk_rebound_recovery.active(report.frame) then
             local gx,gy=players.xy(config.MY_FIRST)
             local cfg=config.GK_REBOUND_RECOVERY
