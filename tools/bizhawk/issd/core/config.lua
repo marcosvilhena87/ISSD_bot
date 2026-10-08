@@ -95,7 +95,8 @@ M.GK_DISTRIBUTION = {
     max_throw_distance = 360,
     min_receiver_clearance = 72,
     min_lane_clearance = 56, -- experimental: opponents near pass segment
-    min_forward = 12, -- avoid risky sideways/backward short distribution
+    min_forward = 48, -- require meaningful forward progress
+    forward_lane_half_width = 32, -- B+Right/Left: receiver must be aligned with forward path
 
     -- Se o receptor estiver bem acima/abaixo do GK, usa UP/DOWN.
     -- Caso contrario, orienta para frente com LEFT/RIGHT relativo ao ataque.
