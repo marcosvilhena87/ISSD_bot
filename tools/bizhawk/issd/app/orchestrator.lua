@@ -814,7 +814,7 @@ local function step_bot()
                     local fired=corner_kick.fire(plan,movement)
                     if not fired then movement.stop() end
                     local state=make_state(my_base,nil,nil,
-                        fired and "CORNER_KICK_ATTEMPT" or "CORNER_KICK_WAIT",
+                        fired and "CORNER_KICK_ATTEMPT" or ("CORNER_KICK_"..tostring(plan.reason)),
                         possession,gs)
                     state.corner_fired=fired
                     state.corner_button=plan.button
@@ -826,6 +826,9 @@ local function step_bot()
                     state.corner_taker_distance=plan.taker_distance
                     state.corner_stable=plan.stable
                     state.corner_attempts=plan.attempts
+                    state.corner_reason=plan.reason
+                    state.corner_cooldown=plan.cooldown
+                    state.corner_displacement=plan.displacement
                     return state
                 end
             end
@@ -1091,6 +1094,14 @@ while true do
                 ..";stable="..tostring(state.free_kick_stable)
                 ..";attempts_before="..tostring(state.free_kick_attempts))
         end
+        if state.corner_reason and
+            (state.corner_reason=="EXHAUSTED" or state.corner_reason=="BALL_MOVED")
+            and report.frame%60==0 then
+            report:write("CORNER_KICK_DIAGNOSTIC",true,state,state.controller_command,
+                "reason="..tostring(state.corner_reason)
+                ..";attempts="..tostring(state.corner_attempts)
+                ..";displacement="..tostring(state.corner_displacement))
+        end
         if state.corner_fired then
             report:write("CORNER_KICK_ATTEMPT",true,state,state.controller_command,
                 "mode="..tostring(state.corner_mode)
@@ -1101,7 +1112,9 @@ while true do
                 ..";side_distance="..tostring(state.corner_side_distance)
                 ..";taker_distance="..tostring(state.corner_taker_distance)
                 ..";stable="..tostring(state.corner_stable)
-                ..";attempts_before="..tostring(state.corner_attempts))
+                ..";attempts_before="..tostring(state.corner_attempts)
+                ..";reason="..tostring(state.corner_reason)
+                ..";cooldown="..tostring(state.corner_cooldown))
         end
         local tackle_outcome=active_tackle.observe(state.possession)
         if tackle_outcome then
