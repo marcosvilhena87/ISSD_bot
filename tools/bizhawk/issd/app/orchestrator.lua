@@ -87,7 +87,8 @@ local rebound_lock_base=nil
 local rebound_lock_frames=0
 local danger_lock=nil
 -- Defensive sprint is deliberately separate from attack dash.
-local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=nil}
+local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=nil,
+    start_x=nil,start_y=nil,target_x=nil,target_y=nil}
 local function defensive_dash_step(state)
     local cfg=config.DEFENSIVE_DASH
     local eligible={
@@ -114,8 +115,20 @@ local function defensive_dash_step(state)
             or defensive_dash.base~=state.my_base or d<=cfg.stop_distance
             or defensive_dash.remaining<=1
         if ending then
+            local px,py=nil,nil
+            if players.valid_my_base(defensive_dash.base) then
+                px,py=players.xy(defensive_dash.base)
+            end
+            local displacement=px and math.sqrt(
+                (px-defensive_dash.start_x)^2+(py-defensive_dash.start_y)^2) or nil
+            local fixed_end=px and math.sqrt(
+                (px-defensive_dash.target_x)^2+(py-defensive_dash.target_y)^2) or nil
             report:write("DEFENSIVE_DASH_END",true,state,"Y",
                 "mode="..tostring(defensive_dash.mode)
+                ..";player_displacement="..tostring(displacement)
+                ..";fixed_target_end_distance="..tostring(fixed_end)
+                ..";fixed_target_gain="..tostring(fixed_end
+                    and defensive_dash.start_distance-fixed_end or nil)
                 ..";start_distance="..tostring(defensive_dash.start_distance)
                 ..";end_distance="..tostring(d)
                 ..";gain="..tostring(d and defensive_dash.start_distance
@@ -133,6 +146,9 @@ local function defensive_dash_step(state)
             defensive_dash.base=state.my_base
             defensive_dash.start_distance=d
             defensive_dash.mode=state.status
+            defensive_dash.start_x,defensive_dash.start_y=players.xy(state.my_base)
+            defensive_dash.target_x=defensive_dash.start_x+state.dx
+            defensive_dash.target_y=defensive_dash.start_y+state.dy
             report:write("DEFENSIVE_DASH_START",true,state,"Y",
                 "mode="..tostring(state.status)..";distance="..tostring(d)
                 ..";burst_frames="..tostring(cfg.burst_frames))
