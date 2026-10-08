@@ -2,7 +2,7 @@
 local M={}
 function M.new(config,players)
  local c=config.BALL_CONTEST_FEASIBILITY
- local o={previous=nil,pending=nil,candidate=nil,candidate_age=0,stable=nil}
+ local o={previous=nil,pending=nil,candidate=nil,candidate_age=0,stable=nil,episode_scored=false}
  local function nearest(x,y,each)
   local base,dist=nil,math.huge
   each(function(id)
@@ -13,7 +13,7 @@ function M.new(config,players)
   return base,dist
  end
  function o.reset()
-  o.previous=nil;o.pending=nil;o.candidate=nil;o.candidate_age=0;o.stable=nil
+  o.previous=nil;o.pending=nil;o.candidate=nil;o.candidate_age=0;o.stable=nil;o.episode_scored=false
  end
  local function finish(p,outcome,frame)
   return {outcome=outcome,start=p.frame,predicted=p.predicted,
@@ -39,7 +39,7 @@ function M.new(config,players)
    end
   end
   if state.possession~=0 then
-   o.previous=nil;o.candidate=nil;o.candidate_age=0;o.stable=nil
+   o.previous=nil;o.candidate=nil;o.candidate_age=0;o.stable=nil;o.episode_scored=false
    return nil,result
   end
   local vx,vy=state.ball_dx or 0,state.ball_dy or 0
@@ -65,8 +65,9 @@ function M.new(config,players)
   local changed=class~=o.previous
   o.previous=class
   -- Capture one scored prediction per free-ball episode, only after stability.
-  if not o.pending and eligible and (class=="MY" or class=="CPU")
+  if not o.pending and not o.episode_scored and eligible and (class=="MY" or class=="CPU")
    and o.candidate_age>=c.stability_frames then
+    o.episode_scored=true
     o.pending={frame=frame,predicted=class,my_eta=my_eta,cpu_eta=cpu_eta,
       advantage=advantage,height=height,
       confidence=math.abs(advantage)}
