@@ -269,6 +269,7 @@ M.PLAYER_SWITCH = {
     cooldown_frames = 12,
     verify_frames = 8,
     settle_frames = 24,
+    unhelpful_settle_frames = 60, -- avoid R thrashing after worse selection
     exclude_goalkeeper = true,
 }
 
