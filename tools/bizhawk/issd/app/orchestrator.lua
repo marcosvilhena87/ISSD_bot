@@ -1889,6 +1889,10 @@ while true do
                 "OBSERVE_GK_REBOUND",
                 "reason="..tostring(rebound_event.reason)
                 ..";elapsed="..tostring(rebound_event.elapsed)
+                ..";sequence="..tostring(rebound_event.sequence)
+                ..";speed="..tostring(rebound_event.speed)
+                ..";acceleration="..tostring(rebound_event.acceleration)
+                ..";height_change="..tostring(rebound_event.height_change)
                 ..";height="..tostring(state.ball_height)
                 ..";ball_x="..tostring(state.ball_x)
                 ..";ball_y="..tostring(state.ball_y))
