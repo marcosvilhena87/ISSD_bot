@@ -1,4 +1,4 @@
--- GS=3 free-kick policy: validate a nearby Brazilian kicker, pulse, observe, retry.
+-- GS=3 foul or GS=4 offside free kick: validate Brazilian taker, settle, pulse and retry.
 local M={}
 function M.new(config,players,field_side)
  local c=config.FREE_KICK
@@ -12,7 +12,7 @@ function M.new(config,players,field_side)
   o.kick_x=nil;o.kick_y=nil;o.ball_moved=false
   o.control_wait=0;o.switches=0
  end
- function o.plan(bx,by,controlled)
+ function o.plan(bx,by,controlled,gs)
   if o.cooldown>0 then o.cooldown=o.cooldown-1 end
   local displacement=0
   if o.kick_x~=nil then
@@ -42,6 +42,7 @@ function M.new(config,players,field_side)
    result.mode="WAIT_TAKER"
    return result
   end
+  result.our_restart=true
   if o.candidate~=my then
    o.candidate=my;o.stable=0;o.control_wait=0;o.switches=0
   end
@@ -59,7 +60,8 @@ function M.new(config,players,field_side)
    return result
   end
   o.control_wait=0
-  if o.stable<c.stable_frames then result.mode="WAIT_STABLE";return result end
+  local min_stable=gs==4 and c.offside_stable_frames or c.stable_frames
+  if o.stable<min_stable then result.mode="WAIT_STABLE";return result end
   if o.attempts>=c.max_attempts then result.mode="EXHAUSTED";return result end
   if o.cooldown>0 then result.mode="COOLDOWN";return result end
   local gx,gy=players.xy(config.CPU_FIRST)
