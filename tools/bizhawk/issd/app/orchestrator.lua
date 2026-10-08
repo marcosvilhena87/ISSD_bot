@@ -111,7 +111,9 @@ local function defensive_dash_step(state)
         CPU_GROUND_INTERCEPT=true, CPU_LOW_INTERCEPT=true,
         CPU_AERIAL_INTERCEPT=true, CPU_BALL_INTERCEPT=true,
         CPU_BALL_INTERCEPT_FALLBACK=true,
-        MY_FLIGHT_BOX_DANGER=true, LIVE_FALLBACK_CHASE=true,
+        MY_FLIGHT_BOX_DANGER=true, MY_BOX_GROUND_RECOVERY=true,
+        MY_BOX_LOW_RECOVERY=true, MY_BOX_AERIAL_COVER=true,
+        LIVE_FALLBACK_CHASE=true,
     }
     local active=state.game_state==0
         and gameplay_active.is_active(state.gameplay_active)
@@ -1568,6 +1570,17 @@ while true do
                     local side=logical_team==0 and "MY" or "CPU"
                     state.ball_situation_class=side.."_BALL_"..flight.height_band
                 end
+            end
+            if state.status=="MY_FLIGHT_BOX_DANGER" then
+                -- Classify the existing box intervention after the decision:
+                -- no change to movement, threat selection or switch priority.
+                state.flight_height_band=flight.height_band
+                state.flight_strategy=flight.height_band=="AERIAL"
+                    and "COVER_AERIAL_BOX" or flight.height_band=="LOW"
+                    and "RECOVER_LOW_BOX" or "RECOVER_GROUND_BOX"
+                state.status=flight.height_band=="AERIAL"
+                    and "MY_BOX_AERIAL_COVER" or flight.height_band=="LOW"
+                    and "MY_BOX_LOW_RECOVERY" or "MY_BOX_GROUND_RECOVERY"
             end
             if state.status=="MY_UNOWNED_BALL" then
                 state.status,state.flight_strategy,state.flight_height_band=
