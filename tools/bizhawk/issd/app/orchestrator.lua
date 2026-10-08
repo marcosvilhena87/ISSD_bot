@@ -85,6 +85,7 @@ local defensive_carrier = nil
 local defensive_hold_age = 0
 local rebound_lock_base=nil
 local rebound_lock_frames=0
+local danger_lock=nil
 -- Defensive sprint is deliberately separate from attack dash.
 local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=nil}
 local function defensive_dash_step(state)
@@ -914,6 +915,28 @@ local function step_bot()
             local danger=interception.danger_target(bx,by,
                 possession_context.ball_dx,possession_context.ball_dy,
                 possession_context.ball_speed,gkx,gky,field_side.goal_direction())
+            -- Keep danger classification through isolated zero-velocity samples.
+            -- The locked point remains fixed unless the ball genuinely changes course.
+            if danger then
+                danger_lock={target=danger,frames=config.INTERCEPTION.danger_lock_frames,
+                    bx=bx,by=by}
+            elseif danger_lock then
+                local lock=danger_lock
+                local goal_dir=field_side.goal_direction()
+                local progressed=(bx-lock.bx)*goal_dir
+                local changed_course=progressed< -config.INTERCEPTION.danger_release_distance
+                    or math.abs(by-lock.by)>config.INTERCEPTION.danger_lateral_tolerance
+                if changed_course or (bx-gkx)*goal_dir>=0 then
+                    danger_lock=nil
+                else
+                    lock.frames=lock.frames-1
+                    if lock.frames<=0 then danger_lock=nil
+                    else
+                        lock.bx=bx;lock.by=by
+                        danger=lock.target
+                    end
+                end
+            end
             -- A genuine fast shot toward goal outranks chasing a rebound.
             -- Zero-speed samples alone must not trigger a tactical reversal.
             if rebound_lock_frames>0 then
@@ -971,16 +994,19 @@ local function step_bot()
                 possession_context.ball_speed
             )
 
-            local gkx, gky = players.xy(config.MY_FIRST)
-            local danger = interception.danger_target(
-                bx, by, possession_context.ball_dx, possession_context.ball_dy,
-                possession_context.ball_speed, gkx, gky, field_side.goal_direction()
-            )
+            -- Reuse the same locked danger decision used by rebound arbitration.
             local feasible
             target, feasible = defense_interception.choose(
                 my_base, bx, by, possession_context.ball_dx,
                 possession_context.ball_dy, danger, target
             )
+            if danger and danger_lock then
+                -- Pin intercept location briefly while velocity samples jitter.
+                target.x=danger_lock.target.x
+                target.y=danger_lock.target.y
+                target.danger=true
+                target.frames_to_goal=danger_lock.target.frames_to_goal
+            end
             target.player_ball_distance = target.player_ball_distance
                 or math.sqrt((bx-px)^2+(by-py)^2)
 
@@ -1296,6 +1322,10 @@ while true do
 
     if enabled then
         local state = step_bot()
+        if state.game_state~=0 or players.valid_my_base(state.possession)
+            or players.valid_cpu_base(state.possession) then
+            danger_lock=nil
+        end
         defensive_dash_step(state)
         -- Snapshot after the tactical decision, before the next emulated frame.
         state.ball_x, state.ball_y = ball.world_xy()
