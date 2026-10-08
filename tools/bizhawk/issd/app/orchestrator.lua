@@ -848,7 +848,14 @@ local function step_bot()
             -- Contest an attacker who can collect a rebound before aiming at
             -- the ball itself. Keep the standard interception as fallback.
             local rebound=live_defense.box_pressure(nil,bx,by,true)
-            if rebound and possession_context.ball_speed<=config.BOX_RECOVERY.max_ball_speed then
+            local gkx,gky=players.xy(config.MY_FIRST)
+            local danger=interception.danger_target(bx,by,
+                possession_context.ball_dx,possession_context.ball_dy,
+                possession_context.ball_speed,gkx,gky,field_side.goal_direction())
+            -- A genuine fast shot toward goal outranks chasing a rebound.
+            -- Zero-speed samples alone must not trigger a tactical reversal.
+            if rebound and not danger and
+                possession_context.smoothed_ball_speed<=config.BOX_RECOVERY.max_ball_speed then
                 local switch_state=maybe_switch_player(rebound.x,rebound.y,
                     "BOX_REBOUND_PRESSURE")
                 if switch_state then return switch_state end
