@@ -298,8 +298,11 @@ M.MY_FLIGHT_INTERCEPTION = {
 M.GK_REBOUND_RECOVERY = {
     goal_radius=280,
     recent_cpu_frames=45,
-    min_reversal_speed=2,
-    max_height=35,
+    min_speed=2,
+    max_direction_cosine=0.35,
+    min_acceleration=7,
+    candidate_cooldown_frames=9,
+    max_height=80,
     window_frames=32,
     max_outfielder_distance=160,
 }
