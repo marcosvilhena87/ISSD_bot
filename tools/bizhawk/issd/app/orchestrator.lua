@@ -221,24 +221,28 @@ local function step_bot()
         return state
     end
 
-    if gs == 3 then
+    -- Both fouls (GS=3) and offside (GS=4) can produce a free kick.
+    -- The planner validates Brazilian ownership before sending a kick.
+    if gs == 3 or gs == 4 then
         corner_kick.reset()
         goal_kick.reset()
         throw_in.reset()
         restart.clear()
         possession_context.reset()
         local bx,by=ball.world_xy()
-        local plan=free_kick.plan(bx,by,my_base)
-        -- HUD must show the free-kick candidate, not the cleared restart assignment.
-        restart.taker=plan and plan.taker or nil
-        restart.taker_team=plan and plan.taker and "MY" or nil
+        local plan=free_kick.plan(bx,by,my_base,gs)
+        -- Only advertise a confirmed Brazilian restart; never infer ownership
+        -- from the nearest Brazilian when a CPU taker is closer.
+        restart.taker=plan and plan.our_restart and plan.taker or nil
+        restart.taker_team=plan and plan.our_restart and "MY" or nil
         local fired=free_kick.fire(plan,movement)
         local switching=plan and plan.mode=="SWITCH_TAKER"
         if fired and not switching then free_kick.remember_ball(bx,by)
         elseif not fired then movement.stop() end
+        local prefix=gs==4 and "OFFSIDE_FREE_KICK_" or "FREE_KICK_"
         local state=make_state(my_base,nil,nil,
-            fired and (switching and "FREE_KICK_SWITCH_TAKER" or "FREE_KICK_ATTEMPT")
-            or ("FREE_KICK_"..(plan and plan.mode or "WAIT")),possession,gs)
+            fired and (switching and prefix.."SWITCH_TAKER" or prefix.."ATTEMPT")
+            or (prefix..(plan and plan.mode or "WAIT")),possession,gs)
         state.free_kick_fired=fired and not switching
         state.free_kick_switch_fired=fired and switching
         state.free_kick_mode=plan and plan.mode
