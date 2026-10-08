@@ -33,6 +33,12 @@ function M.new(config)
         send(obj.direction_pad(dx, dy))
     end
 
+    function obj.move_toward_button(dx, dy, button)
+        local pad = obj.direction_pad(dx, dy)
+        if button then pad[button] = true end
+        send(pad)
+    end
+
     function obj.press_button(button)
         local pad = {}
         pad[button] = true
