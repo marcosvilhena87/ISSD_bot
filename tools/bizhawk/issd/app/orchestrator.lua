@@ -168,6 +168,19 @@ local function step_bot()
 
     local gameplay_value = gameplay_active.read()
     local my_base = read_my_base()
+    player_switch.observe_control(my_base)
+    local switch_event = player_switch.take_event()
+    if switch_event then
+        report:write(switch_event.kind, true,
+            {my_base=my_base,game_state=game_state.read(),
+             gameplay_active=gameplay_active.read(),
+             controller_command="OBSERVE_MYCTRL"},
+            "MYCTRL",
+            "from="..tostring(switch_event.from)
+            ..";expected="..tostring(switch_event.expected)
+            ..";actual="..tostring(switch_event.actual)
+            ..";age="..tostring(switch_event.age))
+    end
     local possession = ball.possession()
     local gs = game_state.read()
 
@@ -261,6 +274,15 @@ local function step_bot()
             end
 
             movement.press_button(decision.button)
+            report:write("SWITCH_REQUEST", true,
+                {my_base=my_base,game_state=gs,
+                 controller_command=movement.last_command},
+                decision.button,
+                "from="..tostring(my_base)
+                ..";expected="..tostring(decision.best_base)
+                ..";target_x="..tostring(target_x)
+                ..";target_y="..tostring(target_y)
+                ..";improvement="..tostring(decision.improvement))
 
             local state = make_state(
                 my_base, 0, 0, "PLAYER_SWITCH", possession, gs
