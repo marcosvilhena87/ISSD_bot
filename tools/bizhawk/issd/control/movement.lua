@@ -56,6 +56,13 @@ function M.new(config)
         send(pad)
     end
 
+    function obj.press_direction_buttons(direction, buttons)
+        local pad = {}
+        if direction then pad[direction] = true end
+        for _,button in ipairs(buttons or {}) do pad[button] = true end
+        send(pad)
+    end
+
     function obj.stop()
         send({})
     end
