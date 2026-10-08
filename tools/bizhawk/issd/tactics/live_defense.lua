@@ -142,6 +142,42 @@ function M.new(config, players, field_side)
         return nil
     end
 
+    -- Immediate pressure on a free attacker or likely rebound receiver near goal.
+    -- Keeper location is a provisional reference for the penalty-area danger zone.
+    function obj.box_pressure(carrier_base,ball_x,ball_y,loose)
+        local c=config.BOX_PRESSURE
+        local gx,gy=players.xy(config.MY_FIRST)
+        local bx,by=ball_x-gx,ball_y-gy
+        if bx*bx+by*by>c.activation_radius^2 then return nil end
+        local best=nil
+        players.each_cpu(function(base)
+            if base~=config.CPU_FIRST and (loose or base==carrier_base) then
+                local x,y=players.xy(base)
+                local gd=math.sqrt((x-gx)^2+(y-gy)^2)
+                local bd=math.sqrt((x-ball_x)^2+(y-ball_y)^2)
+                if gd<=c.attacker_goal_radius and bd<=c.attacker_ball_radius then
+                    local nearest=math.huge
+                    players.each_my(function(my)
+                        if my~=config.MY_FIRST then
+                            local mx,myy=players.xy(my)
+                            nearest=math.min(nearest,math.sqrt((x-mx)^2+(y-myy)^2))
+                        end
+                    end)
+                    local score=bd+gd*0.25
+                    if not best or score<best.score then
+                        best={base=base,x=x,y=y,score=score,
+                            attacker_ball_distance=bd,nearest_defender=nearest,
+                            goal_distance=gd}
+                    end
+                end
+            end
+        end)
+        if not best then return nil end
+        -- If the carrier is already covered, ordinary shot lane/tackle can proceed.
+        if not loose and best.nearest_defender<c.unmarked_distance then return nil end
+        return best
+    end
+
     return obj
 end
 
