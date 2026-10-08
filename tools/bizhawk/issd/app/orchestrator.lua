@@ -753,7 +753,7 @@ local function step_bot()
                             lateral_offset=shoot_diag and shoot_diag.lateral_offset}
                     end
                 end
-                if not final_third_lock and attack
+                if not final_third_lock and not final_third_reset and attack
                     and attack.mode=="FINAL_THIRD_REPOSITION"
                     and poor_angle and report.frame>=final_third_cooldown_until
                     and (dir==1 or dir==-1) then
@@ -781,7 +781,7 @@ local function step_bot()
                     attack.target_y=py_now
                 end
 
-                if final_third_decision then
+                if final_third_decision and not final_third_reset then
                     local decision=final_third_decision
                     local cfg=config.FINAL_THIRD_ATTACK_DECISION
                     local elapsed=report.frame-decision.start
