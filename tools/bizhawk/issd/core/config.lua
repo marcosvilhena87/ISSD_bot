@@ -121,6 +121,7 @@ M.CORNER_KICK = {
     stable_frames = 12,
     retry_frames = 65,
     max_attempts = 2,
+    ball_move_threshold = 18,
     endline_tolerance = 90,
     sideline_tolerance = 90,
     max_taker_distance = 120,
