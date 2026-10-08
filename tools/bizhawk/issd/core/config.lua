@@ -131,6 +131,8 @@ M.FREE_KICK = {
     retry_frames = 75,
     max_attempts = 2,
     ball_move_threshold = 18,
+    switch_interval = 30,
+    max_switch_attempts = 3,
 }
 
 M.CORNER_KICK = {
