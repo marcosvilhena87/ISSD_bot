@@ -16,6 +16,7 @@ local Players = dofile(DIR .. "../state/players.lua")
 local Ball = dofile(DIR .. "../state/ball.lua")
 local AerialContact = dofile(DIR .. "../state/aerial_contact.lua")
 local BallFlightContext = dofile(DIR .. "../state/ball_flight_context.lua")
+local OwnershipProbe = dofile(DIR .. "../state/ownership_probe.lua")
 local GameState = dofile(DIR .. "../state/game_state.lua")
 local GameplayActive = dofile(DIR .. "../state/gameplay_active.lua")
 local FieldSide = dofile(DIR .. "../state/field_side.lua")
@@ -49,6 +50,7 @@ local players = Players.new(config, mem)
 local ball = Ball.new(config, mem)
 local aerial_contact = AerialContact.new(config, mem, players)
 local flight_context = BallFlightContext.new(config, mem, players)
+local ownership_probe = OwnershipProbe.new(config, mem, players)
 local game_state = GameState.new(config, mem)
 local gameplay_active = GameplayActive.new(config, mem)
 local field_side = FieldSide.new(config, mem)
@@ -1527,6 +1529,30 @@ while true do
                 ..";nearest_team="..tostring(contact.nearest_team)
                 ..";nearest_distance="..tostring(contact.nearest_distance)
                 ..";plausible_near_player="..tostring(contact.plausible_near_player))
+        end
+        local ownership=ownership_probe.update(state)
+        if ownership and ownership.changed then
+            report:write("BALL_OWNERSHIP_TRANSITION",true,state,
+                "OBSERVE_OWNERSHIP",
+                "class="..tostring(ownership.class)
+                ..";owner="..tostring(ownership.owner)
+                ..";team_ram="..tostring(ownership.logical_team)
+                ..";height="..tostring(ownership.height)
+                ..";flight_age="..tostring(ownership.age)
+                ..";nearest_my="..tostring(ownership.nearest_my)
+                ..";nearest_cpu="..tostring(ownership.nearest_cpu)
+                ..";my_distance="..tostring(ownership.my_distance)
+                ..";cpu_distance="..tostring(ownership.cpu_distance))
+        end
+        if ownership and report.frame%30==0 then
+            report:write("BALL_OWNERSHIP_SAMPLE",true,state,
+                "OBSERVE_OWNERSHIP",
+                "class="..tostring(ownership.class)
+                ..";owner="..tostring(ownership.owner)
+                ..";height="..tostring(ownership.height)
+                ..";my_distance="..tostring(ownership.my_distance)
+                ..";cpu_distance="..tostring(ownership.cpu_distance)
+                ..";logical_team="..tostring(ownership.logical_team))
         end
         report:observe(true, state)
         -- Outcome monitoring only after an actual GK button pulse.
