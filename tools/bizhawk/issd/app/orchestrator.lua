@@ -88,6 +88,7 @@ local defensive_hold_age = 0
 local rebound_lock_base=nil
 local rebound_lock_frames=0
 local last_flight_discrepancy=false
+local flight_interception_pending=nil
 local danger_lock=nil
 -- Defensive sprint is deliberately separate from attack dash.
 local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=nil,
@@ -1126,6 +1127,46 @@ local function step_bot()
                 state.intercept_target_y=ty
                 return attach_live_state(state,"DANGER_OVERRIDE","MY_BALL_IN_FLIGHT")
             end
+            -- A logical MY flight can originate from a confirmed CPU carrier.
+            -- Only contest low balls when CPU is materially closer, and a
+            -- Brazilian outfielder is still within a reasonable chase range.
+            local fc=config.MY_FLIGHT_INTERCEPTION
+            if flight_context.origin=="CPU"
+                and flight_context.age>0 and flight_context.age<=fc.max_flight_age
+                and math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))<=fc.max_height then
+                local vx,vy=possession_context.ball_dx,possession_context.ball_dy
+                local lead=math.min(fc.max_prediction_frames,
+                    math.floor(fc.max_prediction_distance/math.max(
+                        1,math.sqrt(vx*vx+vy*vy))))
+                local tx,ty=bx+vx*lead,by+vy*lead
+                local my_nearest,cpu_nearest=math.huge,math.huge
+                players.each_my(function(base)
+                    if base~=config.MY_FIRST then
+                        local x,y=players.xy(base)
+                        my_nearest=math.min(my_nearest,math.sqrt((tx-x)^2+(ty-y)^2))
+                    end
+                end)
+                players.each_cpu(function(base)
+                    if base~=config.CPU_FIRST then
+                        local x,y=players.xy(base)
+                        cpu_nearest=math.min(cpu_nearest,math.sqrt((tx-x)^2+(ty-y)^2))
+                    end
+                end)
+                if my_nearest<=fc.max_my_distance
+                    and cpu_nearest+fc.min_cpu_advantage<my_nearest then
+                    local switch_state=maybe_switch_player(tx,ty,"MY_FLIGHT_INTERCEPTION")
+                    if switch_state then return switch_state end
+                    local px,py=players.xy(my_base)
+                    local dx,dy=tx-px,ty-py
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,"MY_FLIGHT_INTERCEPTION",possession,gs)
+                    state.intercept_target_x=tx
+                    state.intercept_target_y=ty
+                    state.flight_my_distance=my_nearest
+                    state.flight_cpu_distance=cpu_nearest
+                    return attach_live_state(state,"ORIGIN_OVERRIDE","MY_BALL_IN_FLIGHT")
+                end
+            end
             movement.stop()
             return attach_live_state(
                 make_state(my_base,0,0,"MY_BALL_IN_FLIGHT",possession,gs),
@@ -1357,6 +1398,24 @@ while true do
             or players.valid_cpu_base(state.possession) then
             danger_lock=nil
         end
+        if flight_interception_pending then
+            local outcome=nil
+            if players.valid_my_base(state.possession) then
+                outcome="MY_FLIGHT_INTERCEPTION_RECOVERED"
+            elseif players.valid_cpu_base(state.possession) then
+                outcome="MY_FLIGHT_INTERCEPTION_LOST"
+            elseif state.game_state~=0 or report.frame-flight_interception_pending.frame>=150 then
+                outcome="MY_FLIGHT_INTERCEPTION_UNKNOWN"
+            end
+            if outcome then
+                report:write(outcome,true,state,"OBSERVE_FLIGHT_RESULT",
+                    "start_frame="..tostring(flight_interception_pending.frame))
+                flight_interception_pending=nil
+            end
+        end
+        if state.status=="MY_FLIGHT_INTERCEPTION" and not flight_interception_pending then
+            flight_interception_pending={frame=report.frame}
+        end
         defensive_dash_step(state)
         -- Snapshot after the tactical decision, before the next emulated frame.
         state.ball_x, state.ball_y = ball.world_xy()
@@ -1364,6 +1423,14 @@ while true do
             gameplay_active.is_active(state.gameplay_active),
             state.game_state,state.possession,mem.u8(config.ADDR.team_possession))
         if flight then
+            state.ball_height=flight.height
+            state.ball_height_reference=flight.reference_height
+            state.ball_vertical_delta=flight.vertical_delta
+            state.ball_vertical_phase=flight.phase
+            state.ball_physical_class=flight.physical
+            state.ball_flight_origin=flight.origin
+            state.ball_flight_age=flight.age
+            state.ball_flight_discrepancy=flight.discrepancy
             if flight.discrepancy and not last_flight_discrepancy then
                 report:write("BALL_FLIGHT_POSSESSION_MISMATCH",true,state,
                     "OBSERVE_FLIGHT",
@@ -1373,14 +1440,6 @@ while true do
                     ..";age="..tostring(flight.age))
             end
             last_flight_discrepancy=flight.discrepancy
-            state.ball_height=flight.height
-            state.ball_height_reference=flight.reference_height
-            state.ball_vertical_delta=flight.vertical_delta
-            state.ball_vertical_phase=flight.phase
-            state.ball_physical_class=flight.physical
-            state.ball_flight_origin=flight.origin
-            state.ball_flight_age=flight.age
-            state.ball_flight_discrepancy=flight.discrepancy
         else
             last_flight_discrepancy=false
         end
