@@ -14,6 +14,7 @@ function M.new(config, mem)
         if value == 3 then return "FOUL_RESTART_SEQUENCE" end
         if value == 4 then return "OFFSIDE_SEQUENCE" end
         if value == 5 then return "POST_GOAL" end
+        if value == 6 then return "HALF_TIME" end
         return "UNKNOWN"
     end
 
@@ -26,7 +27,7 @@ function M.new(config, mem)
     end
 
     function obj.is_stoppage(value)
-        return value == 3 or value == 4 or value == 5
+        return value == 3 or value == 4 or value == 5 or value == 6
     end
 
     return obj
