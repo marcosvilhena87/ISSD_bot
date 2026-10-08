@@ -26,6 +26,7 @@ local Shoot = dofile(DIR .. "../tactics/shoot.lua")
 local ForwardPass = dofile(DIR .. "../tactics/forward_pass.lua")
 local GKDistribution = dofile(DIR .. "../tactics/gk_distribution.lua")
 local GoalKick = dofile(DIR .. "../tactics/goal_kick.lua")
+local FreeKick = dofile(DIR .. "../tactics/free_kick.lua")
 local Interception = dofile(DIR .. "../tactics/interception.lua")
 local DefenseInterception = dofile(DIR .. "../tactics/defense_interception.lua")
 local PlayerSwitch = dofile(DIR .. "../control/player_switch.lua")
@@ -51,6 +52,7 @@ local shoot = Shoot.new(config, players, field_side)
 local forward_pass = ForwardPass.new(config, players, field_side, mem)
 local gk_distribution = GKDistribution.new(config, players, field_side)
 local goal_kick = GoalKick.new(config, players, field_side)
+local free_kick = FreeKick.new(config, players, field_side)
 local interception = Interception.new(config)
 local defense_interception = DefenseInterception.new(config, players)
 local player_switch = PlayerSwitch.new(config, players)
@@ -205,6 +207,30 @@ local function step_bot()
         return state
     end
 
+    if gs == 3 then
+        goal_kick.reset()
+        throw_in.reset()
+        restart.clear()
+        possession_context.reset()
+        local bx,by=ball.world_xy()
+        local plan=free_kick.plan(bx,by)
+        local fired=free_kick.fire(plan,movement)
+        if not fired then movement.stop() end
+        local state=make_state(my_base,nil,nil,
+            fired and "FREE_KICK_ATTEMPT" or
+            ("FREE_KICK_"..(plan and plan.mode or "WAIT")),possession,gs)
+        state.free_kick_fired=fired
+        state.free_kick_mode=plan and plan.mode
+        state.free_kick_button=plan and plan.button
+        state.free_kick_direction=plan and plan.direction
+        state.free_kick_taker=plan and plan.taker
+        state.free_kick_my_distance=plan and plan.my_distance
+        state.free_kick_cpu_distance=plan and plan.cpu_distance
+        state.free_kick_stable=plan and plan.stable
+        state.free_kick_attempts=plan and plan.attempts
+        return state
+    end
+    free_kick.reset()
     if game_state.is_stoppage(gs) then
         goal_kick.reset()
         restart.clear()
@@ -998,6 +1024,17 @@ while true do
                 ..";clearance="..tostring(state.gk_dist_receiver_clearance)
                 ..";lane_clearance="..tostring(state.gk_dist_lane_clearance)
                 ..";reason="..tostring(state.gk_dist_decision_reason))
+        end
+        if state.free_kick_fired then
+            report:write("FREE_KICK_ATTEMPT",true,state,state.controller_command,
+                "mode="..tostring(state.free_kick_mode)
+                ..";button="..tostring(state.free_kick_button)
+                ..";direction="..tostring(state.free_kick_direction)
+                ..";taker="..tostring(state.free_kick_taker)
+                ..";my_distance="..tostring(state.free_kick_my_distance)
+                ..";cpu_distance="..tostring(state.free_kick_cpu_distance)
+                ..";stable="..tostring(state.free_kick_stable)
+                ..";attempts_before="..tostring(state.free_kick_attempts))
         end
         if state.goal_kick_fired then
             report:write("GOAL_KICK_ATTEMPT",true,state,
