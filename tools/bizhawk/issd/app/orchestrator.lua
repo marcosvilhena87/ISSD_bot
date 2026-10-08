@@ -87,6 +87,7 @@ local defensive_carrier = nil
 local defensive_hold_age = 0
 local rebound_lock_base=nil
 local rebound_lock_frames=0
+local last_flight_discrepancy=false
 local danger_lock=nil
 -- Defensive sprint is deliberately separate from attack dash.
 local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=nil,
@@ -1363,6 +1364,15 @@ while true do
             gameplay_active.is_active(state.gameplay_active),
             state.game_state,state.possession,mem.u8(config.ADDR.team_possession))
         if flight then
+            if flight.discrepancy and not last_flight_discrepancy then
+                report:write("BALL_FLIGHT_POSSESSION_MISMATCH",true,state,
+                    "OBSERVE_FLIGHT",
+                    "origin="..tostring(flight.origin)
+                    ..";logical_team="..tostring(flight.logical_team)
+                    ..";height="..tostring(flight.height)
+                    ..";age="..tostring(flight.age))
+            end
+            last_flight_discrepancy=flight.discrepancy
             state.ball_height=flight.height
             state.ball_height_reference=flight.reference_height
             state.ball_vertical_delta=flight.vertical_delta
@@ -1371,6 +1381,8 @@ while true do
             state.ball_flight_origin=flight.origin
             state.ball_flight_age=flight.age
             state.ball_flight_discrepancy=flight.discrepancy
+        else
+            last_flight_discrepancy=false
         end
         if players.valid_my_base(state.my_base) then
             state.player_x, state.player_y = players.xy(state.my_base)
