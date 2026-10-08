@@ -1030,20 +1030,14 @@ local function step_bot()
             end
             if gs == 1 and restart.taker == config.MY_FIRST then
                 local plan = goal_kick.plan(restart.taker,restart.taker_team,bx,by,my_base)
-                local fired = false
-                if plan and plan.mode=="APPROACH" then
-                    movement.move_toward(plan.dx,plan.dy)
-                else
-                    fired = goal_kick.fire(plan,movement)
-                    if fired then goal_kick.remember_ball(bx,by)
-                    else movement.stop() end
-                end
-                local state=make_state(my_base,plan and plan.dx,plan and plan.dy,
+                local fired = goal_kick.fire(plan,movement)
+                if fired then goal_kick.remember_ball(bx,by)
+                else movement.stop() end
+                local state=make_state(my_base,0,0,
                     fired and "GOAL_KICK_ATTEMPT"
                     or ("GOAL_KICK_"..(plan and plan.mode or "WAIT")),possession,gs)
                 state.goal_kick_fired=fired
                 state.goal_kick_mode=plan and plan.mode
-                state.goal_kick_distance=plan and plan.distance
                 state.goal_kick_displacement=plan and plan.displacement
                 state.goal_kick_direction=plan and plan.direction
                 state.goal_kick_button=plan and plan.button
