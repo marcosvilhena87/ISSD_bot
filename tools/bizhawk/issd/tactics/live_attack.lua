@@ -1,7 +1,9 @@
 local M = {}
 
 function M.new(config, players, field_side)
-    local obj = { lane_direction = nil, lane_lock_frames = 0 }
+    local obj = { lane_direction = nil, lane_lock_frames = 0,
+        carrier=nil, anchor_x=nil, anchor_y=nil, lane_frames=0,
+        abort_frames=0, stalled_events=0, progress_event=nil }
 
     local function distance(ax, ay, bx, by)
         local dx, dy = bx - ax, by - ay
@@ -40,6 +42,56 @@ function M.new(config, players, field_side)
 
     function obj.reset()
         obj.lane_direction, obj.lane_lock_frames = nil, 0
+        obj.carrier=nil; obj.anchor_x=nil; obj.anchor_y=nil
+        obj.lane_frames=0; obj.abort_frames=0; obj.stalled_events=0
+        obj.progress_event=nil
+    end
+
+    function obj.take_progress_event()
+        local event=obj.progress_event
+        obj.progress_event=nil
+        return event
+    end
+
+    local function monitor_lane(carrier,px,py,dir)
+        local c=config.ATTACK
+        if obj.carrier~=carrier then
+            obj.reset()
+            obj.carrier=carrier
+        end
+        if obj.abort_frames>0 then obj.abort_frames=obj.abort_frames-1 end
+        if obj.abort_frames>0 then return true end
+        if obj.anchor_x==nil then
+            obj.anchor_x,obj.anchor_y=px,py
+            obj.lane_frames=0
+        end
+        obj.lane_frames=obj.lane_frames+1
+        if obj.lane_frames>=c.lane_progress_window then
+            local advance=(px-obj.anchor_x)*dir
+            if advance<c.lane_min_progress then
+                obj.stalled_events=obj.stalled_events+1
+                obj.abort_frames=c.lane_abort_frames
+                obj.progress_event={kind="LANE_STALLED",carrier=carrier,
+                    progress=advance,elapsed=obj.lane_frames,
+                    stalled=obj.stalled_events}
+                obj.lane_direction=nil
+                obj.lane_lock_frames=0
+                obj.anchor_x,obj.anchor_y=nil,nil
+                obj.lane_frames=0
+                return true
+            else
+                obj.progress_event={kind="LANE_PROGRESS",carrier=carrier,
+                    progress=advance,elapsed=obj.lane_frames}
+                obj.anchor_x,obj.anchor_y=px,py
+                obj.lane_frames=0
+            end
+        end
+        return false
+    end
+
+    local function reset_lane_window()
+        obj.anchor_x,obj.anchor_y=nil,nil
+        obj.lane_frames=0
     end
 
     function obj.target_for_carrier(carrier_base, shot_diag)
@@ -49,6 +101,16 @@ function M.new(config, players, field_side)
         if my_side == nil or dir == 0 then obj.reset(); return nil end
 
         local gx, gy = players.xy(config.CPU_FIRST)
+        if monitor_lane(carrier_base,px,py,dir) then
+            -- After stalled zigzags, progress directly without restarting Y.
+            return {mode="RECOVER",carrier=carrier_base,
+                player_x=px,player_y=py,
+                target_x=px+dir*config.ATTACK.advance_distance,
+                target_y=py,direction=dir,my_side=my_side,
+                goal_target_x=gx,goal_target_y=gy,
+                goal_distance=distance(px,py,gx,gy),
+                abort_remaining=obj.abort_frames}
+        end
         if shot_diag and shot_diag.reason == "BLOCKED_LANE" then
             local offset = config.ATTACK.lane_offset_y
             local up_y, down_y = py - offset, py + offset
