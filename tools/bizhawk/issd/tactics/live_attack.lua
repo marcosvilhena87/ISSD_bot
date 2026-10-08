@@ -102,6 +102,27 @@ function M.new(config, players, field_side)
         if my_side == nil or dir == 0 then obj.reset(); return nil end
 
         local gx, gy = players.xy(config.CPU_FIRST)
+        -- Near the opponent's end line, repeated forward commands are futile.
+        -- When the shot has a poor angle and no safe pass was found upstream,
+        -- move inward/backward to reopen a shooting lane instead.
+        local final_cfg=config.ATTACK_FINAL_THIRD
+        local forward=(gx-px)*dir
+        local lateral=math.abs(py-gy)
+        if forward<=final_cfg.endline_distance
+            and lateral>=final_cfg.min_lateral_offset
+            and shot_diag and (shot_diag.reason=="BAD_SHOT_ANGLE"
+                or shot_diag.reason=="GOAL_BEHIND"
+                or shot_diag.reason=="BLOCKED_LANE") then
+            if obj.carrier~=carrier_base then obj.reset();obj.carrier=carrier_base end
+            local inward=py>gy and -1 or 1
+            local tx=px-dir*final_cfg.retreat_step
+            local ty=py+inward*math.min(final_cfg.inward_step,lateral)
+            return {mode="FINAL_THIRD_REPOSITION",carrier=carrier_base,
+                player_x=px,player_y=py,target_x=tx,target_y=ty,
+                direction=dir,my_side=my_side,goal_target_x=gx,goal_target_y=gy,
+                goal_distance=distance(px,py,gx,gy),
+                lateral_offset=lateral,goal_forward=forward}
+        end
         if monitor_lane(carrier_base,px,py,dir) then
             -- After stalled zigzags, progress directly without restarting Y.
             return {mode="RECOVER",carrier=carrier_base,
