@@ -24,6 +24,7 @@ local LiveDefense = dofile(DIR .. "../tactics/live_defense.lua")
 local LiveAttack = dofile(DIR .. "../tactics/live_attack.lua")
 local Shoot = dofile(DIR .. "../tactics/shoot.lua")
 local GKDistribution = dofile(DIR .. "../tactics/gk_distribution.lua")
+local GoalKick = dofile(DIR .. "../tactics/goal_kick.lua")
 local Interception = dofile(DIR .. "../tactics/interception.lua")
 local DefenseInterception = dofile(DIR .. "../tactics/defense_interception.lua")
 local PlayerSwitch = dofile(DIR .. "../control/player_switch.lua")
@@ -47,6 +48,7 @@ local live_defense = LiveDefense.new(config, players, field_side)
 local live_attack = LiveAttack.new(config, players, field_side)
 local shoot = Shoot.new(config, players, field_side)
 local gk_distribution = GKDistribution.new(config, players, field_side)
+local goal_kick = GoalKick.new(config, players, field_side)
 local interception = Interception.new(config)
 local defense_interception = DefenseInterception.new(config, players)
 local player_switch = PlayerSwitch.new(config, players)
@@ -187,6 +189,7 @@ local function step_bot()
     end
 
     if game_state.is_stoppage(gs) then
+        goal_kick.reset()
         restart.clear()
         throw_in.reset()
         possession_context.reset()
@@ -222,6 +225,7 @@ local function step_bot()
     local bx, by = ball.world_xy()
 
     if game_state.is_live(gs) then
+        goal_kick.reset()
         throw_in.reset()
         restart.clear()
 
@@ -669,7 +673,22 @@ local function step_bot()
         restart.assign(bx, by, my_base)
         if gs ~= 2 or restart.taker_team ~= "MY" then throw_in.reset() end
 
+        if gs ~= 1 then goal_kick.reset() end
         if restart.taker_team == "MY" then
+            if gs == 1 and restart.taker == config.MY_FIRST then
+                local plan = goal_kick.plan(restart.taker,restart.taker_team)
+                local fired = goal_kick.fire(plan,movement)
+                if not fired then movement.stop() end
+                local state=make_state(my_base,nil,nil,
+                    fired and "GOAL_KICK_ATTEMPT" or "GOAL_KICK_WAIT",
+                    possession,gs)
+                state.goal_kick_fired=fired
+                state.goal_kick_direction=plan and plan.direction
+                state.goal_kick_button=plan and plan.button
+                state.goal_kick_attempts=plan and plan.attempts
+                state.goal_kick_nearest=plan and plan.nearest_opponent
+                return state
+            end
             if gs == 2 then
                 local plan = throw_in.plan(restart.taker, my_base)
                 local fired = false
@@ -843,6 +862,14 @@ while true do
                 .. ";blocker=" .. tostring(state.escape_blocker)
                 .. ";target_x=" .. tostring(state.target_x)
                 .. ";target_y=" .. tostring(state.target_y))
+        end
+        if state.goal_kick_fired then
+            report:write("GOAL_KICK_ATTEMPT",true,state,
+                state.controller_command,
+                "button="..tostring(state.goal_kick_button)
+                ..";direction="..tostring(state.goal_kick_direction)
+                ..";nearest_opponent="..tostring(state.goal_kick_nearest)
+                ..";attempts_before="..tostring(state.goal_kick_attempts))
         end
         if state.shot_fired then
             report:write("SHOT_ATTEMPT", true, state,
