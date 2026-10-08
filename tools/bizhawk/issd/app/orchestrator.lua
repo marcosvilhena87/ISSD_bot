@@ -1260,6 +1260,14 @@ while true do
                 .. ";target_x=" .. tostring(state.target_x)
                 .. ";target_y=" .. tostring(state.target_y))
         end
+        if state.status=="BOX_EMERGENCY_RECOVERY" and report.frame%15==0 then
+            report:write("BOX_EMERGENCY_RECOVERY",true,state,state.controller_command,
+                "attacker_distance="..tostring(state.box_recovery_attacker_distance)
+                ..";goal_distance="..tostring(state.box_recovery_goal_distance)
+                ..";defender_ball_distance="..tostring(state.intercept_player_ball_distance)
+                ..";target_x="..tostring(state.intercept_target_x)
+                ..";target_y="..tostring(state.intercept_target_y))
+        end
         if state.status=="DEFENSE_BOX_COVERAGE" and report.frame%30==0 then
             report:write("BOX_THREAT",true,state,state.controller_command,
                 "threat="..tostring(state.box_threat)
