@@ -1,7 +1,7 @@
 -- ISSD: discover candidate ball height (Z) in BizHawk WRAM.
 -- Run ALONE in Lua Console, with the ROM active. Never writes game memory.
 -- G=ground stationary, R=rolling pass, A=airborne, P=near apex.
--- C=rank candidates, X=reset. Capture >=3 samples per class.
+-- C=rank candidates, K=reset. Capture >=3 samples per class.
 -- Use visibly different field positions and ball trajectories.
 local DOMAIN="WRAM"
 local ORDER={"GROUND","ROLLING","AIR","APEX"}
@@ -98,7 +98,7 @@ local function report()
     console.log("[BALL_Z] Candidates are hypotheses; verify live Z dynamics, landing, stadium and restart.")
 end
 
-console.log("[BALL_Z] G=ground R=rolling A=air P=apex C=rank X=reset")
+console.log("[BALL_Z] G=ground R=rolling A=air P=apex C=rank K=reset")
 while true do
     local keys=input.get()
     for key,name in pairs(HOTKEY) do
@@ -110,7 +110,7 @@ while true do
         end
     end
     if edge(keys,"C") then report() end
-    if edge(keys,"X") then
+    if edge(keys,"K") then
         for _,name in ipairs(ORDER) do samples[name]={} end
         console.log("[BALL_Z] reset")
     end
