@@ -8,6 +8,9 @@ function M.new(config, players)
         last_current_distance = nil,
         last_best_distance = nil,
         last_improvement = nil,
+        pending = nil,
+        event = nil,
+        settle = 0,
     }
 
     local function distance(ax, ay, bx, by)
@@ -36,7 +39,31 @@ function M.new(config, players)
         return best_base, best_distance
     end
 
+    function obj.observe_control(actual)
+        local pending=obj.pending
+        if not pending then return end
+        pending.age=pending.age+1
+        if actual~=pending.from then
+            obj.event={kind=actual==pending.best and "SWITCH_CONFIRMED" or "SWITCH_MISMATCH",
+                from=pending.from, expected=pending.best, actual=actual, age=pending.age}
+            obj.pending=nil
+            obj.settle=config.PLAYER_SWITCH.settle_frames
+        elseif pending.age>=config.PLAYER_SWITCH.verify_frames then
+            obj.event={kind="SWITCH_UNCHANGED",from=pending.from,
+                expected=pending.best,actual=actual,age=pending.age}
+            obj.pending=nil
+            obj.settle=config.PLAYER_SWITCH.settle_frames
+        end
+    end
+
+    function obj.take_event()
+        local event=obj.event
+        obj.event=nil
+        return event
+    end
+
     function obj.tick()
+        if obj.settle>0 then obj.settle=obj.settle-1 end
         if obj.cooldown > 0 then
             obj.cooldown = obj.cooldown - 1
         end
@@ -49,6 +76,7 @@ function M.new(config, players)
         obj.last_current_distance = nil
         obj.last_best_distance = nil
         obj.last_improvement = nil
+        obj.pending=nil; obj.event=nil; obj.settle=0
     end
 
     function obj.consider(my_base, target_x, target_y)
@@ -62,13 +90,14 @@ function M.new(config, players)
         end
 
         local should_switch =
-            obj.cooldown == 0
+            obj.cooldown == 0 and obj.settle == 0 and obj.pending == nil
             and best_base ~= nil
             and best_base ~= my_base
             and improvement > config.PLAYER_SWITCH.improvement_margin
 
         if should_switch then
             obj.cooldown = config.PLAYER_SWITCH.cooldown_frames
+            obj.pending={from=my_base,best=best_base,age=0}
             obj.last_requested_from = my_base
             obj.last_best = best_base
             obj.last_current_distance = current_distance
@@ -84,6 +113,7 @@ function M.new(config, players)
             best_distance = best_distance,
             improvement = improvement,
             cooldown = obj.cooldown,
+            pending = obj.pending~=nil,
             button = config.PLAYER_SWITCH.button,
         }
     end
