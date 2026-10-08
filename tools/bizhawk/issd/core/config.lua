@@ -157,6 +157,7 @@ M.FORWARD_PASS = {
 
 M.SHOOT = {
     button = "X",
+    dash_shoot_calibration = true, -- alternate normal and Y+X shots
     max_distance = 310,
     min_forward_distance = 25,
     lane_half_width = 46,
