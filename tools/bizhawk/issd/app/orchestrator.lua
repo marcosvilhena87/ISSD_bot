@@ -700,6 +700,29 @@ local function step_bot()
                 return attach_live_state(state,"ACTIVE_TACKLE","CPU_CONTROLLED")
             end
 
+            local lane=live_defense.shot_lane(possession,my_base)
+            if lane then
+                local switch_state=maybe_switch_player(
+                    lane.target_x,lane.target_y,"SHOT_LANE_BLOCK")
+                if switch_state then
+                    switch_state.shot_lane_exposed=lane.exposed
+                    return switch_state
+                end
+                local px,py=players.xy(my_base)
+                local dx,dy=lane.target_x-px,lane.target_y-py
+                movement.move_toward(dx,dy)
+                local state=make_state(my_base,dx,dy,
+                    "DEFENSE_SHOT_LANE_BLOCK",possession,gs)
+                state.shot_lane_lateral=lane.lateral
+                state.shot_lane_along=lane.along
+                state.shot_lane_exposed=lane.exposed
+                state.shot_lane_distance=lane.distance
+                state.live_target_x=lane.target_x
+                state.live_target_y=lane.target_y
+                state.live_carrier=possession
+                return attach_live_state(state,"SHOT_LANE_BLOCK","CPU_CONTROLLED")
+            end
+
             -- Prefer closing down an unmarked secondary attacker in the box.
             -- The selected human-controlled defender is the only movable unit.
             local box = live_defense.box_threat(possession, bx, by)
@@ -1267,6 +1290,18 @@ while true do
                 ..";holder="..tostring(tackle_outcome.holder)
                 ..";distance="..tostring(tackle_outcome.distance)
                 ..";age="..tostring(tackle_outcome.age))
+        end
+        if state.shot_lane_lateral~=nil
+            and report.frame%config.SHOT_LANE.telemetry_frames==0 then
+            report:write("SHOT_LANE_BLOCK_ATTEMPT",true,state,state.controller_command,
+                "lateral="..tostring(state.shot_lane_lateral)
+                ..";along="..tostring(state.shot_lane_along)
+                ..";distance="..tostring(state.shot_lane_distance))
+            if state.shot_lane_exposed then
+                report:write("SHOT_LANE_EXPOSED",true,state,state.controller_command,
+                    "lateral="..tostring(state.shot_lane_lateral)
+                    ..";along="..tostring(state.shot_lane_along))
+            end
         end
         if state.goal_side_between~=nil
             and report.frame%config.GOAL_SIDE.measure_every_frames==0 then
