@@ -94,6 +94,7 @@ local rebound_lock_frames=0
 local latest_contest=nil
 local latest_contest_frame=nil
 local contest_intercept_lock=nil
+local contest_abort_until=0
 local last_flight_discrepancy=false
 local flight_interception_pending=nil
 local danger_lock=nil
@@ -1163,6 +1164,7 @@ local function step_bot()
                         ..";my_eta="..my_eta..";cpu_eta="..lock.cpu_eta
                         ..";age="..(report.frame-lock.start))
                     contest_intercept_lock=nil
+                    contest_abort_until=report.frame+config.BALL_CONTEST_DECISION_GATE.abort_cooldown_frames
                 else
                     local dx,dy=lock.x-px,lock.y-py
                     movement.move_toward(dx,dy)
@@ -1180,7 +1182,7 @@ local function step_bot()
             local gate=config.BALL_CONTEST_DECISION_GATE
             local eta=latest_contest
             local reason="NO_STABLE_ETA"
-            if eta and latest_contest_frame
+            if report.frame>=contest_abort_until and eta and latest_contest_frame
                 and report.frame-latest_contest_frame<=gate.max_age_frames then
                 local height=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
                 local gkx,gky=players.xy(config.MY_FIRST)
@@ -1204,6 +1206,7 @@ local function step_bot()
                     if defender_eta>gate.lock_max_defender_eta
                         or defender_eta-eta.cpu_eta>gate.lock_max_eta_deficit then
                         reason="INTERCEPT_UNREACHABLE"
+                        contest_abort_until=report.frame+gate.abort_cooldown_frames
                         report:write("INTERCEPT_ABORT_UNREACHABLE",true,
                             {possession=possession,game_state=gs,my_base=my_base,
                              ball_x=bx,ball_y=by},"OBSERVE_CONTEST_GATE",
@@ -1251,7 +1254,7 @@ local function step_bot()
             -- Only contest low balls when CPU is materially closer, and a
             -- Brazilian outfielder is still within a reasonable chase range.
             local fc=config.MY_FLIGHT_INTERCEPTION
-            if flight_context.origin=="CPU"
+            if report.frame>=contest_abort_until and flight_context.origin=="CPU"
                 and flight_context.age>0 and flight_context.age<=fc.max_flight_age
                 and math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))<=fc.max_height then
                 local vx,vy=possession_context.ball_dx,possession_context.ball_dy
