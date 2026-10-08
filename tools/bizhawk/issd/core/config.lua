@@ -117,6 +117,7 @@ M.SHOOT = {
     max_distance = 310,
     min_forward_distance = 25,
     lane_half_width = 46,
+    max_shot_angle = 30, -- degrees; provisional
     cooldown_frames = 90,
 }
 
