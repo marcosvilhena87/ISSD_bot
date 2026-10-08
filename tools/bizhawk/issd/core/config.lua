@@ -306,6 +306,15 @@ M.MY_FLIGHT_INTERCEPTION = {
 }
 
 -- Conservative inferred rebounds near Brazilian goalkeeper.
+M.BOX_SECOND_BALL = {
+    window_frames=105,
+    goal_radius=340,
+    max_outfielder_distance=220,
+    min_switch_gain=65,
+    switch_min_remaining=24,
+    max_switches=1,
+}
+
 M.GK_REBOUND_RECOVERY = {
     goal_radius=280,
     recent_cpu_frames=45,
