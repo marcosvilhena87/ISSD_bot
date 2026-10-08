@@ -26,6 +26,7 @@ local Shoot = dofile(DIR .. "../tactics/shoot.lua")
 local ForwardPass = dofile(DIR .. "../tactics/forward_pass.lua")
 local GKDistribution = dofile(DIR .. "../tactics/gk_distribution.lua")
 local GoalKick = dofile(DIR .. "../tactics/goal_kick.lua")
+local CornerKick = dofile(DIR .. "../tactics/corner_kick.lua")
 local FreeKick = dofile(DIR .. "../tactics/free_kick.lua")
 local Interception = dofile(DIR .. "../tactics/interception.lua")
 local DefenseInterception = dofile(DIR .. "../tactics/defense_interception.lua")
@@ -52,6 +53,7 @@ local shoot = Shoot.new(config, players, field_side)
 local forward_pass = ForwardPass.new(config, players, field_side, mem)
 local gk_distribution = GKDistribution.new(config, players, field_side)
 local goal_kick = GoalKick.new(config, players, field_side)
+local corner_kick = CornerKick.new(config, players, field_side, mem)
 local free_kick = FreeKick.new(config, players, field_side)
 local interception = Interception.new(config)
 local defense_interception = DefenseInterception.new(config, players)
@@ -268,6 +270,7 @@ local function step_bot()
     local bx, by = ball.world_xy()
 
     if game_state.is_live(gs) then
+        corner_kick.reset()
         goal_kick.reset()
         throw_in.reset()
         restart.clear()
@@ -772,8 +775,29 @@ local function step_bot()
         restart.assign(bx, by, my_base)
         if gs ~= 2 or restart.taker_team ~= "MY" then throw_in.reset() end
 
-        if gs ~= 1 then goal_kick.reset() end
+        if gs ~= 1 then goal_kick.reset(); corner_kick.reset() end
         if restart.taker_team == "MY" then
+            if gs == 1 and restart.taker ~= config.MY_FIRST then
+                local plan=corner_kick.plan(bx,by,restart.taker,restart.taker_team)
+                if plan then
+                    local fired=corner_kick.fire(plan,movement)
+                    if not fired then movement.stop() end
+                    local state=make_state(my_base,nil,nil,
+                        fired and "CORNER_KICK_ATTEMPT" or "CORNER_KICK_WAIT",
+                        possession,gs)
+                    state.corner_fired=fired
+                    state.corner_button=plan.button
+                    state.corner_direction=plan.direction
+                    state.corner_taker=plan.taker
+                    state.corner_mode=plan.mode
+                    state.corner_end_distance=plan.end_distance
+                    state.corner_side_distance=plan.side_distance
+                    state.corner_taker_distance=plan.taker_distance
+                    state.corner_stable=plan.stable
+                    state.corner_attempts=plan.attempts
+                    return state
+                end
+            end
             if gs == 1 and restart.taker == config.MY_FIRST then
                 local plan = goal_kick.plan(restart.taker,restart.taker_team)
                 local fired = goal_kick.fire(plan,movement)
@@ -1035,6 +1059,18 @@ while true do
                 ..";cpu_distance="..tostring(state.free_kick_cpu_distance)
                 ..";stable="..tostring(state.free_kick_stable)
                 ..";attempts_before="..tostring(state.free_kick_attempts))
+        end
+        if state.corner_fired then
+            report:write("CORNER_KICK_ATTEMPT",true,state,state.controller_command,
+                "mode="..tostring(state.corner_mode)
+                ..";button="..tostring(state.corner_button)
+                ..";direction="..tostring(state.corner_direction)
+                ..";taker="..tostring(state.corner_taker)
+                ..";end_distance="..tostring(state.corner_end_distance)
+                ..";side_distance="..tostring(state.corner_side_distance)
+                ..";taker_distance="..tostring(state.corner_taker_distance)
+                ..";stable="..tostring(state.corner_stable)
+                ..";attempts_before="..tostring(state.corner_attempts))
         end
         if state.goal_kick_fired then
             report:write("GOAL_KICK_ATTEMPT",true,state,
