@@ -16,6 +16,7 @@ local Players = dofile(DIR .. "../state/players.lua")
 local Ball = dofile(DIR .. "../state/ball.lua")
 local AerialContact = dofile(DIR .. "../state/aerial_contact.lua")
 local AerialDefensiveContact = dofile(DIR .. "../state/aerial_defensive_contact.lua")
+local GKReboundRecovery = dofile(DIR .. "../state/gk_rebound_recovery.lua")
 local BallFlightContext = dofile(DIR .. "../state/ball_flight_context.lua")
 local OwnershipProbe = dofile(DIR .. "../state/ownership_probe.lua")
 local BallContestFeasibility = dofile(DIR .. "../state/ball_contest_feasibility.lua")
@@ -52,6 +53,7 @@ local players = Players.new(config, mem)
 local ball = Ball.new(config, mem)
 local aerial_contact = AerialContact.new(config, mem, players)
 local aerial_defensive_contact = AerialDefensiveContact.new(config, players)
+local gk_rebound_recovery = GKReboundRecovery.new(config, players)
 local flight_context = BallFlightContext.new(config, mem, players)
 local ownership_probe = OwnershipProbe.new(config, mem, players)
 local contest_feasibility = BallContestFeasibility.new(config, players)
@@ -114,7 +116,7 @@ local function defensive_dash_step(state)
         CPU_GROUND_INTERCEPT=true, CPU_LOW_INTERCEPT=true,
         CPU_AERIAL_INTERCEPT=true, CPU_BALL_INTERCEPT=true,
         CPU_BALL_INTERCEPT_FALLBACK=true,
-        MY_FLIGHT_BOX_DANGER=true, MY_BOX_GROUND_RECOVERY=true,
+        GK_REBOUND_RECOVERY=true, MY_FLIGHT_BOX_DANGER=true, MY_BOX_GROUND_RECOVERY=true,
         MY_BOX_LOW_RECOVERY=true, MY_BOX_AERIAL_COVER=true,
         LIVE_FALLBACK_CHASE=true,
     }
@@ -1286,6 +1288,36 @@ local function step_bot()
             -- Team possession RAM can remain MY during a dangerous rebound.
             -- Intervene only near our keeper when a CPU outfielder can contest
             -- the ball and no Brazilian outfielder is already close to it.
+            -- A verified rebound *candidate* temporarily prioritizes nearest
+            -- outfielder recovery, without treating TeamPoss as a save signal.
+            if gk_rebound_recovery.active(report.frame) then
+                local target_x,target_y=bx,by
+                local best,best_d=nil,math.huge
+                players.each_my(function(base)
+                    if base~=config.MY_FIRST then
+                        local x,y=players.xy(base)
+                        local d=math.sqrt((target_x-x)^2+(target_y-y)^2)
+                        if d<best_d then best,best_d=base,d end
+                    end
+                end)
+                if best and best_d<=config.GK_REBOUND_RECOVERY.max_outfielder_distance then
+                    local switch_state=maybe_switch_player(target_x,target_y,
+                        "GK_REBOUND_RECOVERY")
+                    if switch_state then
+                        switch_state.gk_rebound_candidate=true
+                        return switch_state
+                    end
+                    local px,py=players.xy(my_base)
+                    local dx,dy=target_x-px,target_y-py
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,
+                        "GK_REBOUND_RECOVERY",possession,gs)
+                    state.intercept_target_x=target_x
+                    state.intercept_target_y=target_y
+                    state.gk_rebound_candidate=true
+                    return attach_live_state(state,"GK_REBOUND_CANDIDATE","MY_UNOWNED_BALL")
+                end
+            end
             local guard=config.BOX_RECOVERY
             local gx,gy=players.xy(config.MY_FIRST)
             local gd2=(bx-gx)^2+(by-gy)^2
@@ -1851,6 +1883,16 @@ while true do
                 .. ";goal_distance=" .. tostring(state.attack_goal_distance)
         end
         -- Observational telemetry: never changes the selected controller action.
+        local rebound_event=gk_rebound_recovery.update(state,report.frame)
+        if rebound_event then
+            report:write("GK_REBOUND_"..rebound_event.kind,true,state,
+                "OBSERVE_GK_REBOUND",
+                "reason="..tostring(rebound_event.reason)
+                ..";elapsed="..tostring(rebound_event.elapsed)
+                ..";height="..tostring(state.ball_height)
+                ..";ball_x="..tostring(state.ball_x)
+                ..";ball_y="..tostring(state.ball_y))
+        end
         local header_window=aerial_defensive_contact.update(state)
         if header_window then
             report:write("AERIAL_DEFENSIVE_CONTACT_"..header_window.kind,
