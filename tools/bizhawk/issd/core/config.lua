@@ -144,6 +144,8 @@ M.PLAYER_SWITCH = {
     button = "R",
     improvement_margin = 80,
     cooldown_frames = 12,
+    verify_frames = 8,
+    settle_frames = 24,
     exclude_goalkeeper = true,
 }
 
