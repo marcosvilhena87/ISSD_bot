@@ -1,7 +1,7 @@
 local M={}
 function M.new(config,players,field_side,mem)
  local c=config.DEFENSIVE_EXIT
- local o={carrier=nil,age=0,start_x=nil,start_y=nil}
+ local o={carrier=nil,age=0,start_x=nil,start_y=nil,clearance_used=false}
  local function d(x,y,a,b) return math.sqrt((x-a)^2+(y-b)^2) end
  local function space(x,y)
   local nearest=99999
@@ -10,15 +10,17 @@ function M.new(config,players,field_side,mem)
   end)
   return nearest
  end
- function o.reset() o.carrier=nil;o.age=0;o.start_x=nil;o.start_y=nil end
+ function o.reset() o.carrier=nil;o.age=0;o.start_x=nil;o.start_y=nil;o.clearance_used=false end
  function o.plan(carrier,pass_cooldown)
   if o.carrier~=carrier then o.reset();o.carrier=carrier end
   o.age=o.age+1
   local x,y=players.xy(carrier)
+  local threat=space(x,y)
+  local pressured=threat<=c.pressure_radius
   local width=mem.u16(config.ADDR.field_width)
   local center=mem.u16(config.ADDR.center_field_y)
   local dir=field_side.attack_direction()
-  if width<200 or width>2000 or dir==0 then return {mode="HOLD",reason="BAD_FIELD"} end
+  if width<200 or width>2000 or dir==0 then return {mode="HOLD",reason="BAD_FIELD",threat=threat,age=o.age} end
   local low,high=center-width/2+c.field_margin,center+width/2-c.field_margin
   local best=nil
   if pass_cooldown==0 then
@@ -52,8 +54,8 @@ function M.new(config,players,field_side,mem)
     end
    end)
   end
-  if best then return best end
-  if o.age<c.hold_before_move then return {mode="HOLD",reason="WAIT_OUTLET",age=o.age} end
+  if best then best.threat=threat;return best end
+  if not pressured and o.age<c.hold_before_move then return {mode="HOLD",reason="WAIT_OUTLET",age=o.age,threat=threat} end
   if not o.start_x then o.start_x,o.start_y=x,y end
   if d(x,y,o.start_x,o.start_y)>=c.max_advance then
    return {mode="HOLD",reason="ESCAPE_LIMIT",age=o.age}
@@ -61,10 +63,15 @@ function M.new(config,players,field_side,mem)
   local up=y-c.step>=low and space(x,y-c.step) or -1
   local down=y+c.step<=high and space(x,y+c.step) or -1
   if math.max(up,down)<c.min_escape_clearance then
-   return {mode="HOLD",reason="NO_SAFE_SPACE",age=o.age}
+   if threat<=c.emergency_radius and not o.clearance_used then
+    o.clearance_used=true
+    return {mode="CLEAR",button="A",direction=dir==1 and "Right" or "Left",reason="PRESSURE_NO_SAFE_SPACE",age=o.age,threat=threat}
+   end
+   return {mode="HOLD",reason="NO_SAFE_SPACE",age=o.age,threat=threat}
   end
   return {mode="MOVE",dx=dir*c.forward_step,
-   dy=up>=down and -c.step or c.step,age=o.age,reason="SHORT_ESCAPE"}
+   dy=up>=down and -c.step or c.step,age=o.age,
+   threat=threat,reason=pressured and "PRESSURE_SHORT_ESCAPE" or "SHORT_ESCAPE"}
  end
  return o
 end
