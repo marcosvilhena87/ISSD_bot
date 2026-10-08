@@ -196,6 +196,7 @@ M.BOX_PRESSURE = {
 M.BOX_RECOVERY = {
     goal_radius = 300,
     attacker_radius = 110,
+    own_ball_protection_radius = 32, -- do not disrupt nearby Brazilian receiver
     max_ball_speed = 5.0,
 }
 
