@@ -10,14 +10,16 @@ function M.new(config, players, field_side, mem)
         target_lock_frames=20, target_tolerance=16,
         max_attempts=2, long_fallback_frames=180,
         recovery_switch_interval=30, max_recovery_switches=3,
-        field_margin=40
+        field_margin=40, receiver_max_taker_distance=160,
+        receiver_switch_improvement=32, switch_verify_frames=12
     }
     for key, value in pairs(defaults) do
         if c[key] == nil then c[key] = value end
     end
     local obj = {taker=nil, frames=0, switch_cd=0, throw_cd=0,
         attempts=0, target_x=nil, target_y=nil, lock=0,
-        recovery_switches=0, last_receiver=nil}
+        recovery_switches=0, last_receiver=nil,
+        pending_switch=nil, switch_wait=0}
     local function dist(x,y,a,b)
         local dx,dy=x-a,y-b
         return math.sqrt(dx*dx+dy*dy)
@@ -57,6 +59,7 @@ function M.new(config, players, field_side, mem)
         obj.throw_cd=0; obj.attempts=0
         obj.target_x=nil; obj.target_y=nil; obj.lock=0
         obj.recovery_switches=0; obj.last_receiver=nil
+        obj.pending_switch=nil; obj.switch_wait=0
     end
     function obj.plan(taker, receiver)
         if not players.valid_my_base(taker) then return nil end
@@ -64,6 +67,18 @@ function M.new(config, players, field_side, mem)
         obj.frames=obj.frames+1
         obj.switch_cd=math.max(0,obj.switch_cd-1)
         obj.throw_cd=math.max(0,obj.throw_cd-1)
+        if obj.switch_wait>0 then obj.switch_wait=obj.switch_wait-1 end
+        if obj.pending_switch~=nil then
+            if receiver~=obj.pending_switch then
+                obj.pending_switch=nil
+                obj.switch_wait=c.switch_verify_frames
+            elseif obj.switch_wait>0 then
+                return {mode="VERIFY_RECEIVER",taker=taker,receiver=receiver,
+                    recovery_switches=obj.recovery_switches}
+            else
+                obj.pending_switch=nil
+            end
+        end
         local valid = players.valid_my_base(receiver)
             and receiver ~= taker and receiver ~= config.MY_FIRST
         if not valid then
@@ -76,6 +91,8 @@ function M.new(config, players, field_side, mem)
             if obj.switch_cd == 0 and obj.recovery_switches < c.max_recovery_switches then
                 obj.switch_cd = c.recovery_switch_interval
                 obj.recovery_switches = obj.recovery_switches + 1
+                obj.pending_switch=receiver
+                obj.switch_wait=c.switch_verify_frames
                 return {mode="SWITCH_RECEIVER", taker=taker, receiver=receiver,
                     recovery_switches=obj.recovery_switches}
             end
@@ -100,10 +117,12 @@ function M.new(config, players, field_side, mem)
                 if d<nearest_d then nearest,nearest_d=base,d end
             end
         end)
-        if nearest ~= nil and current_distance-nearest_d>c.switch_margin
+        if nearest ~= nil and current_distance-nearest_d>c.receiver_switch_improvement
             and obj.switch_cd==0 and obj.recovery_switches<c.max_recovery_switches then
             obj.switch_cd=c.switch_cooldown
             obj.recovery_switches=obj.recovery_switches+1
+            obj.pending_switch=receiver
+            obj.switch_wait=c.switch_verify_frames
             return {mode="SWITCH_RECEIVER",taker=taker,receiver=receiver,
                 nearest=nearest,nearest_distance=nearest_d,
                 receiver_distance=current_distance}
@@ -139,7 +158,8 @@ function M.new(config, players, field_side, mem)
             obj.lock=c.target_lock_frames
         end
         local mode="MOVE_RECEIVER"
-        if best.travel ~= nil and best.space ~= nil
+        if current_distance<=c.receiver_max_taker_distance
+            and best.travel ~= nil and best.space ~= nil
             and best.travel <= c.target_tolerance
             and best.space >= c.min_clearance then
             mode="READY"
@@ -148,9 +168,11 @@ function M.new(config, players, field_side, mem)
         end
         return {mode=mode,taker=taker,receiver=receiver,
             receiver_x=best.x,receiver_y=best.y,
-            receiver_distance=current_distance,receiver_clearance=best.space,
+            receiver_distance=current_distance,receiver_to_target=best.travel,
+            receiver_clearance=best.space,
             receiver_score=best.score,move_dx=best.x-px,move_dy=best.y-py,
             nearest=nearest,nearest_distance=nearest_d,
+            receiver_near_taker=current_distance<=c.receiver_max_taker_distance,
             field_x1=bounds.x1,field_x2=bounds.x2,
             field_y1=bounds.y1,field_y2=bounds.y2,
             stadium=bounds.stadium,
