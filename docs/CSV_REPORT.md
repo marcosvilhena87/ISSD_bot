@@ -70,3 +70,7 @@ Limites: posicao do goleiro e aproximacao horizontal sao proxies para a linha de
 ## Contadores de chutes (enderecos candidatos)
 
 `My_Shot(s)` = WRAM `0x0DAA` e `CPU_Shot(s)` = WRAM `0x0EAA`, ambos unsigned 16-bit little-endian. Um incremento unitario isolado gera `SHOT_FOR` ou `SHOT_AGAINST` no arquivo unico `issd_report.csv`; reducoes geram `SHOTS_RESET` e variacoes simultaneas ou saltos geram `SHOTS_JUMP`. O primeiro valor observado e baseline, sem evento. Confirmar durante partida se os enderecos acompanham a tela de estatisticas; nao ha finalizacao automatica ainda.
+
+## Primeira finalizacao automatica: ATTACK_SHOOT
+
+No jogo corrido, apenas se o jogador controlado for o portador real da bola, o bot avalia chute com `X` (controle SNES). Criterios iniciais: distancia para o goleiro adversario <=310 unidades, pelo menos 25 unidades de progresso horizontal e corredor de largura 46 unidades livre de jogadores de linha adversarios. Ao disparar, o bot registra `SHOT_ATTEMPT` (comando enviado) e status `ATTACK_SHOOT`, com cooldown de 90 frames. O evento `SHOT_FOR` continua vindo **exclusivamente** do incremento da RAM `My_Shot(s)` (`0x0DAA`), permitindo separar acao do bot de finalizacao contabilizada. O chute usa o direcional horizontal na direcao do goleiro; forca e mira ainda nao calibradas. Validar no BizHawk antes de considerar sucesso.
