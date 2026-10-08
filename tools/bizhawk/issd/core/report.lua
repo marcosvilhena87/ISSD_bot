@@ -19,7 +19,7 @@ function M.new(path)
         return setmetatable({handle = nil}, M)
     end
     do
-        handle:write("timestamp,session,frame,event,enabled,status,game_state,gameplay_active,player_possession,team_possession,controlled_player,ball_dx,ball_dy,ball_speed,action,detail,ball_x,ball_y,player_x,player_y,target_x,target_y,target_distance,controller_command,attack_mode,lane_direction,blocker_base,blocker_forward,blocker_lateral,up_clearance,down_clearance,restart_taker,restart_taker_team,mark_target,team_possession_source,ball_height,ball_height_reference,ball_vertical_delta,ball_vertical_phase,ball_physical_class,ball_flight_origin,ball_flight_age,ball_flight_discrepancy\n")
+        handle:write("timestamp,session,frame,event,enabled,status,game_state,gameplay_active,player_possession,team_possession,controlled_player,ball_dx,ball_dy,ball_speed,action,detail,ball_x,ball_y,player_x,player_y,target_x,target_y,target_distance,controller_command,attack_mode,lane_direction,blocker_base,blocker_forward,blocker_lateral,up_clearance,down_clearance,restart_taker,restart_taker_team,mark_target,team_possession_source,ball_height,ball_height_reference,ball_vertical_delta,ball_vertical_phase,ball_physical_class,ball_flight_origin,ball_flight_age,ball_flight_discrepancy,flight_height_band,flight_strategy\n")
     end
     local session = os.date("%Y%m%d_%H%M%S")
     local self = setmetatable({handle = handle, session = session, frame = 0, previous = nil}, M)
@@ -43,7 +43,8 @@ function M:write(event, enabled, state, action, detail, frame_override)
         state.ball_height, state.ball_height_reference,
         state.ball_vertical_delta, state.ball_vertical_phase,
         state.ball_physical_class, state.ball_flight_origin,
-        state.ball_flight_age, state.ball_flight_discrepancy and 1 or 0
+        state.ball_flight_age, state.ball_flight_discrepancy and 1 or 0,
+        state.flight_height_band, state.flight_strategy
     }
     local values = {
         timestamp(), self.session or "", frame_override or self.frame or 0, event,
@@ -52,9 +53,9 @@ function M:write(event, enabled, state, action, detail, frame_override)
         state.my_base, state.ball_dx, state.ball_dy, state.ball_speed,
         action, detail
     }
-    for i = 1, 27 do values[16 + i] = telemetry[i] end
+    for i = 1, 29 do values[16 + i] = telemetry[i] end
     local cells = {}
-    for i = 1, 43 do cells[i] = csv(values[i]) end
+    for i = 1, 45 do cells[i] = csv(values[i]) end
     local ok, err = pcall(function()
         self.handle:write(table.concat(cells, ",") .. "\n")
         self.handle:flush()
