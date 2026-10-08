@@ -1029,17 +1029,25 @@ local function step_bot()
                 end
             end
             if gs == 1 and restart.taker == config.MY_FIRST then
-                local plan = goal_kick.plan(restart.taker,restart.taker_team)
-                local fired = goal_kick.fire(plan,movement)
-                if not fired then movement.stop() end
-                local state=make_state(my_base,nil,nil,
-                    fired and "GOAL_KICK_ATTEMPT" or "GOAL_KICK_WAIT",
-                    possession,gs)
+                local plan = goal_kick.plan(restart.taker,restart.taker_team,bx,by,my_base)
+                local fired = false
+                if plan and plan.mode=="APPROACH" then
+                    movement.move_toward(plan.dx,plan.dy)
+                else
+                    fired = goal_kick.fire(plan,movement)
+                    if fired then goal_kick.remember_ball(bx,by)
+                    else movement.stop() end
+                end
+                local state=make_state(my_base,plan and plan.dx,plan and plan.dy,
+                    fired and "GOAL_KICK_ATTEMPT"
+                    or ("GOAL_KICK_"..(plan and plan.mode or "WAIT")),possession,gs)
                 state.goal_kick_fired=fired
+                state.goal_kick_mode=plan and plan.mode
+                state.goal_kick_distance=plan and plan.distance
+                state.goal_kick_displacement=plan and plan.displacement
                 state.goal_kick_direction=plan and plan.direction
                 state.goal_kick_button=plan and plan.button
                 state.goal_kick_attempts=plan and plan.attempts
-                state.goal_kick_nearest=plan and plan.nearest_opponent
                 return state
             end
             if gs == 2 then
@@ -1373,6 +1381,13 @@ while true do
                 ..";carrier="..tostring(state.tackle_carrier)
                 ..";distance="..tostring(state.tackle_distance)
                 ..";button=B")
+        end
+        if state.game_state==1 and state.goal_kick_mode and report.frame%30==0 then
+            report:write("GOAL_KICK_DIAGNOSTIC",true,state,state.controller_command,
+                "mode="..tostring(state.goal_kick_mode)
+                ..";distance="..tostring(state.goal_kick_distance)
+                ..";ball_displacement="..tostring(state.goal_kick_displacement)
+                ..";attempts="..tostring(state.goal_kick_attempts))
         end
         if state.goal_kick_fired then
             report:write("GOAL_KICK_ATTEMPT",true,state,
