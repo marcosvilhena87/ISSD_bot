@@ -411,3 +411,17 @@ Probe independente: `tools/bizhawk/issd/probes/ball_height_probe.lua`.
 5. Para cada candidato, acompanhe o endereço com RAM Watch durante lançamento, ápice, queda, quique e bola parada. Repita em outras partidas, estádios e após reiniciar.
 
 O ranking faz uma **triagem**, não confirma Z: procura valores próximos nas duas classes terrestres e separados nas duas classes aéreas. Ele pode deixar de mostrar um endereço legítimo se as amostras não forem representativas ou se Z for um valor com sinal/escala especial. Nenhuma variável Z foi adicionada ao controlador tático até validação empírica.
+
+### Ball Z Probe v2 — registro temporal (2026-10-08)
+
+A versão 2 mantém a captura por classes `G/R/A/H`, ranking `C` e limpeza `K`, e acrescenta:
+
+- `T`: começar/parar gravação temporal (até 900 frames).
+- `V`: exportar CSV (`issd_ball_z_YYYYMMDD_HHMMSS.csv`) no diretório de trabalho do processo BizHawk.
+- `J`: limpar a gravação temporal.
+
+O CSV contém frame, Ball X/Y, posse e valores `u8/s8/u16/s16` dos candidatos
+`0x1040B`, `0x1476B`, `0x11B4B`, `0x1498A`, `0x14959`.
+Comece a gravação imediatamente antes de um lançamento alto, pare após o contato com o solo e exporte. Repita em lançamentos distintos. Os endereços são **hipóteses**, não variáveis confirmadas.
+
+Observação: o ranking de classes utiliza valores assinados (`s8`/`s16`) de forma conservadora; a comparação temporal fina dos CSVs continua necessária para validar subida, ápice, descida e contato com o solo.
