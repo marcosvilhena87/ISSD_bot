@@ -522,6 +522,17 @@ local function step_bot()
                         state.defensive_total_distance=exit.total
                         return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                     end
+                    if exit.mode=="EXHAUSTED" then
+                        movement.stop()
+                        local state=make_state(my_base,0,0,
+                            "DEFENSIVE_EXIT_EXHAUSTED",possession,gs)
+                        state.defensive_recovery=true
+                        state.defensive_hold_age=defensive_hold_age
+                        state.defensive_exit_reason=exit.reason
+                        state.defensive_pressure_distance=exit.threat
+                        state.defensive_clear_attempts=exit.clear_attempts
+                        return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
+                    end
                     if exit.mode=="CLEAR" then
                         movement.press_direction_button(exit.direction,exit.button)
                         local state=make_state(my_base,0,0,
@@ -530,6 +541,7 @@ local function step_bot()
                         state.defensive_hold_age=defensive_hold_age
                         state.defensive_pressure_distance=exit.threat
                         state.defensive_exit_reason=exit.reason
+                        state.defensive_clear_attempts=exit.clear_attempts
                         state.defensive_clear_fired=true
                         state.defensive_clear_button=exit.button
                         state.defensive_clear_direction=exit.direction
