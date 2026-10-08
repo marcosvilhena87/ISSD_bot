@@ -34,6 +34,8 @@ function M.new(config, players, field_side)
         end)
         local lateral=math.abs(dy)
         local angle=math.deg(math.atan(lateral/math.max(math.abs(dx),0.001)))
+        diag.shot_angle=angle
+        diag.lateral_offset=lateral
         diag.distance=d
         diag.forward=fx
         diag.goal_x,diag.goal_y=gx,gy
@@ -43,6 +45,9 @@ function M.new(config, players, field_side)
         end
         if d>c.max_distance then diag.reason="TOO_FAR"; return nil end
         if d<1 then diag.reason="GOAL_TOO_CLOSE"; return nil end
+        if angle>c.max_shot_angle then
+            diag.reason="BAD_SHOT_ANGLE"; return nil
+        end
         -- Check whether a defender obstructs the segment to goal.
         local blocked=false
         local blocker=nil
