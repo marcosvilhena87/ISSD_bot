@@ -167,6 +167,13 @@ M.BOX_COVERAGE = {
     carrier_emergency_radius = 120,
 }
 
+M.ACTIVE_TACKLE = {
+    button = "B",
+    max_distance = 40,
+    cooldown_frames = 30,
+    outcome_frames = 45,
+}
+
 M.LIVE_DEFENSE = {
     goal_side_offset = 48,
 
