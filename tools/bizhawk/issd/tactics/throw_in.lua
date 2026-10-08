@@ -11,7 +11,9 @@ function M.new(config, players, field_side, mem)
         max_attempts=2, long_fallback_frames=180,
         recovery_switch_interval=30, max_recovery_switches=3,
         field_margin=40, receiver_max_taker_distance=160,
-        receiver_switch_improvement=32, switch_verify_frames=12
+        receiver_switch_improvement=32, switch_verify_frames=12,
+        long_min_distance=150, long_max_distance=500,
+        long_min_clearance=55, long_ready_frames=12
     }
     for key, value in pairs(defaults) do
         if c[key] == nil then c[key] = value end
@@ -84,10 +86,7 @@ function M.new(config, players, field_side, mem)
         if not valid then
             obj.last_receiver = nil
             obj.target_x, obj.target_y, obj.lock = nil, nil, 0
-            if obj.frames >= c.long_fallback_frames and obj.attempts == 0 then
-                return {mode="READY_LONG", taker=taker, receiver=receiver,
-                    button=c.long_throw_button, recovery_switches=obj.recovery_switches}
-            end
+
             if obj.switch_cd == 0 and obj.recovery_switches < c.max_recovery_switches then
                 obj.switch_cd = c.recovery_switch_interval
                 obj.recovery_switches = obj.recovery_switches + 1
@@ -109,6 +108,22 @@ function M.new(config, players, field_side, mem)
         if dir==0 then return {mode="WAIT_SIDE",taker=taker,receiver=receiver} end
         local bounds=field_bounds()
         local current_distance=dist(px,py,tx,ty)
+        -- Decide A actively for a safe distant receiver, independently of B.
+        local receiver_space=clearance(px,py)
+        if inside(px,py,bounds)
+            and current_distance>=c.long_min_distance
+            and current_distance<=c.long_max_distance
+            and receiver_space>=c.long_min_clearance
+            and obj.frames>=c.long_ready_frames then
+            return {mode="READY_LONG",taker=taker,receiver=receiver,
+                button=c.long_throw_button,receiver_distance=current_distance,
+                receiver_to_target=0,receiver_clearance=receiver_space,
+                receiver_x=px,receiver_y=py,
+                receiver_near_taker=false,
+                field_x1=bounds.x1,field_x2=bounds.x2,
+                field_y1=bounds.y1,field_y2=bounds.y2,
+                stadium=bounds.stadium,reason="LONG_RECEIVER_CLEAR"}
+        end
         local nearest,nearest_d=nil,99999
         players.each_my(function(base)
             if base~=taker and base~=config.MY_FIRST then
@@ -163,8 +178,6 @@ function M.new(config, players, field_side, mem)
             and best.travel <= c.target_tolerance
             and best.space >= c.min_clearance then
             mode="READY"
-        elseif obj.frames>=c.long_fallback_frames and obj.attempts==0 then
-            mode="READY_LONG"
         end
         return {mode=mode,taker=taker,receiver=receiver,
             receiver_x=best.x,receiver_y=best.y,
@@ -176,7 +189,7 @@ function M.new(config, players, field_side, mem)
             field_x1=bounds.x1,field_x2=bounds.x2,
             field_y1=bounds.y1,field_y2=bounds.y2,
             stadium=bounds.stadium,
-            button=mode=="READY_LONG" and c.long_throw_button or c.throw_button}
+            button=c.throw_button,reason=mode=="READY" and "SHORT_READY" or "POSITIONING"}
     end
     function obj.fire(plan,movement)
         if not plan or (plan.mode~="READY" and plan.mode~="READY_LONG") then return false end
