@@ -104,6 +104,7 @@ local final_third_decision=nil
 local final_third_reset=nil
 local final_third_failures={count=0,last=-99999}
 local final_third_reset_cooldown=0
+local midfield_rebuild=nil
 local second_ball_last_shots_cpu=nil
 local second_ball_lock=nil
 local second_ball_sequence=0
@@ -371,6 +372,12 @@ local function step_bot()
         end
         final_third_reset=nil
         final_third_failures.count=0
+        if midfield_rebuild then
+            report:write("MIDFIELD_REBUILD_OUTCOME",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "REBUILD","result=POSSESSION_LOST_OR_STOPPAGE")
+            midfield_rebuild=nil
+        end
     end
     if gs~=1 then goal_kick.reset() end
     if possession~=0 or gs~=0 or not gameplay_active.is_active(gameplay_value) then
@@ -665,9 +672,32 @@ local function step_bot()
                 end
                 defensive_carrier=nil; defensive_hold_age=0
                 defensive_exit.reset()
+                if midfield_rebuild then
+                    local dir_now=field_side.attack_direction()
+                    local x_now=players.xy(my_base)
+                    if report.frame-midfield_rebuild.start>=
+                        config.FINAL_THIRD_RESET.rebuild_window_frames then
+                        report:write("MIDFIELD_REBUILD_OUTCOME",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "REBUILD","result=TIMEOUT")
+                        midfield_rebuild=nil
+                    elseif dir_now==midfield_rebuild.dir
+                        and (x_now-midfield_rebuild.boundary)*dir_now>=0 then
+                        report:write("MIDFIELD_REBUILD_OUTCOME",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "REBUILD","result=RETURNED_TO_FINAL_THIRD")
+                        midfield_rebuild=nil
+                    end
+                end
                 local shot = shoot.plan(my_base)
                 local shoot_diag = shoot.last_diagnostic
                 if shot and shoot.fire(shot, movement) then
+                    if midfield_rebuild then
+                        report:write("MIDFIELD_REBUILD_OUTCOME",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "REBUILD","result=SHOT")
+                        midfield_rebuild=nil
+                    end
                     if final_third_decision then
                         report:write("FINAL_THIRD_DECISION",true,
                             {possession=possession,game_state=gs,my_base=my_base},
@@ -708,6 +738,11 @@ local function step_bot()
                     shoot_diag.reason=="BAD_SHOT_ANGLE"
                 local pass=forward_pass.plan(my_base,poor_angle)
                 if pass and forward_pass.fire(pass,movement) then
+                    if midfield_rebuild then
+                        report:write("MIDFIELD_REBUILD_PASS",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "REBUILD","intent="..tostring(pass.intent))
+                    end
                     if final_third_decision then
                         report:write("FINAL_THIRD_DECISION",true,
                             {possession=possession,game_state=gs,my_base=my_base},
@@ -800,6 +835,8 @@ local function step_bot()
                 if not final_third_lock and not final_third_reset and attack
                     and attack.mode=="FINAL_THIRD_REPOSITION"
                     and poor_angle and report.frame>=final_third_cooldown_until
+                    and (not midfield_rebuild or report.frame-midfield_rebuild.start>
+                        config.FINAL_THIRD_RESET.reposition_block_frames)
                     and (dir==1 or dir==-1) then
                     local retreat=(px_now-attack.target_x)*dir
                     if retreat>rl.max_retreat then
@@ -861,7 +898,9 @@ local function step_bot()
                     local remaining=math.sqrt((r.target_x-px_now)^2
                         +(r.target_y-py_now)^2)
                     local finish=nil
-                    if remaining<=reset_cfg.arrive_distance then
+                    if (px_now-r.boundary)*r.dir<=-reset_cfg.midfield_margin then
+                        finish="MIDFIELD_REACHED"
+                    elseif remaining<=reset_cfg.arrive_distance then
                         finish="TARGET_REACHED"
                     elseif age>=reset_cfg.max_frames then
                         finish="TIMEOUT"
@@ -870,11 +909,22 @@ local function step_bot()
                         finish="NO_RETREAT_PROGRESS"
                     end
                     if finish then
-                        report:write(finish=="TARGET_REACHED" and
+                        if finish=="TARGET_REACHED" and
+                            (px_now-r.boundary)*r.dir>-reset_cfg.midfield_margin then
+                            finish="TARGET_BEFORE_MIDFIELD"
+                        end
+                        report:write(finish=="MIDFIELD_REACHED" and
                             "FINAL_THIRD_RESET_COMPLETE" or "FINAL_THIRD_RESET_ABORT",
                             true,{possession=possession,game_state=gs,my_base=my_base},
                             "RESET","reason="..finish..";age="..age
                             ..";retreat="..progress)
+                        if finish=="MIDFIELD_REACHED" then
+                            midfield_rebuild={start=report.frame,dir=r.dir,
+                                boundary=r.boundary}
+                            report:write("MIDFIELD_REBUILD_START",true,
+                                {possession=possession,game_state=gs,my_base=my_base},
+                                "REBUILD","boundary="..r.boundary)
+                        end
                         final_third_reset=nil
                         final_third_failures.count=0
                         final_third_reset_cooldown=report.frame+reset_cfg.cooldown_frames
@@ -887,17 +937,26 @@ local function step_bot()
                 elseif not final_third_reset
                     and final_third_failures.count>=reset_cfg.failed_attempts
                     and report.frame>=final_third_reset_cooldown
+                    and not midfield_rebuild
                     and (dir==1 or dir==-1) and shoot_diag
                     and shoot_diag.distance
                     and shoot_diag.distance<=reset_cfg.min_goal_distance then
-                    local target_x=px_now-dir*reset_cfg.retreat_distance
+                    local field_len=mem.u16(config.ADDR.field_length)
+                    local center=mem.u16(config.ADDR.center_field_x)
+                    local valid_geometry=field_len>=500 and field_len<=4000
+                        and center>=100
+                    local boundary=valid_geometry
+                        and (center+dir*field_len/6) or nil
+                    -- Never claim a midfield reset when field geometry is invalid.
+                    local target_x=boundary and
+                        (boundary-dir*reset_cfg.midfield_margin) or nil
                     local target_y=py_now
-                    local guarded=field_boundary.correct(px_now,py_now,
-                        target_x,target_y)
-                    if math.abs(guarded.x-px_now)>=reset_cfg.min_retreat_progress then
+                    local guarded=target_x and
+                        field_boundary.correct(px_now,py_now,target_x,target_y)
+                    if guarded and (px_now-guarded.x)*dir>=reset_cfg.min_retreat_progress then
                         final_third_reset={carrier=my_base,start=report.frame,
                             start_x=px_now,dir=dir,target_x=guarded.x,
-                            target_y=guarded.y}
+                            target_y=guarded.y,boundary=boundary}
                         final_third_lock=nil
                         final_third_decision=nil
                         attack={mode="FINAL_THIRD_RESET",
