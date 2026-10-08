@@ -106,7 +106,9 @@ local function defensive_dash_step(state)
     local eligible={
         LIVE_DEFENSE=true, BOX_ATTACKER_PRESSURE=true,
         BOX_REBOUND_PRESSURE=true, CPU_DANGER_INTERCEPT=true,
-        CPU_BALL_INTERCEPT=true, CPU_BALL_INTERCEPT_FALLBACK=true,
+        CPU_GROUND_INTERCEPT=true, CPU_LOW_INTERCEPT=true,
+        CPU_AERIAL_INTERCEPT=true, CPU_BALL_INTERCEPT=true,
+        CPU_BALL_INTERCEPT_FALLBACK=true,
         MY_FLIGHT_BOX_DANGER=true, LIVE_FALLBACK_CHASE=true,
     }
     local active=state.game_state==0
@@ -1569,10 +1571,16 @@ while true do
                 state.status,state.flight_strategy,state.flight_height_band=
                     BallFlightContext.classify_unowned_ball(flight,"MY")
             elseif state.status=="CPU_BALL_INTERCEPT" then
-                -- Preserve the chosen intercept action; classify the physical
-                -- situation separately so downstream status logic remains safe.
-                state.flight_physical_status,state.flight_strategy,state.flight_height_band=
+                -- Separate interception state by measured height, without
+                -- changing the movement command or danger override.
+                local physical,strategy,band=
                     BallFlightContext.classify_unowned_ball(flight,"CPU")
+                state.flight_physical_status=physical
+                state.flight_strategy=strategy
+                state.flight_height_band=band
+                state.status=band=="GROUND" and "CPU_GROUND_INTERCEPT"
+                    or band=="LOW" and "CPU_LOW_INTERCEPT"
+                    or "CPU_AERIAL_INTERCEPT"
             end
             if flight.discrepancy and not last_flight_discrepancy then
                 report:write("BALL_FLIGHT_POSSESSION_MISMATCH",true,state,
