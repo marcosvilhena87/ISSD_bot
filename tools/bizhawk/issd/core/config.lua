@@ -193,6 +193,10 @@ M.THROW_IN = {
     receiver_max_taker_distance = 160,
     receiver_switch_improvement = 32,
     switch_verify_frames = 12,
+    long_min_distance = 150,
+    long_max_distance = 500,
+    long_min_clearance = 55,
+    long_ready_frames = 12,
 }
 
 return M
