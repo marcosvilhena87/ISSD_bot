@@ -819,6 +819,40 @@ local function step_bot()
         if possession == 0 and team_possession.is_cpu(team_value) then
             live_attack.reset()
             gk_distribution.reset()
+            -- Emergency second-ball recovery: slow or loose balls near our goal
+            -- must be contested before an attacker can settle and shoot.
+            local gkx, gky = players.xy(config.MY_FIRST)
+            local box_cfg = config.BOX_RECOVERY
+            local goal_d2 = (bx-gkx)^2 + (by-gky)^2
+            if goal_d2 <= box_cfg.goal_radius^2
+                and possession_context.ball_speed <= box_cfg.max_ball_speed then
+                local nearest_cpu = math.huge
+                players.each_cpu(function(base)
+                    if base ~= config.CPU_FIRST then
+                        local ex,ey = players.xy(base)
+                        local ds = math.sqrt((ex-bx)^2+(ey-by)^2)
+                        if ds < nearest_cpu then nearest_cpu=ds end
+                    end
+                end)
+                if nearest_cpu <= box_cfg.attacker_radius then
+                    local switch_state = maybe_switch_player(bx,by,"BOX_EMERGENCY_RECOVERY")
+                    if switch_state then
+                        switch_state.box_recovery_attacker_distance=nearest_cpu
+                        return switch_state
+                    end
+                    local px,py=players.xy(my_base)
+                    local dx,dy=bx-px,by-py
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,
+                        "BOX_EMERGENCY_RECOVERY",possession,gs)
+                    state.intercept_target_x=bx
+                    state.intercept_target_y=by
+                    state.intercept_player_ball_distance=math.sqrt(dx*dx+dy*dy)
+                    state.box_recovery_attacker_distance=nearest_cpu
+                    state.box_recovery_goal_distance=math.sqrt(goal_d2)
+                    return attach_live_state(state,"BOX_RECOVERY","CPU_BALL_IN_FLIGHT")
+                end
+            end
             local px, py = players.xy(my_base)
             local target = interception.target(
                 px,
