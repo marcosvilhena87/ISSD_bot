@@ -1159,6 +1159,10 @@ local function step_bot()
                     local switch_state=maybe_switch_player(tx,ty,"BALL_CONTEST_DECISION_GATE")
                     if switch_state then
                         switch_state.contest_gate="ALLOWED_SWITCH"
+                        switch_state.contest_my_eta=eta.my_eta
+                        switch_state.contest_cpu_eta=eta.cpu_eta
+                        switch_state.intercept_target_x=tx
+                        switch_state.intercept_target_y=ty
                         return switch_state
                     end
                     local px,py=players.xy(my_base)
