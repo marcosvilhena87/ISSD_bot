@@ -75,6 +75,8 @@ local escape_cooldown = 0
 local dash_frames = 0
 local dash_carrier = nil
 local gk_pending = nil
+local defensive_carrier = nil
+local defensive_hold_age = 0
 
 local function pressed(keys, key)
     return keys[key] and not previous_keys[key]
@@ -274,6 +276,18 @@ local function step_bot()
 
     local bx, by = ball.world_xy()
 
+    -- First third is determined from actual field geometry and attack orientation.
+    local function in_defensive_third(base)
+        local len=mem.u16(config.ADDR.field_length)
+        local center=mem.u16(config.ADDR.center_field_x)
+        local dir=field_side.attack_direction()
+        if len<500 or len>4000 or center<100 or dir==0 then return false end
+        local x=players.xy(base)
+        local start=center-dir*len/2
+        local progress=(x-start)*dir
+        return progress>=0 and progress<=len/3
+    end
+
     if game_state.is_live(gs) then
         corner_kick.reset()
         goal_kick.reset()
@@ -347,6 +361,39 @@ local function step_bot()
             -- for exatamente o possuidor. Evita mover um companheiro
             -- sem bola quando a posse esta em outra struct MY.
             if possession == my_base and my_base ~= config.MY_FIRST then
+                if in_defensive_third(my_base) then
+                    if defensive_carrier~=my_base then
+                        defensive_carrier=my_base
+                        defensive_hold_age=0
+                    end
+                    defensive_hold_age=defensive_hold_age+1
+                    -- No forward dribble or Y dash while holding the defensive line.
+                    local outlet=forward_pass.plan(my_base)
+                    if outlet and forward_pass.fire(outlet,movement) then
+                        local state=make_state(my_base,0,0,
+                            "DEFENSIVE_OUTLET_PASS",possession,gs)
+                        state.defensive_recovery=true
+                        state.forward_pass_fired=true
+                        state.forward_pass_zone=outlet.zone
+                        state.forward_pass_intent=outlet.intent
+                        state.forward_pass_receiver=outlet.receiver
+                        state.forward_pass_distance=outlet.distance
+                        state.forward_pass_forward=outlet.forward
+                        state.forward_pass_lateral=outlet.lateral
+                        state.forward_pass_clearance=outlet.receiver_clearance
+                        state.forward_pass_lane_clearance=outlet.lane_clearance
+                        state.forward_pass_score=outlet.score
+                        state.forward_pass_button=outlet.button
+                        state.forward_pass_direction=outlet.direction
+                        return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
+                    end
+                    movement.stop()
+                    local state=make_state(my_base,0,0,"DEFENSIVE_HOLD",possession,gs)
+                    state.defensive_recovery=true
+                    state.defensive_hold_age=defensive_hold_age
+                    return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
+                end
+                defensive_carrier=nil; defensive_hold_age=0
                 local shot = shoot.plan(my_base)
                 local shoot_diag = shoot.last_diagnostic
                 if shot and shoot.fire(shot, movement) then
@@ -1148,6 +1195,15 @@ while true do
                 ..";direction="..tostring(state.goal_kick_direction)
                 ..";nearest_opponent="..tostring(state.goal_kick_nearest)
                 ..";attempts_before="..tostring(state.goal_kick_attempts))
+        end
+        if state.defensive_recovery and state.defensive_hold_age==1 then
+            report:write("DEFENSIVE_RECOVERY",true,state,state.controller_command,
+                "carrier="..tostring(state.my_base)..";zone=1")
+        end
+        if state.status=="DEFENSIVE_HOLD" and report.frame%60==0 then
+            report:write("DEFENSIVE_HOLD",true,state,state.controller_command,
+                "carrier="..tostring(state.my_base)
+                ..";age="..tostring(state.defensive_hold_age))
         end
         if state.forward_pass_fired then
             report:write("FORWARD_PASS_ATTEMPT",true,state,state.controller_command,
