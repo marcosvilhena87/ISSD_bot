@@ -21,7 +21,7 @@ function M.new(config, players, field_side, mem)
     local obj = {taker=nil, frames=0, switch_cd=0, throw_cd=0,
         attempts=0, target_x=nil, target_y=nil, lock=0,
         recovery_switches=0, last_receiver=nil,
-        pending_switch=nil, switch_wait=0}
+        pending_switch=nil, switch_wait=0, positioning_frames=0}
     local function dist(x,y,a,b)
         local dx,dy=x-a,y-b
         return math.sqrt(dx*dx+dy*dy)
@@ -62,6 +62,7 @@ function M.new(config, players, field_side, mem)
         obj.target_x=nil; obj.target_y=nil; obj.lock=0
         obj.recovery_switches=0; obj.last_receiver=nil
         obj.pending_switch=nil; obj.switch_wait=0
+        obj.positioning_frames=0
     end
     function obj.plan(taker, receiver)
         if not players.valid_my_base(taker) then return nil end
@@ -101,6 +102,7 @@ function M.new(config, players, field_side, mem)
         if receiver ~= obj.last_receiver then
             obj.target_x, obj.target_y, obj.lock = nil, nil, 0
             obj.last_receiver = receiver
+            obj.positioning_frames=0
         end
         local tx,ty=players.xy(taker)
         local px,py=players.xy(receiver)
@@ -173,23 +175,33 @@ function M.new(config, players, field_side, mem)
             obj.lock=c.target_lock_frames
         end
         local mode="MOVE_RECEIVER"
+        obj.positioning_frames=obj.positioning_frames+1
         if current_distance<=c.receiver_max_taker_distance
             and best.travel ~= nil and best.space ~= nil
             and best.travel <= c.target_tolerance
             and best.space >= c.min_clearance then
             mode="READY"
+        elseif obj.positioning_frames>=c.max_positioning_frames
+            and current_distance>=c.min_distance
+            and current_distance<=c.max_distance
+            and inside(px,py,bounds)
+            and receiver_space>=c.min_clearance then
+            mode="READY"
         end
         return {mode=mode,taker=taker,receiver=receiver,
             receiver_x=best.x,receiver_y=best.y,
             receiver_distance=current_distance,receiver_to_target=best.travel,
-            receiver_clearance=best.space,
+            receiver_clearance=receiver_space,
             receiver_score=best.score,move_dx=best.x-px,move_dy=best.y-py,
             nearest=nearest,nearest_distance=nearest_d,
             receiver_near_taker=current_distance<=c.receiver_max_taker_distance,
             field_x1=bounds.x1,field_x2=bounds.x2,
             field_y1=bounds.y1,field_y2=bounds.y2,
             stadium=bounds.stadium,
-            button=c.throw_button,reason=mode=="READY" and "SHORT_READY" or "POSITIONING"}
+            positioning_frames=obj.positioning_frames,
+            button=c.throw_button,reason=mode=="READY" and
+                (best.travel<=c.target_tolerance and "SHORT_READY" or "POSITION_TIMEOUT")
+                or "POSITIONING"}
     end
     function obj.fire(plan,movement)
         if not plan or (plan.mode~="READY" and plan.mode~="READY_LONG") then return false end
