@@ -84,3 +84,7 @@ Importante: `SHOT_EVALUATION` e amostragem, nao contagem exaustiva de frames; es
 ## Geometria da finalizacao (linha de base 310)
 
 O evento `SHOT_ATTEMPT` inclui em `detail` as medidas `distance` (distancia euclidiana ao goleiro CPU), `angle_deg` (angulo absoluto da linha ao goleiro em relacao ao eixo horizontal), `lateral_offset` (diferenca absoluta Y) e `nearest_defender` (distancia ate o adversario de linha mais proximo). As unidades sao coordenadas de mundo do jogo. Essas medidas nao sao xG e nao garantem que o chute seja no alvo. `SHOT_FOR` segue sendo incrementado apenas quando a RAM `0x0DAA` confirma um chute; compare frames para associar comando e estatistica. Os thresholds de chute seguem inalterados, com distancia maxima de 310.
+
+## Escape com Y durante ATTACK_LANE
+
+Quando o jogador controlado carrega a bola, ha bloqueador no corredor escolhido e o cooldown permite, o bot envia simultaneamente direcionais do waypoint e um pulso `Y`. Nao e mantido pressionado em frames consecutivos: cooldown de 24 frames. O evento `LANE_ESCAPE_ATTEMPT` registra comando, base do bloqueador e waypoint no CSV unico. O `shoot_diag` agora alimenta `live_attack.target_for_carrier`, permitindo que `BLOCKED_LANE` oriente o corredor lateral. O significado/eficacia do comando Y durante condução depende de validacao pratica no BizHawk; o evento mede tentativa, nao drible bem-sucedido.
