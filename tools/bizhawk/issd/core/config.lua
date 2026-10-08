@@ -186,6 +186,13 @@ M.GK_DISTRIBUTION = {
 -- Provisional world-unit thresholds; position of GK approximates goalmouth.
 -- Emergency recovery of loose second balls in our penalty area.
 -- Provisional world-unit distances; goalkeeper is used as goal anchor.
+M.BOX_PRESSURE = {
+    activation_radius = 340,
+    attacker_goal_radius = 240,
+    attacker_ball_radius = 130,
+    unmarked_distance = 75,
+}
+
 M.BOX_RECOVERY = {
     goal_radius = 300,
     attacker_radius = 110,
