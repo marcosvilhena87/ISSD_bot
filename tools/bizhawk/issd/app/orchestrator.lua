@@ -23,6 +23,7 @@ local Defense = dofile(DIR .. "../tactics/defense.lua")
 local LiveDefense = dofile(DIR .. "../tactics/live_defense.lua")
 local LiveAttack = dofile(DIR .. "../tactics/live_attack.lua")
 local Shoot = dofile(DIR .. "../tactics/shoot.lua")
+local ForwardPass = dofile(DIR .. "../tactics/forward_pass.lua")
 local GKDistribution = dofile(DIR .. "../tactics/gk_distribution.lua")
 local GoalKick = dofile(DIR .. "../tactics/goal_kick.lua")
 local Interception = dofile(DIR .. "../tactics/interception.lua")
@@ -47,6 +48,7 @@ local defense = Defense.new(config, players, Geometry, field_side)
 local live_defense = LiveDefense.new(config, players, field_side)
 local live_attack = LiveAttack.new(config, players, field_side)
 local shoot = Shoot.new(config, players, field_side)
+local forward_pass = ForwardPass.new(config, players, field_side)
 local gk_distribution = GKDistribution.new(config, players, field_side)
 local goal_kick = GoalKick.new(config, players, field_side)
 local interception = Interception.new(config)
@@ -329,6 +331,21 @@ local function step_bot()
                     return attach_live_state(
                         state, "PLAYER_POSSESSION", "MY_CONTROLLED"
                     )
+                end
+                local pass = forward_pass.plan(my_base)
+                if pass and forward_pass.fire(pass,movement) then
+                    local state=make_state(my_base,0,0,"ATTACK_FORWARD_PASS",possession,gs)
+                    state.forward_pass_fired=true
+                    state.forward_pass_receiver=pass.receiver
+                    state.forward_pass_distance=pass.distance
+                    state.forward_pass_forward=pass.forward
+                    state.forward_pass_lateral=pass.lateral
+                    state.forward_pass_clearance=pass.receiver_clearance
+                    state.forward_pass_lane_clearance=pass.lane_clearance
+                    state.forward_pass_score=pass.score
+                    state.forward_pass_button=pass.button
+                    state.forward_pass_direction=pass.direction
+                    return attach_live_state(state,"PLAYER_POSSESSION","MY_CONTROLLED")
                 end
                 local attack = live_attack.target_for_carrier(my_base, shoot_diag)
 
@@ -970,6 +987,18 @@ while true do
                 ..";direction="..tostring(state.goal_kick_direction)
                 ..";nearest_opponent="..tostring(state.goal_kick_nearest)
                 ..";attempts_before="..tostring(state.goal_kick_attempts))
+        end
+        if state.forward_pass_fired then
+            report:write("FORWARD_PASS_ATTEMPT",true,state,state.controller_command,
+                "receiver="..tostring(state.forward_pass_receiver)
+                ..";distance="..tostring(state.forward_pass_distance)
+                ..";forward="..tostring(state.forward_pass_forward)
+                ..";lateral="..tostring(state.forward_pass_lateral)
+                ..";receiver_clearance="..tostring(state.forward_pass_clearance)
+                ..";lane_clearance="..tostring(state.forward_pass_lane_clearance)
+                ..";score="..tostring(state.forward_pass_score)
+                ..";button="..tostring(state.forward_pass_button)
+                ..";direction="..tostring(state.forward_pass_direction))
         end
         if state.shot_fired then
             report:write("SHOT_ATTEMPT", true, state,
