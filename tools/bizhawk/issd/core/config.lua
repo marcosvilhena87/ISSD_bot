@@ -287,6 +287,8 @@ M.INTERCEPTION = {
     feasibility_margin_frames = 2,
     danger_lock_frames = 8,
     danger_release_frames = 5,
+    danger_release_distance = 12, -- meaningful backward reversal
+    danger_lateral_tolerance = 48, -- release on clear lateral deflection
 }
 
 -- Troca automatica do jogador controlado em defesa.
