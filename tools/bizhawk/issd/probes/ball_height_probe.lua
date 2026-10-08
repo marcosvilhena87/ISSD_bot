@@ -120,7 +120,16 @@ local function sample_frame()
     recording=false;console.log("[BALL_Z] auto-stopped at frame limit")
     return
   end
-  local a=read_all()
+  -- Record only monitored addresses, avoiding a full WRAM scan per frame.
+  local a={}
+  for _,addr in ipairs(WATCH) do
+    a[addr]=memory.read_u8(addr,DOMAIN)
+    a[addr+1]=memory.read_u8(addr+1,DOMAIN)
+  end
+  for _,addr in ipairs({0x042A,0x042C,0x00A6}) do
+    a[addr]=memory.read_u8(addr,DOMAIN)
+    a[addr+1]=memory.read_u8(addr+1,DOMAIN)
+  end
   frames[#frames+1]={
     frame=frame,bytes=a,
     ball_x=val(a,0x042A,2,true),
