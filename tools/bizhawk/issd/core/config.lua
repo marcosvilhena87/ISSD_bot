@@ -195,6 +195,13 @@ M.DEFENSIVE_CLEARANCE_OUTCOME = {
     max_frames=120,
 }
 
+M.LONG_PASS_AI_ASSIST_EXPERIMENT = {
+    enabled=true, -- disable to restore existing manual recovery behavior
+    max_frames=75,
+    min_height=21,
+    contact_distance=38,
+}
+
 M.LONG_PASS_POSITION_OBSERVER = {
     max_frames=120, -- passive observational window after charged A release
 }
