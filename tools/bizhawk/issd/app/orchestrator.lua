@@ -93,6 +93,8 @@ local dash_carrier = nil
 local gk_pending = nil
 local defensive_carrier = nil
 local defensive_hold_age = 0
+local defensive_hold_guard=nil
+local defensive_escape_pending=nil
 local rebound_lock_base=nil
 local rebound_lock_frames=0
 local latest_contest=nil
@@ -312,6 +314,29 @@ local function step_bot()
     end
     local possession = ball.possession()
     local gs = game_state.read()
+    if defensive_escape_pending then
+        local p=defensive_escape_pending
+        local bx,by=ball.world_xy()
+        local travel=math.sqrt((bx-p.x)^2+(by-p.y)^2)
+        local age=report.frame-p.start
+        local result=nil
+        if gs~=0 then result="STOPPAGE"
+        elseif possession~=p.carrier then
+            result=players.valid_my_base(possession)
+                and "TEAMMATE_CONTROL" or (players.valid_cpu_base(possession)
+                and "CPU_TURNOVER" or "BALL_RELEASED")
+        elseif age>=config.DEFENSIVE_EXIT.guard_outcome_frames then
+            result=travel>=config.DEFENSIVE_EXIT.guard_min_ball_travel
+                and "BALL_MOVED" or "NO_BALL_MOVEMENT"
+        end
+        if result then
+            report:write("DEFENSIVE_HOLD_OUTCOME",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "OBSERVE_ESCAPE","result="..result..";age="..age
+                ..";ball_travel="..travel..";attempt="..p.attempt)
+            defensive_escape_pending=nil
+        end
+    end
     -- Shot counter is an event signal, not evidence of a keeper save.
     local shots_cpu=mem.u16(config.ADDR.shots_cpu)
     if second_ball_last_shots_cpu and shots_cpu==second_ball_last_shots_cpu+1
@@ -488,7 +513,10 @@ local function step_bot()
     end
 
     if game_state.is_live(gs) then
-        if possession~=my_base then defensive_exit.reset(); defensive_carrier=nil end
+        if possession~=my_base then
+            defensive_exit.reset(); defensive_carrier=nil
+            defensive_hold_guard=nil
+        end
         corner_kick.reset()
         goal_kick.reset()
         throw_in.reset()
@@ -567,6 +595,9 @@ local function step_bot()
                         defensive_hold_age=0
                     end
                     defensive_hold_age=defensive_hold_age+1
+                    if defensive_hold_guard and defensive_hold_guard.carrier~=my_base then
+                        defensive_hold_guard=nil
+                    end
                     -- No forward dribble or Y dash while holding the defensive line.
                     local outlet=forward_pass.plan(my_base)
                     if outlet and forward_pass.fire(outlet,movement) then
@@ -591,6 +622,19 @@ local function step_bot()
                         return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                     end
                     local exit=defensive_exit.plan(my_base,forward_pass.cooldown)
+                    if exit.mode=="HOLD" and exit.reason=="NO_SAFE_SPACE" then
+                        if not defensive_hold_guard then
+                            defensive_hold_guard={carrier=my_base,start=report.frame}
+                        elseif report.frame-defensive_hold_guard.start==
+                            config.DEFENSIVE_EXIT.guard_stall_log_frames then
+                            report:write("DEFENSIVE_HOLD_STALL",true,
+                                {possession=possession,game_state=gs,my_base=my_base},
+                                "OBSERVE_HOLD","reason=NO_SAFE_SPACE;threat="
+                                ..tostring(exit.threat))
+                        end
+                    elseif exit.mode~="HOLD" then
+                        defensive_hold_guard=nil
+                    end
                     if exit.mode=="PASS" and forward_pass.fire(exit,movement) then
                         defensive_exit.on_pass()
                         local state=make_state(my_base,0,0,
@@ -636,6 +680,14 @@ local function step_bot()
                     end
                     if exit.mode=="CLEAR" then
                         movement.press_direction_button(exit.direction,exit.button)
+                        local cbx,cby=ball.world_xy()
+                        defensive_escape_pending={carrier=my_base,start=report.frame,
+                            x=cbx,y=cby,attempt=exit.clear_attempts or 1}
+                        report:write("DEFENSIVE_HOLD_ESCAPE",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            movement.last_command,"reason="..tostring(exit.reason)
+                            ..";threat="..tostring(exit.threat)
+                            ..";attempt="..tostring(exit.clear_attempts))
                         local state=make_state(my_base,0,0,
                             "DEFENSIVE_PRESSURE_CLEAR",possession,gs)
                         state.defensive_recovery=true
