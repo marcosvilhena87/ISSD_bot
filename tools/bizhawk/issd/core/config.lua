@@ -221,6 +221,10 @@ M.FREE_KICK = {
     max_switch_attempts = 3,
 }
 
+M.GK_RELEASE_ORIGIN_LOCK = {
+    max_frames = 180, -- finite origin memory; not a claim of current possession
+}
+
 M.CORNER_KICK = {
     cross_button = "A",
     short_button = "B",
