@@ -281,6 +281,8 @@ M.GK_DISTRIBUTION = {
     min_lane_clearance = 56, -- experimental: opponents near pass segment
     min_forward = 48, -- require meaningful forward progress
     forward_lane_half_width = 32, -- B+Right/Left: receiver must be aligned with forward path
+    lateral_lane_half_width = 32, -- B+Up/Down: receiver near vertical throw corridor
+    min_lateral_throw = 48,
 
     -- Se o receptor estiver bem acima/abaixo do GK, usa UP/DOWN.
     -- Caso contrario, orienta para frente com LEFT/RIGHT relativo ao ataque.
