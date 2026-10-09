@@ -107,9 +107,43 @@ function M.new(config,players,field_side,mem)
    return hold("ESCAPE_LIMIT",threat,total)
   end
   o.limit_age=0
-  local up=y-c.step>=low and space(x,y-c.step) or -1
-  local down=y+c.step<=high and space(x,y+c.step) or -1
-  if math.max(up,down)<c.min_escape_clearance then
+  -- Probe actual destinations, rather than moving sideways whenever a
+  -- progressive, safe lane exists. This is dribbling, NOT an unverified
+  -- diagonal B pass. Score combines safety, forward gain and sideline room.
+  local length=mem.u16(config.ADDR.field_length)
+  local center_x=mem.u16(config.ADDR.center_field_x)
+  local best_move=nil
+  if length>=500 and length<=4000 and center_x>=100 then
+   local start_x=center_x-dir*length/2+c.field_margin
+   local end_x=center_x+dir*length/2-c.field_margin
+   local options={
+    {dx=dir*c.forward_step,dy=0,kind="FORWARD"},
+    {dx=dir*c.forward_step,dy=-c.step,kind="DIAGONAL_UP"},
+    {dx=dir*c.forward_step,dy=c.step,kind="DIAGONAL_DOWN"},
+    {dx=0,dy=-c.step,kind="LATERAL_UP"},
+    {dx=0,dy=c.step,kind="LATERAL_DOWN"},
+   }
+   for _,v in ipairs(options) do
+    local tx,ty=x+v.dx,y+v.dy
+    local progress=(tx-start_x)*dir
+    if progress>=0 and progress<=length-2*c.field_margin
+       and ty>=low and ty<=high then
+     local safe=space(tx,ty)
+     if safe>=c.min_escape_clearance then
+      local forward=v.dx*dir
+      local score=math.min(safe,c.escape_space_cap)
+        +c.escape_forward_weight*forward
+        -c.escape_lateral_penalty*math.abs(v.dy)
+      if not best_move or score>best_move.score then
+       best_move={mode="MOVE",dx=v.dx,dy=v.dy,
+        reason="SAFE_"..v.kind,score=score,clearance=safe,
+        age=o.age,threat=threat}
+      end
+     end
+    end
+   end
+  end
+  if not best_move then
    if threat<=c.emergency_radius and not o.clearance_used then
     o.clearance_used=true;o.pending_frames=c.action_settle_frames
     return {mode="CLEAR",button="A",direction=dir==1 and "Right" or "Left",reason="PRESSURE_NO_SAFE_SPACE",age=o.age,threat=threat}
@@ -117,9 +151,7 @@ function M.new(config,players,field_side,mem)
    return hold("NO_SAFE_SPACE",threat)
   end
   o.hold_streak=0
-  return {mode="MOVE",dx=dir*c.forward_step,
-   dy=up>=down and -c.step or c.step,age=o.age,
-   threat=threat,reason=pressured and "PRESSURE_SHORT_ESCAPE" or "SHORT_ESCAPE"}
+  return best_move
  end
  return o
 end
