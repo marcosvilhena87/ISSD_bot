@@ -117,7 +117,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="long-pass-ai-assist-experiment-20261009-v14"
+local BOT_BUILD_ID="long-pass-flight-warmup-20261009-v15"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -2069,23 +2069,44 @@ local function step_bot()
                 reason="STOPPAGE"
             elseif age>=lc.max_frames then reason="TIMEOUT"
             elseif players.valid_cpu_base(possession) then reason="CPU_POSSESSION"
-            elseif players.valid_my_base(possession) then reason="MY_POSSESSION"
+            elseif players.valid_my_base(possession) and
+                (possession~=lock.carrier or age>lc.release_grace_frames) then
+                reason="MY_POSSESSION"
             elseif danger then reason="GOAL_BOUND_DANGER"
             elseif not players.valid_my_base(my_base) or my_base==config.MY_FIRST then
-                reason="NO_OUTFIELDER"
-            elseif goal_dist<=config.DEFENSIVE_HEADER.goal_radius then
-                reason="DEFENSIVE_PRIORITY"
-            elseif h<lc.min_height then reason="NOT_AERIAL"
-            elseif dist<=lc.contact_distance then reason="CONTACT_WINDOW" end
+                reason="NO_OUTFIELDER" end
+            -- A clearance begins near its kicker and possibly still at low
+            -- height: neither is evidence the ball will never enter flight.
+            if not reason and not lock.flight_started then
+                if possession==0 and h>=lc.min_height
+                    and goal_dist>config.DEFENSIVE_HEADER.goal_radius then
+                    lock.flight_started=report.frame
+                    report:write("LONG_PASS_FLIGHT_CONFIRMED",true,
+                        {possession=possession,game_state=gs,my_base=my_base},
+                        "OBSERVE_LONG_PASS","age="..age..";height="..h
+                        ..";clearance_sequence="..lock.clearance_sequence)
+                elseif age>=lc.warmup_frames then
+                    reason="FLIGHT_WARMUP_TIMEOUT"
+                elseif age==1 then
+                    report:write("LONG_PASS_FLIGHT_WARMUP",true,
+                        {possession=possession,game_state=gs,my_base=my_base},
+                        "OBSERVE_LONG_PASS","height="..h
+                        ..";clearance_sequence="..lock.clearance_sequence)
+                end
+            end
+            if not reason and lock.flight_started and dist<=lc.contact_distance then
+                reason="CONTACT_WINDOW"
+            end
             if reason then
                 report:write("LONG_PASS_AI_ASSIST_END",true,
                     {possession=possession,game_state=gs,my_base=my_base},
                     "OBSERVE_LONG_PASS",
                     "reason="..reason..";age="..age
+                    ..";flight_started="..tostring(lock.flight_started~=nil)
                     ..";neutral_frames="..lock.neutral_frames
                     ..";clearance_sequence="..lock.clearance_sequence)
                 long_pass_ai_lock=nil
-            else
+            elseif lock.flight_started then
                 movement.stop()
                 lock.neutral_frames=lock.neutral_frames+1
                 local state=make_state(my_base,0,0,
@@ -2094,6 +2115,7 @@ local function step_bot()
                 state.header_distance=dist
                 return attach_live_state(state,"LONG_PASS_AI_ASSIST","MY_UNOWNED_BALL")
             end
+            -- During warmup, preserve existing tactical decisions.
         end
 
         -- Keep manual chase/rebound arbitration from immediately overriding
