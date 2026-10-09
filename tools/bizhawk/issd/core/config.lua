@@ -222,6 +222,7 @@ M.FREE_KICK = {
 }
 
 M.GK_RELEASE_ORIGIN_LOCK = {
+    release_grace_frames = 240, -- bridge the brief BOT_IDLE between hold and kick
     max_frames = 180, -- finite origin memory; not a claim of current possession
 }
 
