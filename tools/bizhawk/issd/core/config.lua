@@ -173,6 +173,14 @@ M.DEFENSIVE_PASS_ALIGNMENT = {
     retry_block_frames=45, -- avoid endless start/abort loop
 }
 
+M.MID_ATTACK_TRANSITION = {
+    stable_frames=8,
+    max_frames=240,
+}
+M.DEFENSIVE_CLEARANCE_OUTCOME = {
+    max_frames=120,
+}
+
 M.CHARGED_DEFENSIVE_CLEARANCE = {
     urgent_radius=38,
     urgent_frames=3, -- prioritize release before tackle under immediate pressure
