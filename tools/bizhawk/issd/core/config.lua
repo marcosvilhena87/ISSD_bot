@@ -230,8 +230,11 @@ M.FREE_KICK = {
     team_margin = 16,
     shot_max_distance = 260,
     retry_frames = 75,
-    max_attempts = 2,
+    max_attempts = 3,
     ball_move_threshold = 18,
+    stationary_tolerance = 2,
+    stationary_retry_frames = 60,
+    moved_retry_delay = 90,
     switch_interval = 30,
     max_switch_attempts = 3,
 }
