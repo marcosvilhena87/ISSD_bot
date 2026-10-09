@@ -53,6 +53,14 @@ M.AERIAL_CONTEST_LOCK = {
     max_frames=28,
 }
 
+M.AERIAL_CONTACT_DECISION = {
+    enabled=true, -- experimental, disable to restore earlier behavior
+    min_height=21, max_height=80,
+    contact_distance=30,
+    shot_goal_radius=300,
+    cooldown_frames=24,
+}
+
 M.DEFENSIVE_HEADER = {
     goal_radius=330,
     min_height=21,
