@@ -31,7 +31,8 @@ function M.new(config,mem,players,field_side)
     first_cross_age=a.first_cross and a.first_cross-a.start or nil,
     entries=a.entries,returns=a.returns,retreats=a.retreats,
     unowned_frames=a.unowned_frames,deadline=a.deadline,
-    extensions=a.extensions,recent_gain=a.recent_gain or 0}
+    extensions=a.extensions,recent_gain=a.recent_gain or 0,
+    grace_granted=a.grace_granted or false,grace_frames=a.grace_frames or 0}
   end
   if p then
    if my and progress then
@@ -49,6 +50,30 @@ function M.new(config,mem,players,field_side)
    if not valid or dir~=p.dir then
     emit("FAILED","STOPPAGE_OR_SIDE_CHANGE",p);o.pending=nil
    elseif cpu then emit("FAILED","CPU_TURNOVER",p);o.pending=nil
+   elseif my and z==3 then
+    -- Confirm first contact before testing the deadline; reaching exactly
+    -- the stability threshold must count as established.
+    if not p.entered then
+     p.entered=frame;p.entries=p.entries+1
+     if not p.first_cross then
+      p.first_cross=frame;emit("CROSSED","FIRST_MY_FINAL_THIRD_POSSESSION",p)
+     else emit("REENTERED","MY_FINAL_THIRD_AGAIN",p) end
+    end
+    if frame-p.entered>=c.stable_frames then
+     emit("ESTABLISHED","STABLE_MY_FINAL_THIRD_POSSESSION",p);o.pending=nil
+    elseif frame-p.start>=p.deadline then
+     if p.deadline>=c.absolute_max_frames and not p.grace_granted
+        and p.entered+c.stable_frames>p.deadline then
+      p.grace_granted=true
+      p.grace_frames=math.min(c.stability_grace_frames,
+          p.entered+c.stable_frames-p.deadline)
+      p.deadline=p.deadline+p.grace_frames
+      emit("STABILITY_GRACE","FINAL_THIRD_CONTACT_NEEDS_CONFIRMATION",p)
+     else
+      emit("FAILED","STABILITY_NOT_CONFIRMED_AT_DEADLINE",p)
+      o.pending=nil
+     end
+    end
    elseif frame-p.start>=p.deadline then
     local baseline=p.history[1] and p.history[1].progress or p.last_progress
     p.recent_gain=p.max_progress-baseline
@@ -59,19 +84,14 @@ function M.new(config,mem,players,field_side)
      p.extensions=p.extensions+1
      emit("EXTENDED","RECENT_TERRITORIAL_PROGRESS",p)
     else
-     emit("FAILED",p.deadline>=c.absolute_max_frames
-        and "ABSOLUTE_TIMEOUT" or "NO_RECENT_PROGRESS",p)
+     local reason
+     if owner==0 then reason="UNOWNED_AT_DEADLINE"
+     elseif p.grace_granted then reason="STABILITY_INTERRUPTED_AT_DEADLINE"
+     elseif p.deadline>=c.absolute_max_frames then reason="ABSOLUTE_TIMEOUT"
+     elseif not my then reason="NO_CONFIRMED_MY_POSSESSION"
+     else reason="NO_RECENT_PROGRESS" end
+     emit("FAILED",reason,p)
      o.pending=nil
-    end
-   elseif my and z==3 then
-    if not p.entered then
-     p.entered=frame;p.entries=p.entries+1
-     if not p.first_cross then
-      p.first_cross=frame;emit("CROSSED","FIRST_MY_FINAL_THIRD_POSSESSION",p)
-     else emit("REENTERED","MY_FINAL_THIRD_AGAIN",p) end
-    end
-    if frame-p.entered>=c.stable_frames then
-     emit("ESTABLISHED","STABLE_MY_FINAL_THIRD_POSSESSION",p);o.pending=nil
     end
    else
     if p.entered then
@@ -89,6 +109,7 @@ function M.new(config,mem,players,field_side)
     previous_progress=progress,boundary=boundary,entries=0,returns=0,
     retreats=0,unowned_frames=0,entered=nil,first_cross=nil,
     deadline=c.max_frames,extensions=0,recent_gain=0,
+    grace_granted=false,grace_frames=0,
     history={{frame=frame,progress=progress}}}
    emit("START","CONFIRMED_MIDFIELD_POSSESSION",o.pending)
   end
