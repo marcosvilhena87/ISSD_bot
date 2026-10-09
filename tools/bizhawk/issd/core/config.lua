@@ -380,6 +380,16 @@ M.MY_FLIGHT_INTERCEPTION = {
 }
 
 -- Conservative inferred rebounds near Brazilian goalkeeper.
+M.FIRST_REBOUND_RECOVERY = {
+    goal_radius=330,
+    max_height=20,
+    max_my_distance=125,
+    estimated_speed=4.0, -- provisional world units per frame
+    min_eta_advantage=5,
+    lock_frames=10,
+    max_ball_drift=55,
+}
+
 M.BOX_SECOND_BALL = {
     window_frames=105,
     goal_radius=340,
