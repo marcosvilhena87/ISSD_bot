@@ -187,6 +187,10 @@ M.DEFENSIVE_CLEARANCE_OUTCOME = {
     max_frames=120,
 }
 
+M.LONG_PASS_POSITION_OBSERVER = {
+    max_frames=120, -- passive observational window after charged A release
+}
+
 M.CHARGED_DEFENSIVE_CLEARANCE = {
     urgent_radius=38,
     urgent_frames=3, -- prioritize release before tackle under immediate pressure
