@@ -43,6 +43,7 @@ local Interception = dofile(DIR .. "../tactics/interception.lua")
 local DefenseInterception = dofile(DIR .. "../tactics/defense_interception.lua")
 local PlayerSwitch = dofile(DIR .. "../control/player_switch.lua")
 local TeamPossession = dofile(DIR .. "../state/team_possession.lua")
+local BallLogicalTeamTransition = dofile(DIR .. "../state/ball_logical_team_transition.lua")
 local PossessionContext = dofile(DIR .. "../state/possession_context.lua")
 local Restart = dofile(DIR .. "../tactics/restart.lua")
 local ThrowIn = dofile(DIR .. "../tactics/throw_in.lua")
@@ -81,6 +82,7 @@ local interception = Interception.new(config)
 local defense_interception = DefenseInterception.new(config, players)
 local player_switch = PlayerSwitch.new(config, players)
 local team_possession = TeamPossession.new(config, mem, players)
+local logical_team_transition = BallLogicalTeamTransition.new(config,mem,players)
 local team_possession_conflict_active = false
 local Last_Player_Ball_Possession = 0
 local Last_Player_Ball_Possession_Frame = nil
@@ -324,6 +326,32 @@ local function step_bot()
     end
     local possession = ball.possession()
     local gs = game_state.read()
+    -- Read the raw team flag on every bot step, including inactive gameplay.
+    -- Log observed edges, not presumed player touches or recovered possession.
+    local logical_edge=logical_team_transition.update(report.frame,
+        gameplay_value,gs,possession,Last_Player_Ball_Possession,
+        Last_Player_Ball_Possession_Frame)
+    if logical_edge then
+        report:write("BALL_LOGICAL_TEAM_TRANSITION",true,
+            {possession=possession,game_state=gs,my_base=my_base,
+             gameplay_active=gameplay_value},
+            "OBSERVE_LOGICAL_EDGE",
+            "from="..tostring(logical_edge.from)
+            ..";to="..tostring(logical_edge.to)
+            ..";frame_gap="..tostring(logical_edge.frame_gap)
+            ..";owner="..tostring(logical_edge.owner)
+            ..";last_owner="..tostring(logical_edge.last_owner)
+            ..";frames_since_owner="..tostring(logical_edge.frames_since_owner)
+            ..";height="..tostring(logical_edge.height)
+            ..";dist_my_gk="..tostring(logical_edge.dist_my_gk)
+            ..";dist_cpu_gk="..tostring(logical_edge.dist_cpu_gk)
+            ..";shots_cpu="..tostring(logical_edge.shots_cpu)
+            ..";shots_cpu_delta="..tostring(logical_edge.shots_cpu_delta)
+            ..";shots_my="..tostring(logical_edge.shots_my)
+            ..";shots_my_delta="..tostring(logical_edge.shots_my_delta)
+            ..";gameplay="..tostring(logical_edge.gameplay)
+            ..";gs="..tostring(logical_edge.game_state))
+    end
     -- Universal last confirmed owner: zero and temporary BOT_IDLE never erase it.
     local confirmed_team=team_possession.owner_kind(possession)
     if confirmed_team~="NONE" then
