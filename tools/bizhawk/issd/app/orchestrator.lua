@@ -141,6 +141,7 @@ local function defensive_dash_step(state)
         GK_REBOUND_RECOVERY=true, BOX_SECOND_BALL_CONTINUITY=true, MY_FLIGHT_BOX_DANGER=true, MY_BOX_GROUND_RECOVERY=true,
         MY_BOX_LOW_RECOVERY=true, MY_BOX_AERIAL_COVER=true,
         LIVE_FALLBACK_CHASE=true,
+        GOAL_BOUND_INTERCEPT_PRIORITY=true,
         -- Interception uses Y only for approach, never to imply a tackle.
         MY_UNOWNED_RECOVERY=true, MY_UNOWNED_RECOVERY_LOCK=true,
         BALL_CONTEST_INTERCEPT=true, BALL_CONTEST_INTERCEPT_LOCK=true,
