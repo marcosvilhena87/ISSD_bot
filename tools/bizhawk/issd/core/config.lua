@@ -142,6 +142,9 @@ M.DEFENSIVE_EXIT = {
     reassessment_frames=60, max_reassessments=2,
     total_advance_limit=140, action_settle_frames=20,
     hold_timeout_frames=75,
+    guard_stall_log_frames=35,
+    guard_outcome_frames=36,
+    guard_min_ball_travel=20,
     max_clear_attempts=3,
     clear_buttons={"A","X","A"}, -- alternate when a clearance was not accepted
 }
