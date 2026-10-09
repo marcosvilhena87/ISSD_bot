@@ -4,6 +4,8 @@ function M.new(config, players, field_side)
     local obj = {
         wait_frames = 0,
         last_action = nil,
+        attempts = 0,
+        held_frames = 0,
     }
 
     local function attack_direction(my_side)
@@ -152,6 +154,8 @@ function M.new(config, players, field_side)
     function obj.reset()
         obj.wait_frames = 0
         obj.last_action = nil
+        obj.attempts = 0
+        obj.held_frames = 0
     end
 
     function obj.tick()
@@ -161,6 +165,7 @@ function M.new(config, players, field_side)
     end
 
     function obj.plan(gk_base)
+        obj.held_frames = obj.held_frames + 1
         local my_side = field_side.my_side()
         local dir = field_side.attack_direction()
 
@@ -218,12 +223,34 @@ function M.new(config, players, field_side)
         }
     end
 
+    -- Commands are attempted, not assumed accepted by the game. If the GK
+    -- still owns the ball after the cooldown, vary the pulse safely instead
+    -- of repeating the same ineffective input indefinitely.
+    function obj.next_action(plan)
+        if obj.wait_frames>0 then return nil,"WAIT" end
+        local attempt=obj.attempts+1
+        if attempt>config.GK_DISTRIBUTION.max_attempts then
+            return nil,"EXHAUSTED"
+        end
+        if attempt==1 then
+            return plan,"INITIAL"
+        elseif attempt==2 then
+            return {mode="RETRY_THROW",button=config.GK_DISTRIBUTION.throw_button,
+                direction=nil,receiver=nil,decision_reason="RETRY_B_WITHOUT_DIRECTION"},
+                "RETRY"
+        end
+        return {mode="RETRY_CLEAR",button=config.GK_DISTRIBUTION.long_kick_button,
+            direction=plan.direction,receiver=nil,
+            decision_reason="RETRY_LONG_CLEAR"},"RETRY"
+    end
+
     function obj.should_fire()
         return obj.wait_frames == 0
     end
 
     function obj.mark_fired(action)
         obj.last_action = action
+        obj.attempts = obj.attempts+1
         obj.wait_frames = config.GK_DISTRIBUTION.retry_frames
     end
 
