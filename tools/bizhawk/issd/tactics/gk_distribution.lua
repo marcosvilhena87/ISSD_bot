@@ -240,15 +240,19 @@ function M.new(config, players, field_side)
             return nil,"EXHAUSTED"
         end
         if attempt==1 then
-            return plan,"INITIAL"
+            -- First test the unmodified short hand throw. Holding a direction
+            -- can move the goalkeeper rather than aim the release.
+            return {mode="THROW",button=config.GK_DISTRIBUTION.throw_button,
+                direction=nil,receiver=nil,
+                decision_reason="DIRECT_B_HAND_RELEASE"},"INITIAL"
         elseif attempt==2 then
             return {mode="RETRY_THROW",button=config.GK_DISTRIBUTION.throw_button,
-                direction=nil,receiver=nil,decision_reason="RETRY_B_WITHOUT_DIRECTION"},
-                "RETRY"
+                direction=plan.direction,receiver=plan.receiver,
+                decision_reason="DIRECTED_B_HAND_RELEASE"},"RETRY"
         end
         return {mode="RETRY_CLEAR",button=config.GK_DISTRIBUTION.long_kick_button,
-            direction=plan.direction,receiver=nil,
-            decision_reason="RETRY_LONG_CLEAR"},"RETRY"
+            direction=nil,receiver=nil,
+            decision_reason="A_LONG_RELEASE"},"RETRY"
     end
 
     function obj.should_fire()
