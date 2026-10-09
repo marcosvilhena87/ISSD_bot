@@ -117,7 +117,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="long-pass-passive-observer-20261009-v12"
+local BOT_BUILD_ID="aerial-contact-decision-20261009-v13"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -144,6 +144,8 @@ local danger_lock=nil
 local header_last_frame=-99999
 local header_last_height=nil
 local aerial_contest_lock=nil
+local aerial_contact_previous_height=nil
+local aerial_contact_last_frame=-99999
 -- Defensive sprint is deliberately separate from attack dash.
 local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=nil,
     start_x=nil,start_y=nil,target_x=nil,target_y=nil}
@@ -1987,6 +1989,56 @@ local function step_bot()
             end
         else
             header_last_height=nil
+        end
+
+        -- Experimental offensive aerial contact. Positioning may be assisted by
+        -- the game, but neutral input cannot intentionally win a header.
+        -- Never override defensive heading within the goalkeeper danger radius.
+        if config.AERIAL_CONTACT_DECISION.enabled and possession==0
+            and gs==0 and players.valid_my_base(my_base)
+            and my_base~=config.MY_FIRST then
+            local cc=config.AERIAL_CONTACT_DECISION
+            local h=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
+            local px,py=players.xy(my_base)
+            local gx,gy=players.xy(config.MY_FIRST)
+            local distance=math.sqrt((bx-px)^2+(by-py)^2)
+            local own_goal_distance=math.sqrt((bx-gx)^2+(by-gy)^2)
+            local dir=field_side.attack_direction()
+            local field_length=mem.u16(config.ADDR.field_length)
+            local field_center=mem.u16(config.ADDR.center_field_x)
+            local opp_goal_x=field_center+dir*field_length/2
+            local opp_goal_distance=math.sqrt((bx-opp_goal_x)^2+(by-gy)^2)
+            local descending=aerial_contact_previous_height~=nil
+                and h<=aerial_contact_previous_height
+            aerial_contact_previous_height=h
+            if dir~=0 and field_length>=500 and field_length<=4000
+                and own_goal_distance>config.DEFENSIVE_HEADER.goal_radius
+                and h>=cc.min_height and h<=cc.max_height
+                and distance<=cc.contact_distance and descending
+                and report.frame-aerial_contact_last_frame>=cc.cooldown_frames then
+                local shot=opp_goal_distance<=cc.shot_goal_radius
+                local button=shot and "X" or "A"
+                -- Offensive header: X attempts goal, A attempts continuation.
+                -- No directional override while the game's positioning assists.
+                movement.press_button(button)
+                aerial_contact_last_frame=report.frame
+                local state=make_state(my_base,0,0,
+                    shot and "AERIAL_SHOT_ATTEMPT" or "AERIAL_PASS_ATTEMPT",
+                    possession,gs)
+                state.header_height=h
+                state.header_distance=distance
+                report:write("AERIAL_CONTACT_DECISION",true,state,
+                    movement.last_command,
+                    "button="..button..";height="..h
+                    ..";distance="..distance
+                    ..";own_goal_distance="..own_goal_distance
+                    ..";opp_goal_distance="..opp_goal_distance
+                    ..";contact_confirmed=false")
+                return attach_live_state(state,"AERIAL_CONTACT_ATTEMPT",
+                    "MY_UNOWNED_BALL")
+            end
+        else
+            aerial_contact_previous_height=nil
         end
 
         -- Keep manual chase/rebound arbitration from immediately overriding
