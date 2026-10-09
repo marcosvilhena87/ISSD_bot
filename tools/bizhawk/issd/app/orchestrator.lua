@@ -107,9 +107,11 @@ local defensive_carrier = nil
 local defensive_hold_age = 0
 local defensive_hold_guard=nil
 local defensive_pass_alignment=nil
+local defensive_pass_pending=nil
+local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="alignment-facing-20261009-v2"
+local BOT_BUILD_ID="defensive-pass-outcome-20261009-v3"
 local defensive_escape_pending=nil
 local rebound_lock_base=nil
 local rebound_lock_frames=0
@@ -406,6 +408,38 @@ local function step_bot()
     end
     local possession = ball.possession()
     local gs = game_state.read()
+    -- Observe actual individual ownership on every frame, independent of
+    -- the control selection, logical team flag, and the pass command.
+    if defensive_pass_pending then
+        local p=defensive_pass_pending
+        local age=report.frame-p.frame
+        local reason=nil
+        local kind=nil
+        if gs~=0 or not gameplay_active.is_active(gameplay_value) then
+            kind="PASS_UNRESOLVED";reason="STOPPAGE"
+        elseif players.valid_cpu_base(possession) then
+            kind="PASS_INTERCEPTED";reason="CPU_POSSESSION"
+        elseif players.valid_my_base(possession) and possession~=p.passer then
+            kind="PASS_RECEIVED"
+            reason=possession==p.receiver and "EXPECTED_RECEIVER"
+                or "OTHER_MY_RECEIVER"
+        elseif age>=config.DEFENSIVE_PASS_OUTCOME.max_frames then
+            kind="PASS_UNRESOLVED"
+            reason=possession==p.passer and "PASSER_STILL_OWNS"
+                or "NO_CONFIRMED_RECEIVER"
+        end
+        if kind then
+            report:write("DEFENSIVE_"..kind,true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "OBSERVE_PASS_OUTCOME",
+                "sequence="..p.sequence..";passer="..p.passer
+                ..";expected_receiver="..tostring(p.receiver)
+                ..";actual_owner="..tostring(possession)
+                ..";age="..age..";reason="..reason
+                ..";direction="..tostring(p.direction))
+            defensive_pass_pending=nil
+        end
+    end
     -- Read the raw team flag on every bot step, including inactive gameplay.
     -- Log observed edges, not presumed player touches or recovered possession.
     local logical_edge=logical_team_transition.update(report.frame,
@@ -883,6 +917,25 @@ local function step_bot()
                     end
                     if outlet_ready and forward_pass.fire(outlet,movement) then
                         defensive_exit.on_pass()
+                        if defensive_pass_pending then
+                            report:write("DEFENSIVE_PASS_UNRESOLVED",true,
+                                {possession=possession,game_state=gs,my_base=my_base},
+                                "OBSERVE_PASS_OUTCOME",
+                                "sequence="..defensive_pass_pending.sequence
+                                ..";reason=SUPERSEDED")
+                        end
+                        defensive_pass_sequence=defensive_pass_sequence+1
+                        defensive_pass_pending={
+                            sequence=defensive_pass_sequence,
+                            frame=report.frame,passer=my_base,
+                            receiver=outlet.receiver,direction=outlet.direction}
+                        report:write("DEFENSIVE_PASS_SENT",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            movement.last_command,
+                            "sequence="..defensive_pass_sequence
+                            ..";passer="..my_base
+                            ..";expected_receiver="..tostring(outlet.receiver)
+                            ..";direction="..tostring(outlet.direction))
                         defensive_pass_alignment=nil
                         defensive_alignment_blocks={}
                         local state=make_state(my_base,0,0,
@@ -926,6 +979,25 @@ local function step_bot()
                     end
                     if exit_ready and forward_pass.fire(exit,movement) then
                         defensive_exit.on_pass()
+                        if defensive_pass_pending then
+                            report:write("DEFENSIVE_PASS_UNRESOLVED",true,
+                                {possession=possession,game_state=gs,my_base=my_base},
+                                "OBSERVE_PASS_OUTCOME",
+                                "sequence="..defensive_pass_pending.sequence
+                                ..";reason=SUPERSEDED")
+                        end
+                        defensive_pass_sequence=defensive_pass_sequence+1
+                        defensive_pass_pending={
+                            sequence=defensive_pass_sequence,
+                            frame=report.frame,passer=my_base,
+                            receiver=exit.receiver,direction=exit.direction}
+                        report:write("DEFENSIVE_PASS_SENT",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            movement.last_command,
+                            "sequence="..defensive_pass_sequence
+                            ..";passer="..my_base
+                            ..";expected_receiver="..tostring(exit.receiver)
+                            ..";direction="..tostring(exit.direction))
                         defensive_pass_alignment=nil
                         defensive_alignment_blocks={}
                         local state=make_state(my_base,0,0,
