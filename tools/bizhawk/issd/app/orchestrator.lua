@@ -325,6 +325,57 @@ local function step_bot()
     local gameplay_value = gameplay_active.read()
     local my_base = read_my_base()
     player_switch.observe_control(my_base)
+    local control_change=player_switch.take_control_change()
+    if control_change then
+        local from,to=control_change.from,control_change.to
+        local bx,by=ball.xy()
+        local gx,gy=players.xy(config.MY_FIRST)
+        local function measures(base)
+            local px,py=players.xy(base)
+            local ball_distance=math.sqrt((px-bx)^2+(py-by)^2)
+            local nearest,attacker_distance=nil,math.huge
+            players.each_cpu(function(cpu)
+                if cpu~=config.CPU_FIRST then
+                    local cx,cy=players.xy(cpu)
+                    local d=math.sqrt((px-cx)^2+(py-cy)^2)
+                    if d<attacker_distance then
+                        nearest=cpu;attacker_distance=d
+                    end
+                end
+            end)
+            local covered=false
+            if nearest then
+                local cx,cy=players.xy(nearest)
+                local vx,vy=gx-cx,gy-cy
+                local length2=vx*vx+vy*vy
+                if length2>1 then
+                    local t=((px-cx)*vx+(py-cy)*vy)/length2
+                    local lateral=math.abs((px-cx)*vy-(py-cy)*vx)/math.sqrt(length2)
+                    covered=t>0 and t<1 and lateral<=config.GOAL_SIDE.offset
+                end
+            end
+            return ball_distance,attacker_distance,nearest,covered
+        end
+        local fb,fa,fc,fg=measures(from)
+        local tb,ta,tc,tg=measures(to)
+        report:write("MY_CONTROL_CHANGED",true,
+            {my_base=to,game_state=game_state.read(),
+             gameplay_active=gameplay_value},
+            "OBSERVE_MYCTRL",
+            "from="..from..";to="..to
+            ..";r_pending="..tostring(control_change.requested)
+            ..";expected="..tostring(control_change.expected)
+            ..";from_ball_distance="..fb..";to_ball_distance="..tb
+            ..";from_attacker_distance="..fa
+            ..";to_attacker_distance="..ta
+            ..";from_nearest_cpu="..tostring(fc)
+            ..";to_nearest_cpu="..tostring(tc)
+            ..";from_goal_side="..tostring(fg)
+            ..";to_goal_side="..tostring(tg))
+        -- An interception lock belongs to a specific control context.
+        contest_intercept_lock=nil
+        danger_lock=nil
+    end
     local switch_event = player_switch.take_event()
     if switch_event then
         report:write(switch_event.kind, true,
