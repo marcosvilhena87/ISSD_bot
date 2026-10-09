@@ -82,8 +82,11 @@ local defense_interception = DefenseInterception.new(config, players)
 local player_switch = PlayerSwitch.new(config, players)
 local team_possession = TeamPossession.new(config, mem, players)
 local team_possession_conflict_active = false
-local gk_release_last_owner = nil
+local Last_Player_Ball_Possession = 0
+local Last_Player_Ball_Possession_Frame = nil
+local Last_Player_Ball_Possession_Team = nil
 local gk_release_lock = nil
+local gk_release_pending = nil
 local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
 local throw_in = ThrowIn.new(config, players, field_side, mem)
@@ -321,29 +324,54 @@ local function step_bot()
     end
     local possession = ball.possession()
     local gs = game_state.read()
-    -- The CPU goalkeeper can keep logical TeamPoss=0 even when holding the ball.
-    -- Preserve only the last confirmed origin after he releases; this is not ownership.
-    if gs~=0 or gameplay_value~=1 then
+    -- Universal last confirmed owner: zero and temporary BOT_IDLE never erase it.
+    local confirmed_team=team_possession.owner_kind(possession)
+    if confirmed_team~="NONE" then
+        if Last_Player_Ball_Possession~=possession then
+            report:write("LAST_PLAYER_BALL_POSSESSION_CHANGE",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "OBSERVE_LAST_OWNER",
+                "previous="..Last_Player_Ball_Possession..";current="..possession
+                ..";team="..confirmed_team)
+        end
+        Last_Player_Ball_Possession=possession
+        Last_Player_Ball_Possession_Frame=report.frame
+        Last_Player_Ball_Possession_Team=confirmed_team
+        if possession==config.CPU_FIRST then
+            gk_release_pending={last_seen=report.frame}
+        else
+            gk_release_pending=nil
+        end
+    end
+    -- A short non-gameplay animation between GK hold and release must not
+    -- discard the last confirmed goalkeeper. Do not start a lock in BOT_IDLE.
+    if gs~=0 and gs~=1 then
         gk_release_lock=nil
-        gk_release_last_owner=nil
-    else
-        if gk_release_last_owner==config.CPU_FIRST and possession==0 then
-            gk_release_lock={start=report.frame,from=config.CPU_FIRST}
-            report:write("GK_RELEASE_ORIGIN_START",true,
-                {possession=possession,game_state=gs,my_base=my_base},
-                "OBSERVE_GK_RELEASE","origin=CPU_GK")
-        end
-        if gk_release_lock and
-            (possession~=0 or
-             report.frame-gk_release_lock.start>=config.GK_RELEASE_ORIGIN_LOCK.max_frames) then
-            local reason=possession~=0 and "NEW_CONFIRMED_OWNER" or "TIMEOUT"
-            report:write("GK_RELEASE_ORIGIN_END",true,
-                {possession=possession,game_state=gs,my_base=my_base},
-                "OBSERVE_GK_RELEASE",
-                "reason="..reason..";age="..(report.frame-gk_release_lock.start))
-            gk_release_lock=nil
-        end
-        gk_release_last_owner=possession
+        gk_release_pending=nil
+    elseif gk_release_pending and
+        report.frame-gk_release_pending.last_seen>
+            config.GK_RELEASE_ORIGIN_LOCK.release_grace_frames then
+        gk_release_pending=nil
+    end
+    if gameplay_value==1 and gs==0 and possession==0
+        and gk_release_pending and not gk_release_lock then
+        gk_release_lock={start=report.frame,from=config.CPU_FIRST}
+        gk_release_pending=nil
+        report:write("GK_RELEASE_ORIGIN_START",true,
+            {possession=possession,game_state=gs,my_base=my_base},
+            "OBSERVE_GK_RELEASE",
+            "origin=CPU_GK;last_owner="..Last_Player_Ball_Possession)
+    end
+    if gk_release_lock and (possession~=0 or
+        report.frame-gk_release_lock.start>=config.GK_RELEASE_ORIGIN_LOCK.max_frames
+        or (gs~=0 and gs~=1)) then
+        local reason=possession~=0 and "NEW_CONFIRMED_OWNER"
+            or (gs~=0 and gs~=1) and "STOPPAGE" or "TIMEOUT"
+        report:write("GK_RELEASE_ORIGIN_END",true,
+            {possession=possession,game_state=gs,my_base=my_base},
+            "OBSERVE_GK_RELEASE",
+            "reason="..reason..";age="..(report.frame-gk_release_lock.start))
+        gk_release_lock=nil
     end
     if defensive_escape_pending then
         local p=defensive_escape_pending
