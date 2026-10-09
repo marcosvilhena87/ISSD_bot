@@ -294,7 +294,8 @@ M.GK_DISTRIBUTION = {
     weight_distance = 0.25,
 
     -- Se o primeiro pulso nao for aceito pelo jogo, permite retry tardio.
-    retry_frames = 30,
+    retry_frames = 40,
+    max_attempts = 3, -- bounded alternative inputs if possession persists
 }
 
 -- Provisional world-unit thresholds; position of GK approximates goalmouth.
