@@ -239,20 +239,25 @@ function M.new(config, players, field_side)
         if attempt>config.GK_DISTRIBUTION.max_attempts then
             return nil,"EXHAUSTED"
         end
-        if attempt==1 then
-            -- First test the unmodified short hand throw. Holding a direction
-            -- can move the goalkeeper rather than aim the release.
-            return {mode="THROW",button=config.GK_DISTRIBUTION.throw_button,
-                direction=nil,receiver=nil,
-                decision_reason="DIRECT_B_HAND_RELEASE"},"INITIAL"
-        elseif attempt==2 then
-            return {mode="RETRY_THROW",button=config.GK_DISTRIBUTION.throw_button,
-                direction=plan.direction,receiver=plan.receiver,
-                decision_reason="DIRECTED_B_HAND_RELEASE"},"RETRY"
+        local dir=plan.direction
+        if dir==nil then
+            dir=field_side.attack_direction()==1 and "Right" or "Left"
         end
-        return {mode="RETRY_CLEAR",button=config.GK_DISTRIBUTION.long_kick_button,
-            direction=nil,receiver=nil,
-            decision_reason="A_LONG_RELEASE"},"RETRY"
+        if attempt==1 then
+            return {mode="SHORT_THROW",button=config.GK_DISTRIBUTION.throw_button,
+                direction=dir,receiver=plan.receiver,
+                press_frames=config.GK_DISTRIBUTION.short_press_frames,
+                decision_reason="MANUAL_DIRECTED_B_TAP"},"INITIAL"
+        elseif attempt==2 then
+            return {mode="LONG_THROW",button=config.GK_DISTRIBUTION.throw_button,
+                direction=dir,receiver=plan.receiver,
+                press_frames=config.GK_DISTRIBUTION.long_press_frames,
+                decision_reason="MANUAL_DIRECTED_B_HOLD"},"RETRY"
+        end
+        return {mode="GK_KICK",button=config.GK_DISTRIBUTION.long_kick_button,
+            direction=dir,receiver=nil,
+            press_frames=config.GK_DISTRIBUTION.kick_press_frames,
+            decision_reason="MANUAL_A_KICK"},"RETRY"
     end
 
     function obj.should_fire()
@@ -271,7 +276,7 @@ function M.new(config, players, field_side)
         obj.last_action=action
         obj.attempts=obj.attempts+1
         obj.active_action=action
-        obj.press_remaining=config.GK_DISTRIBUTION.press_frames-1
+        obj.press_remaining=action.press_frames-1
         if obj.press_remaining==0 then
             obj.active_action=nil
             obj.wait_frames=config.GK_DISTRIBUTION.retry_frames
