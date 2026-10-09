@@ -50,6 +50,7 @@ M.DEFENSIVE_HEADER = {
     min_height=21,
     max_height=80,
     contact_distance=38,
+    forward_contact_distance=24, -- prioritize opposing half only near contact
     cooldown_frames=24,
 }
 
