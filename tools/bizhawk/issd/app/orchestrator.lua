@@ -107,6 +107,9 @@ local defensive_carrier = nil
 local defensive_hold_age = 0
 local defensive_hold_guard=nil
 local defensive_pass_alignment=nil
+local defensive_alignment_blocks={}
+local bot_build_logged=false
+local BOT_BUILD_ID="alignment-facing-20261009-v2"
 local defensive_escape_pending=nil
 local rebound_lock_base=nil
 local rebound_lock_frames=0
@@ -327,6 +330,13 @@ local function step_bot()
 
     local gameplay_value = gameplay_active.read()
     local my_base = read_my_base()
+    if not bot_build_logged then
+        report:write("BOT_BUILD",true,
+            {my_base=my_base,game_state=game_state.read(),
+             gameplay_active=gameplay_value},
+            "BUILD",BOT_BUILD_ID)
+        bot_build_logged=true
+    end
     player_switch.observe_control(my_base)
     local control_change=player_switch.take_control_change()
     if control_change then
@@ -691,6 +701,7 @@ local function step_bot()
             defensive_exit.reset(); defensive_carrier=nil
             defensive_hold_guard=nil
             defensive_pass_alignment=nil
+            defensive_alignment_blocks={}
         end
         corner_kick.reset()
         goal_kick.reset()
@@ -806,9 +817,13 @@ local function step_bot()
                         local cfg=config.DEFENSIVE_PASS_ALIGNMENT
                         local key=my_base..":"..tostring(plan.receiver)..":"..tostring(plan.direction)
                         local a=defensive_pass_alignment
-                        if a and a.key==key and a.blocked_until
-                            and report.frame<a.blocked_until then return false end
-                        if not a or a.key~=key or a.blocked_until then
+                        local blocked=defensive_alignment_blocks[key]
+                        if blocked and report.frame<blocked then return false end
+                        if a and a.key==key and a.blocked_until then
+                            defensive_pass_alignment=nil
+                            a=nil
+                        end
+                        if not a or a.key~=key then
                             a={key=key,start=report.frame,confirmed=0}
                             defensive_pass_alignment=a
                             report:write("DEFENSIVE_PASS_ALIGN_START",true,
@@ -842,6 +857,7 @@ local function step_bot()
                         local age=report.frame-a.start
                         if age>=cfg.max_window_frames then
                             a.blocked_until=report.frame+cfg.retry_block_frames
+                            defensive_alignment_blocks[key]=a.blocked_until
                             report:write("PASS_FACING_ABORT",true,
                                 {my_base=my_base,possession=possession,game_state=gs},
                                 "OBSERVE_FACING","direction="..plan.direction
@@ -864,11 +880,11 @@ local function step_bot()
                         local waiting=align_defensive_pass(outlet)
                         if type(waiting)=="table" then return waiting end
                         outlet_ready=waiting==true
-                    else
-                        defensive_pass_alignment=nil
                     end
                     if outlet_ready and forward_pass.fire(outlet,movement) then
                         defensive_exit.on_pass()
+                        defensive_pass_alignment=nil
+                        defensive_alignment_blocks={}
                         local state=make_state(my_base,0,0,
                             "DEFENSIVE_OUTLET_PASS",possession,gs)
                         state.defensive_recovery=true
@@ -907,11 +923,11 @@ local function step_bot()
                         local waiting=align_defensive_pass(exit)
                         if type(waiting)=="table" then return waiting end
                         exit_ready=waiting==true
-                    else
-                        defensive_pass_alignment=nil
                     end
                     if exit_ready and forward_pass.fire(exit,movement) then
                         defensive_exit.on_pass()
+                        defensive_pass_alignment=nil
+                        defensive_alignment_blocks={}
                         local state=make_state(my_base,0,0,
                             "DEFENSIVE_LATERAL_PASS",possession,gs)
                         state.defensive_recovery=true
