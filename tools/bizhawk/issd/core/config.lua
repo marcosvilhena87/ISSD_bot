@@ -429,8 +429,9 @@ M.DEFENSIVE_DASH = {
 
 M.ACTIVE_TACKLE = {
     button = "B",
-    max_distance = 40,
-    max_ball_distance = 24, -- experimental: only tackle near actual ball
+    max_distance = 28, -- conservative close-contact charge
+    max_ball_distance = 16, -- prevent premature B when the ball is out of reach
+    max_carrier_ball_distance = 30, -- ensure the ball remains near the carrier
     cooldown_frames = 30,
     outcome_frames = 45,
 }
