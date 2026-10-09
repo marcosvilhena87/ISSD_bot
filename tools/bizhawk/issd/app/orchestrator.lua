@@ -1976,7 +1976,8 @@ local function step_bot()
                 local age=report.frame-lock.frame
                 local height=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
                 local reason=nil
-                if age>=rc.lock_frames then reason="TIMEOUT"
+                if lock.base~=my_base then reason="CONTROLLED_PLAYER_CHANGED"
+                elseif age>=rc.lock_frames then reason="TIMEOUT"
                 elseif drift>rc.lock_max_ball_drift then reason="TRAJECTORY_CHANGED"
                 elseif height>rc.lock_max_height then reason="BALL_TOO_HIGH"
                 elseif dist>rc.max_controlled_distance then reason="OUT_OF_REACH"
@@ -1985,7 +1986,9 @@ local function step_bot()
                     report:write("MY_RECOVERY_LOCK_END",true,
                         {possession=possession,game_state=gs,my_base=my_base,
                          ball_x=bx,ball_y=by},"OBSERVE_RECOVERY",
-                        "reason="..reason..";age="..age..";distance="..dist)
+                        "reason="..reason..";age="..age..";distance="..dist
+                        ..";locked_base="..tostring(lock.base)
+                        ..";controlled_base="..tostring(my_base))
                     my_recovery_lock=nil
                 else
                     local dx,dy=lock.x-px,lock.y-py
@@ -2026,7 +2029,7 @@ local function step_bot()
                 -- player selection uses R sequentially, not direct selection.
                 if distance<=recovery.max_controlled_distance then
                     my_recovery_lock={x=tx,y=ty,bx=bx,by=by,
-                        frame=report.frame}
+                        base=my_base,frame=report.frame}
                     report:write("MY_RECOVERY_LOCK_START",true,
                         {possession=possession,game_state=gs,my_base=my_base,
                          ball_x=bx,ball_y=by},"OBSERVE_RECOVERY",
