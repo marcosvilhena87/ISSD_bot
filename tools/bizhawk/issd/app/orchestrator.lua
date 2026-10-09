@@ -111,7 +111,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="defensive-pass-outcome-20261009-v3"
+local BOT_BUILD_ID="aerial-contest-lock-20261009-v4"
 local defensive_escape_pending=nil
 local rebound_lock_base=nil
 local rebound_lock_frames=0
@@ -136,6 +136,7 @@ local flight_interception_pending=nil
 local danger_lock=nil
 local header_last_frame=-99999
 local header_last_height=nil
+local aerial_contest_lock=nil
 -- Defensive sprint is deliberately separate from attack dash.
 local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=nil,
     start_x=nil,start_y=nil,target_x=nil,target_y=nil}
@@ -1793,6 +1794,62 @@ local function step_bot()
                     "PLAYER_POSSESSION",
                     "CPU_CONTROLLED"
                 )
+            end
+        end
+
+        -- Early commitment to an aerial contest, ahead of ground rebound
+        -- arbitration. Never assume R selects a particular defender.
+        do
+            local ac=config.AERIAL_CONTEST_LOCK
+            local valid=possession==0 and gs==0
+                and players.valid_my_base(my_base)
+                and my_base~=config.MY_FIRST
+            local height=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
+            local gx,gy=players.xy(config.MY_FIRST)
+            local goal_dist=math.sqrt((bx-gx)^2+(by-gy)^2)
+            local px,py=nil,nil
+            local dist=math.huge
+            if valid then
+                px,py=players.xy(my_base)
+                dist=math.sqrt((bx-px)^2+(by-py)^2)
+            end
+            local active=valid and height>=ac.min_height
+                and height<=ac.max_height
+                and goal_dist<=ac.goal_radius
+                and dist<=ac.approach_distance
+            if aerial_contest_lock then
+                local lock=aerial_contest_lock
+                local reason=nil
+                if not active then reason="LOST_AERIAL_WINDOW"
+                elseif lock.base~=my_base then reason="CONTROL_CHANGED"
+                elseif report.frame-lock.start>=ac.max_frames then reason="TIMEOUT"
+                end
+                if reason then
+                    report:write("AERIAL_CONTEST_LOCK_END",true,
+                        {possession=possession,game_state=gs,my_base=my_base},
+                        "OBSERVE_AERIAL","reason="..reason
+                        ..";base="..lock.base
+                        ..";age="..(report.frame-lock.start))
+                    aerial_contest_lock=nil
+                end
+            end
+            if active and not aerial_contest_lock then
+                aerial_contest_lock={base=my_base,start=report.frame}
+                report:write("AERIAL_CONTEST_LOCK_START",true,
+                    {possession=possession,game_state=gs,my_base=my_base},
+                    "OBSERVE_AERIAL","base="..my_base..";distance="..dist
+                    ..";height="..height)
+            end
+            if active and aerial_contest_lock
+                and aerial_contest_lock.base==my_base
+                and dist>config.DEFENSIVE_HEADER.contact_distance then
+                local dx,dy=bx-px,by-py
+                movement.move_toward(dx,dy)
+                local state=make_state(my_base,dx,dy,
+                    "AERIAL_CONTEST_APPROACH",possession,gs)
+                state.header_height=height
+                state.header_distance=dist
+                return attach_live_state(state,"AERIAL_CONTEST","MY_UNOWNED_BALL")
             end
         end
 
