@@ -1589,7 +1589,8 @@ local function step_bot()
                             ..";mode="..tostring(action.mode)
                             ..";reason="..tostring(action.decision_reason)
                             ..";held_frames="..gk_distribution.held_frames
-                            ..";press_frames="..config.GK_DISTRIBUTION.press_frames)
+                            ..";press_frames="..tostring(action.press_frames)
+                            ..";direction="..tostring(action.direction))
                         end
                     else
                         movement.stop()
