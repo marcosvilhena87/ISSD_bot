@@ -35,6 +35,8 @@ local Shoot = dofile(DIR .. "../tactics/shoot.lua")
 local ForwardPass = dofile(DIR .. "../tactics/forward_pass.lua")
 local DefensiveExit = dofile(DIR .. "../tactics/defensive_exit.lua")
 local DefensiveMidfieldTransition = dofile(DIR .. "../state/defensive_midfield_transition.lua")
+local MidAttackTransition = dofile(DIR .. "../state/mid_attack_transition.lua")
+local DefensiveClearanceOutcome = dofile(DIR .. "../state/defensive_clearance_outcome.lua")
 local GKDistribution = dofile(DIR .. "../tactics/gk_distribution.lua")
 local GoalKick = dofile(DIR .. "../tactics/goal_kick.lua")
 local CornerKick = dofile(DIR .. "../tactics/corner_kick.lua")
@@ -65,6 +67,8 @@ local game_state = GameState.new(config, mem)
 local gameplay_active = GameplayActive.new(config, mem)
 local field_side = FieldSide.new(config, mem)
 local defensive_midfield_transition = DefensiveMidfieldTransition.new(config,mem,players,field_side)
+local mid_attack_transition = MidAttackTransition.new(config,mem,players,field_side)
+local defensive_clearance_outcome = DefensiveClearanceOutcome.new(config,players,field_side)
 local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, field_side)
 local live_defense = LiveDefense.new(config, players, field_side)
@@ -111,7 +115,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="aerial-ai-assist-20261009-v7"
+local BOT_BUILD_ID="transition-monitors-20261009-v8"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -868,11 +872,16 @@ local function step_bot()
                             return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                         else
                             movement.press_direction_button(ch.direction,nil)
+                            local cbx,cby=ball.world_xy()
+                            local sequence=defensive_clearance_outcome.start(
+                                report.frame,cbx,cby,ch.carrier,ch.frames,
+                                field_side.attack_direction())
                             report:write("DEF_CLEAR_CHARGE_RELEASE",true,
                                 {possession=possession,game_state=gs,my_base=my_base},
                                 movement.last_command,
                                 "frames="..ch.frames..";direction="..ch.direction
-                                ..";threat="..tostring(ch.threat))
+                                ..";threat="..tostring(ch.threat)
+                                ..";clearance_sequence="..sequence)
                             defensive_clear_charge=nil
                             local state=make_state(my_base,0,0,
                                 "DEF_CLEAR_RELEASE",possession,gs)
@@ -3146,6 +3155,27 @@ while true do
                 ..";age="..tostring(event.age)
                 ..";route="..tostring(event.route)
                 ..";boundary="..tostring(event.boundary))
+        end
+        for _,event in ipairs(mid_attack_transition.update(state,report.frame)) do
+            report:write("MID_ATTACK_TRANSITION_"..event.kind,true,state,
+                "OBSERVE_TRANSITION",
+                "reason="..tostring(event.reason)
+                ..";sequence="..tostring(event.sequence)
+                ..";age="..tostring(event.age)
+                ..";route="..tostring(event.route))
+        end
+        local clearance=defensive_clearance_outcome.update(state,report.frame)
+        if clearance then
+            report:write("DEF_CLEAR_OUTCOME_"..clearance.kind,true,state,
+                "OBSERVE_CLEARANCE",
+                "reason="..tostring(clearance.reason)
+                ..";sequence="..clearance.sequence
+                ..";age="..clearance.age
+                ..";progress="..tostring(clearance.progress)
+                ..";start_x="..tostring(clearance.start_x)
+                ..";end_x="..tostring(clearance.end_x)
+                ..";charge_frames="..clearance.frames
+                ..";owner="..tostring(clearance.owner))
         end
         if state.team_possession_conflict and
             (not team_possession_conflict_active or report.frame%60==0) then
