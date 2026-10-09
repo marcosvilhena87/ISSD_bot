@@ -111,8 +111,9 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="aerial-contest-lock-20261009-v4"
+local BOT_BUILD_ID="charged-clearance-20261009-v5"
 local defensive_escape_pending=nil
+local defensive_clear_charge=nil
 local rebound_lock_base=nil
 local rebound_lock_frames=0
 local latest_contest=nil
@@ -836,6 +837,38 @@ local function step_bot()
             -- sem bola quando a posse esta em outra struct MY.
             if possession == my_base and my_base ~= config.MY_FIRST then
                 if in_defensive_third(my_base) then
+                    -- Continue a charge before replanning: tactical plans can vary
+                    -- while A is held, but the charge must retain direction.
+                    if defensive_clear_charge then
+                        local ch=defensive_clear_charge
+                        local cc=config.CHARGED_DEFENSIVE_CLEARANCE
+                        if possession~=ch.carrier or gs~=0 then
+                            report:write("DEF_CLEAR_CHARGE_ABORT",true,
+                                {possession=possession,game_state=gs,my_base=my_base},
+                                "RELEASE_A","reason=OWNER_CHANGED")
+                            defensive_clear_charge=nil
+                            movement.stop()
+                        elseif ch.frames<ch.target_frames then
+                            movement.press_direction_button(ch.direction,"A")
+                            ch.frames=ch.frames+1
+                            local state=make_state(my_base,0,0,
+                                "DEF_CLEAR_CHARGING",possession,gs)
+                            state.defensive_clear_charge_frames=ch.frames
+                            state.defensive_clear_target_frames=ch.target_frames
+                            return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
+                        else
+                            movement.press_direction_button(ch.direction,nil)
+                            report:write("DEF_CLEAR_CHARGE_RELEASE",true,
+                                {possession=possession,game_state=gs,my_base=my_base},
+                                movement.last_command,
+                                "frames="..ch.frames..";direction="..ch.direction
+                                ..";threat="..tostring(ch.threat))
+                            defensive_clear_charge=nil
+                            local state=make_state(my_base,0,0,
+                                "DEF_CLEAR_RELEASE",possession,gs)
+                            return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
+                        end
+                    end
                     if defensive_carrier~=my_base then
                         defensive_carrier=my_base
                         defensive_hold_age=0
@@ -1043,7 +1076,25 @@ local function step_bot()
                         return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                     end
                     if exit.mode=="CLEAR" then
+                        local charge_cfg=config.CHARGED_DEFENSIVE_CLEARANCE
+                        local charging=exit.button=="A"
+                            and (exit.direction=="Left" or exit.direction=="Right")
+                        if charging then
+                            local frames=exit.threat and exit.threat<=charge_cfg.urgent_radius
+                                and charge_cfg.urgent_frames or charge_cfg.normal_frames
+                            defensive_clear_charge={carrier=my_base,
+                                direction=exit.direction,frames=1,target_frames=frames,
+                                threat=exit.threat}
+                        end
                         movement.press_direction_button(exit.direction,exit.button)
+                        if charging then
+                            report:write("DEF_CLEAR_CHARGE_START",true,
+                                {possession=possession,game_state=gs,my_base=my_base},
+                                movement.last_command,
+                                "target_frames="..defensive_clear_charge.target_frames
+                                ..";direction="..exit.direction
+                                ..";threat="..tostring(exit.threat))
+                        end
                         local cbx,cby=ball.world_xy()
                         defensive_escape_pending={carrier=my_base,start=report.frame,
                             x=cbx,y=cby,attempt=exit.clear_attempts or 1}
