@@ -138,6 +138,11 @@ M.ATTACK = {
 -- First-third defensive possession is handled by the field-third geometry
 -- and existing FORWARD_PASS safety thresholds.
 
+M.DEFENSIVE_MIDFIELD_TRANSITION = {
+    stable_frames=12,
+    max_frames=240,
+}
+
 M.DEFENSIVE_EXIT = {
     lateral_min=65, lateral_max=190, max_horizontal=30,
     max_pass_distance=210, receiver_clearance=80,
