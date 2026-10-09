@@ -106,6 +106,7 @@ local gk_pending = nil
 local defensive_carrier = nil
 local defensive_hold_age = 0
 local defensive_hold_guard=nil
+local defensive_pass_alignment=nil
 local defensive_escape_pending=nil
 local rebound_lock_base=nil
 local rebound_lock_frames=0
@@ -689,6 +690,7 @@ local function step_bot()
         if possession~=my_base then
             defensive_exit.reset(); defensive_carrier=nil
             defensive_hold_guard=nil
+            defensive_pass_alignment=nil
         end
         corner_kick.reset()
         goal_kick.reset()
@@ -796,8 +798,48 @@ local function step_bot()
                     if defensive_hold_guard and defensive_hold_guard.carrier~=my_base then
                         defensive_hold_guard=nil
                     end
+                    -- Do not release a defensive pass immediately after a
+                    -- rebound recovery. Face the intended cardinal pass lane
+                    -- for a few frames first; this is a proxy, not a verified
+                    -- sprite-facing memory address.
+                    local function align_defensive_pass(plan)
+                        local cfg=config.DEFENSIVE_PASS_ALIGNMENT
+                        local key=tostring(my_base)..":"..tostring(plan.receiver)
+                            ..":"..tostring(plan.direction)
+                        local alignment=defensive_pass_alignment
+                        if not alignment or alignment.key~=key
+                            or report.frame-alignment.start>cfg.max_window_frames then
+                            alignment={key=key,start=report.frame,frames=0}
+                            defensive_pass_alignment=alignment
+                        end
+                        if alignment.frames>=cfg.frames then
+                            defensive_pass_alignment=nil
+                            return true
+                        end
+                        movement.press_direction_button(plan.direction,nil)
+                        alignment.frames=alignment.frames+1
+                        local state=make_state(my_base,0,0,
+                            "DEFENSIVE_PASS_ALIGN",possession,gs)
+                        state.defensive_recovery=true
+                        state.forward_pass_receiver=plan.receiver
+                        state.forward_pass_direction=plan.direction
+                        state.forward_pass_alignment_frames=alignment.frames
+                        if alignment.frames==1 then
+                            report:write("DEFENSIVE_PASS_ALIGN_START",true,state,
+                                movement.last_command,
+                                "receiver="..tostring(plan.receiver)
+                                ..";direction="..tostring(plan.direction))
+                        end
+                        return attach_live_state(state,"PASS_ALIGNMENT","MY_CONTROLLED")
+                    end
                     -- No forward dribble or Y dash while holding the defensive line.
                     local outlet=forward_pass.plan(my_base)
+                    if outlet then
+                        local waiting=align_defensive_pass(outlet)
+                        if waiting~=true then return waiting end
+                    else
+                        defensive_pass_alignment=nil
+                    end
                     if outlet and forward_pass.fire(outlet,movement) then
                         defensive_exit.on_pass()
                         local state=make_state(my_base,0,0,
@@ -832,6 +874,12 @@ local function step_bot()
                         end
                     elseif exit.mode~="HOLD" then
                         defensive_hold_guard=nil
+                    end
+                    if exit.mode=="PASS" then
+                        local waiting=align_defensive_pass(exit)
+                        if waiting~=true then return waiting end
+                    else
+                        defensive_pass_alignment=nil
                     end
                     if exit.mode=="PASS" and forward_pass.fire(exit,movement) then
                         defensive_exit.on_pass()
