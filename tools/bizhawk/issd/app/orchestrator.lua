@@ -1927,6 +1927,43 @@ local function step_bot()
                     return attach_live_state(state,"ORIGIN_OVERRIDE","MY_UNOWNED_BALL")
                 end
             end
+            -- Opportunistic recovery: logical MY ownership does not imply a
+            -- Brazilian player controls the ball. Pursue only a stable, low
+            -- ball with a meaningful arrival-time advantage.
+            local recovery=config.MY_UNOWNED_RECOVERY
+            local eta=latest_contest -- previous frame: avoid current-frame lookahead
+            if report.frame>=contest_abort_until and eta and latest_contest_frame
+                and report.frame-latest_contest_frame<=recovery.max_age_frames
+                and eta.class=="MY" and eta.raw_class=="MY"
+                and eta.stability>=recovery.stability_frames
+                and eta.height<=recovery.max_height
+                and eta.my_distance<=recovery.max_distance
+                and eta.eta_advantage>=recovery.min_eta_advantage then
+                local tx,ty=eta.target_x,eta.target_y
+                local guarded=field_boundary.correct(tx,ty,bx,by)
+                tx,ty=guarded.x,guarded.y
+                local switch_state=maybe_switch_player(tx,ty,"MY_UNOWNED_RECOVERY")
+                if switch_state then
+                    switch_state.intercept_target_x=tx
+                    switch_state.intercept_target_y=ty
+                    return switch_state
+                end
+                local px,py=players.xy(my_base)
+                local dx,dy=tx-px,ty-py
+                local distance=math.sqrt(dx*dx+dy*dy)
+                -- Avoid dragging a distant controlled player across the field:
+                -- player selection uses R sequentially, not direct selection.
+                if distance<=recovery.max_controlled_distance then
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,
+                        "MY_UNOWNED_RECOVERY",possession,gs)
+                    state.intercept_target_x=tx
+                    state.intercept_target_y=ty
+                    state.contest_my_eta=eta.my_eta
+                    state.contest_cpu_eta=eta.cpu_eta
+                    return attach_live_state(state,"ETA_RECOVERY","MY_UNOWNED_BALL")
+                end
+            end
             movement.stop()
             return attach_live_state(
                 make_state(my_base,0,0,"MY_UNOWNED_BALL",possession,gs),
