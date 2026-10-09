@@ -19,7 +19,8 @@ function M.new(config,players)
         local d=math.sqrt((cx-x)^2+(cy-y)^2)
         local db=math.sqrt((ball_x-x)^2+(ball_y-y)^2)
         local cb=math.sqrt((ball_x-cx)^2+(ball_y-cy)^2)
-        if d>c.max_distance or db>c.max_ball_distance then return nil end
+        if d>c.max_distance or db>c.max_ball_distance
+            or cb>c.max_carrier_ball_distance then return nil end
         return {defender=defender,carrier=carrier,distance=d,
             defender_ball_distance=db,carrier_ball_distance=cb,button=c.button}
     end
