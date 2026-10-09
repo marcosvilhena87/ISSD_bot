@@ -178,6 +178,14 @@ M.CHARGED_DEFENSIVE_CLEARANCE = {
     normal_frames=7, -- experimental, calibrate actual ball displacement
 }
 
+M.DEEP_DEFENSIVE_LATERAL = {
+    max_own_goal_distance=420,
+    max_receiver_axis_offset=24,
+    min_receiver_clearance=115,
+    min_lane_clearance=90,
+    min_cpu_arrival_margin=42, -- distance to actual straight B lane landing
+}
+
 M.DEFENSIVE_EXIT = {
     lateral_min=65, lateral_max=190, max_horizontal=30,
     max_pass_distance=210, receiver_clearance=80,
