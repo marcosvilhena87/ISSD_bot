@@ -334,6 +334,18 @@ M.OWNERSHIP_PROBE = {
     max_distance_gap=38,
 }
 
+-- Conservative positive-ETA recovery for either logical team assignment.
+-- Only wired to MY_UNOWNED_BALL; CPU_UNOWNED_BALL retains its existing chase.
+-- World-unit thresholds are provisional pending CSV-based calibration.
+M.MY_UNOWNED_RECOVERY = {
+    max_age_frames=2,
+    stability_frames=4,
+    max_height=20,
+    max_distance=130,
+    min_eta_advantage=8,
+    max_controlled_distance=180,
+}
+
 M.MY_FLIGHT_INTERCEPTION = {
     max_height = 20, -- ground / low bounce only until aerial control is calibrated
     max_my_distance = 155,
