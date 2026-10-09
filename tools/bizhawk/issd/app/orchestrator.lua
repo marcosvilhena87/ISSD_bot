@@ -80,7 +80,8 @@ local free_kick = FreeKick.new(config, players, field_side)
 local interception = Interception.new(config)
 local defense_interception = DefenseInterception.new(config, players)
 local player_switch = PlayerSwitch.new(config, players)
-local team_possession = TeamPossession.new(config, mem)
+local team_possession = TeamPossession.new(config, mem, players)
+local team_possession_conflict_active = false
 local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
 local throw_in = ThrowIn.new(config, players, field_side, mem)
@@ -531,11 +532,14 @@ local function step_bot()
             possession_context.update(possession, bx, by)
 
         local team_value = team_possession.read()
-        local team_kind = team_possession.kind(team_value)
+        local team_kind,team_kind_source,team_kind_conflict =
+            team_possession.resolve(team_value,possession)
 
         local function attach_live_state(state, source, class)
             state.team_possession = team_value
             state.team_possession_kind = team_kind
+            state.team_possession_kind_source = team_kind_source
+            state.team_possession_conflict = team_kind_conflict
             state.team_possession_source = source
             state.possession_class = class or fallback_class
             state.context_last_team = possession_context.last_team
@@ -2346,6 +2350,16 @@ while true do
                 ..";route="..tostring(event.route)
                 ..";boundary="..tostring(event.boundary))
         end
+        if state.team_possession_conflict and
+            (not team_possession_conflict_active or report.frame%60==0) then
+            report:write("TEAM_POSSESSION_CONFLICT",true,state,
+                "OBSERVE_POSSESSION",
+                "owner="..tostring(state.possession)
+                ..";confirmed_team="..tostring(state.team_possession_kind)
+                ..";logical_value="..tostring(state.team_possession)
+                ..";source="..tostring(state.team_possession_kind_source))
+        end
+        team_possession_conflict_active=not not state.team_possession_conflict
         report:observe(true, state)
         -- Outcome monitoring only after an actual GK button pulse.
         if gk_pending and not state.gk_dist_fired then
