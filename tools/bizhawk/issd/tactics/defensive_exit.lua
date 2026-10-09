@@ -17,7 +17,7 @@ function M.new(config,players,field_side,mem)
  function o.on_pass() o.pending_frames=c.action_settle_frames;o.hold_streak=0 end
  local function hold(reason,threat,total)
   o.hold_streak=o.hold_streak+1
-  if threat<=c.emergency_radius and o.hold_streak>=c.hold_timeout_frames then
+  if threat<=c.pressure_radius and o.hold_streak>=c.hold_timeout_frames then
    if o.clear_attempts<c.max_clear_attempts then
     o.clear_attempts=o.clear_attempts+1
     o.hold_streak=0
