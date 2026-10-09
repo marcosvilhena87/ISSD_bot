@@ -804,43 +804,70 @@ local function step_bot()
                     -- sprite-facing memory address.
                     local function align_defensive_pass(plan)
                         local cfg=config.DEFENSIVE_PASS_ALIGNMENT
-                        local key=tostring(my_base)..":"..tostring(plan.receiver)
-                            ..":"..tostring(plan.direction)
-                        local alignment=defensive_pass_alignment
-                        if not alignment or alignment.key~=key
-                            or report.frame-alignment.start>cfg.max_window_frames then
-                            alignment={key=key,start=report.frame,frames=0}
-                            defensive_pass_alignment=alignment
+                        local key=my_base..":"..tostring(plan.receiver)..":"..tostring(plan.direction)
+                        local a=defensive_pass_alignment
+                        if a and a.key==key and a.blocked_until
+                            and report.frame<a.blocked_until then return false end
+                        if not a or a.key~=key or a.blocked_until then
+                            a={key=key,start=report.frame,confirmed=0}
+                            defensive_pass_alignment=a
+                            report:write("DEFENSIVE_PASS_ALIGN_START",true,
+                                {my_base=my_base,possession=possession,game_state=gs},
+                                "OBSERVE_FACING","receiver="..tostring(plan.receiver)
+                                ..";direction="..tostring(plan.direction))
                         end
-                        if alignment.frames>=cfg.frames then
+                        local px,py=players.xy(my_base)
+                        local ball_x,ball_y=ball.world_xy()
+                        local dx,dy=ball_x-px,ball_y-py
+                        local along,across
+                        if plan.direction=="Right" then along,across=dx,math.abs(dy)
+                        elseif plan.direction=="Left" then along,across=-dx,math.abs(dy)
+                        elseif plan.direction=="Down" then along,across=dy,math.abs(dx)
+                        elseif plan.direction=="Up" then along,across=-dy,math.abs(dx)
+                        else along,across=0,math.huge end
+                        local facing=along>=cfg.min_forward_offset
+                            and along<=cfg.max_ball_offset
+                            and across<=cfg.max_lateral_offset
+                            and along>=across*cfg.dominance_ratio
+                        a.confirmed=facing and a.confirmed+1 or 0
+                        if a.confirmed>=cfg.confirm_frames then
+                            report:write("PASS_FACING_CONFIRMED",true,
+                                {my_base=my_base,possession=possession,game_state=gs},
+                                "OBSERVE_FACING","direction="..plan.direction
+                                ..";dx="..dx..";dy="..dy
+                                ..";age="..(report.frame-a.start))
                             defensive_pass_alignment=nil
                             return true
                         end
+                        local age=report.frame-a.start
+                        if age>=cfg.max_window_frames then
+                            a.blocked_until=report.frame+cfg.retry_block_frames
+                            report:write("PASS_FACING_ABORT",true,
+                                {my_base=my_base,possession=possession,game_state=gs},
+                                "OBSERVE_FACING","direction="..plan.direction
+                                ..";dx="..dx..";dy="..dy..";age="..age)
+                            return false
+                        end
                         movement.press_direction_button(plan.direction,nil)
-                        alignment.frames=alignment.frames+1
                         local state=make_state(my_base,0,0,
                             "DEFENSIVE_PASS_ALIGN",possession,gs)
                         state.defensive_recovery=true
                         state.forward_pass_receiver=plan.receiver
                         state.forward_pass_direction=plan.direction
-                        state.forward_pass_alignment_frames=alignment.frames
-                        if alignment.frames==1 then
-                            report:write("DEFENSIVE_PASS_ALIGN_START",true,state,
-                                movement.last_command,
-                                "receiver="..tostring(plan.receiver)
-                                ..";direction="..tostring(plan.direction))
-                        end
+                        state.forward_pass_alignment_frames=age
                         return attach_live_state(state,"PASS_ALIGNMENT","MY_CONTROLLED")
                     end
-                    -- No forward dribble or Y dash while holding the defensive line.
+                                        -- No forward dribble or Y dash while holding the defensive line.
                     local outlet=forward_pass.plan(my_base)
+                    local outlet_ready=false
                     if outlet then
                         local waiting=align_defensive_pass(outlet)
-                        if waiting~=true then return waiting end
+                        if type(waiting)=="table" then return waiting end
+                        outlet_ready=waiting==true
                     else
                         defensive_pass_alignment=nil
                     end
-                    if outlet and forward_pass.fire(outlet,movement) then
+                    if outlet_ready and forward_pass.fire(outlet,movement) then
                         defensive_exit.on_pass()
                         local state=make_state(my_base,0,0,
                             "DEFENSIVE_OUTLET_PASS",possession,gs)
@@ -875,13 +902,15 @@ local function step_bot()
                     elseif exit.mode~="HOLD" then
                         defensive_hold_guard=nil
                     end
+                    local exit_ready=false
                     if exit.mode=="PASS" then
                         local waiting=align_defensive_pass(exit)
-                        if waiting~=true then return waiting end
+                        if type(waiting)=="table" then return waiting end
+                        exit_ready=waiting==true
                     else
                         defensive_pass_alignment=nil
                     end
-                    if exit.mode=="PASS" and forward_pass.fire(exit,movement) then
+                    if exit_ready and forward_pass.fire(exit,movement) then
                         defensive_exit.on_pass()
                         local state=make_state(my_base,0,0,
                             "DEFENSIVE_LATERAL_PASS",possession,gs)
