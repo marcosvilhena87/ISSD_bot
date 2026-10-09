@@ -403,6 +403,7 @@ M.BOX_COVERAGE = {
 M.DEFENSIVE_DASH = {
     button = "Y",
     start_distance = 105,
+    recovery_start_distance = 70, -- accelerate on viable loose-ball approaches
     stop_distance = 55,
     burst_frames = 10,
     cooldown_frames = 16,
