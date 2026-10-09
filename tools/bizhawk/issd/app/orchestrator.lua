@@ -1816,18 +1816,35 @@ local function step_bot()
                 and dist<=hc.contact_distance and descending
                 and report.frame-header_last_frame>=hc.cooldown_frames then
                 local dx,dy=bx-px,by-py
-                movement.move_toward_button(dx,dy,"X")
+                local attack_dir=field_side.attack_direction()
+                local header_mode="EMERGENCY_CONTACT"
+                local heading="BALL_APPROACH"
+                -- Near contact, prefer clearing toward the opposing half.
+                -- Farther away, preserve contact probability by approaching the ball.
+                if attack_dir~=0 and dist<=hc.forward_contact_distance then
+                    heading=attack_dir==1 and "Right" or "Left"
+                    movement.press_direction_button(heading,"X")
+                    header_mode="FORWARD_CLEAR"
+                else
+                    movement.move_toward_button(dx,dy,"X")
+                end
                 header_last_frame=report.frame
                 local state=make_state(my_base,dx,dy,
                     "DEFENSIVE_HEADER_ATTEMPT",possession,gs)
                 state.header_height=height
                 state.header_distance=dist
                 state.header_goal_distance=goal_dist
+                state.header_mode=header_mode
+                state.header_heading=heading
                 report:write("DEFENSIVE_HEADER_ATTEMPT",true,state,
                     movement.last_command,
                     "height="..height..";distance="..dist
                     ..";goal_distance="..goal_dist
-                    ..";controlled_base="..my_base)
+                    ..";controlled_base="..my_base
+                    ..";mode="..header_mode
+                    ..";heading="..heading
+                    ..";attack_dir="..attack_dir
+                    ..";ball_dx="..dx..";ball_dy="..dy)
                 return attach_live_state(state,"AERIAL_CLEARANCE_ATTEMPT",
                     effective_unowned_team=="CPU"
                     and "CPU_UNOWNED_BALL" or "MY_UNOWNED_BALL")
