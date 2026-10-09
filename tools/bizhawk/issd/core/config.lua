@@ -344,6 +344,10 @@ M.MY_UNOWNED_RECOVERY = {
     max_distance=130,
     min_eta_advantage=8,
     max_controlled_distance=180,
+    lock_frames=12,
+    lock_max_ball_drift=65,
+    lock_max_height=20,
+    lock_arrive_distance=22,
 }
 
 M.MY_FLIGHT_INTERCEPTION = {
