@@ -1349,26 +1349,36 @@ local function step_bot()
                 local plan = gk_distribution.plan(my_base)
 
                 if plan ~= nil then
-                    if gk_distribution.should_fire() then
-                        movement.press_direction_button(
-                            plan.direction,
-                            plan.button
-                        )
-                        gk_distribution.mark_fired(plan)
-
+                    local action,phase=gk_distribution.next_action(plan)
+                    local fired=action~=nil
+                    if fired then
+                        movement.press_direction_button(action.direction,action.button)
+                        gk_distribution.mark_fired(action)
+                        report:write("GK_DISTRIBUTION_ATTEMPT",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            movement.last_command,
+                            "attempt="..gk_distribution.attempts
+                            ..";mode="..tostring(action.mode)
+                            ..";reason="..tostring(action.decision_reason)
+                            ..";held_frames="..gk_distribution.held_frames)
                     else
                         movement.stop()
                     end
 
                     local state = make_state(
-                        my_base, 0, 0, "GK_DISTRIBUTE", possession, gs
+                        my_base, 0, 0,
+                        fired and "GK_DISTRIBUTION_ATTEMPT"
+                            or phase=="EXHAUSTED" and "GK_DISTRIBUTION_EXHAUSTED"
+                            or "GK_DISTRIBUTION_WAIT", possession, gs
                     )
-                    state.gk_dist_fired = gk_distribution.wait_frames == config.GK_DISTRIBUTION.retry_frames
+                    state.gk_dist_fired = fired
+                    state.gk_dist_attempts = gk_distribution.attempts
+                    state.gk_dist_held_frames = gk_distribution.held_frames
                     state.gk_dist_lane_clearance = plan.lane_clearance
                     state.gk_dist_decision_reason = plan.decision_reason
-                    state.gk_dist_mode = plan.mode
-                    state.gk_dist_direction = plan.direction
-                    state.gk_dist_button = plan.button
+                    state.gk_dist_mode = action and action.mode or plan.mode
+                    state.gk_dist_direction = action and action.direction or plan.direction
+                    state.gk_dist_button = action and action.button or plan.button
                     state.gk_dist_receiver = plan.receiver
                     state.gk_dist_receiver_distance =
                         plan.receiver_distance
