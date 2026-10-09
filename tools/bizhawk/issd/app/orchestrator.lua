@@ -1452,6 +1452,32 @@ local function step_bot()
                 )
             end
 
+            -- A free CPU carrier near our goal outranks marking a secondary
+            -- attacker. Occupy the carrier-to-GK lane before chasing away.
+            -- Keep the current outfielder: R may select an arbitrary player.
+            local primary_lane=live_defense.shot_lane(possession,my_base)
+            if primary_lane and primary_lane.exposed then
+                local cx,cy=players.xy(possession)
+                local px,py=players.xy(my_base)
+                local carrier_distance=math.sqrt((cx-px)^2+(cy-py)^2)
+                if carrier_distance>config.ACTIVE_TACKLE.max_distance then
+                    local guarded=field_boundary.correct(px,py,
+                        primary_lane.target_x,primary_lane.target_y)
+                    local dx,dy=guarded.x-px,guarded.y-py
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,
+                        "PRIMARY_CARRIER_GOAL_COVER",possession,gs)
+                    state.live_carrier=possession
+                    state.live_target_x=guarded.x
+                    state.live_target_y=guarded.y
+                    state.shot_lane_exposed=true
+                    state.shot_lane_lateral=primary_lane.lateral
+                    state.shot_lane_along=primary_lane.along
+                    state.tackle_distance=carrier_distance
+                    return attach_live_state(state,"GOAL_SIDE_COVER","CPU_CONTROLLED")
+                end
+            end
+
             -- First priority: prevent an unmarked attacker from receiving and shooting.
             local urgent=live_defense.box_pressure(possession,bx,by,false)
             if urgent then
