@@ -950,15 +950,31 @@ local function step_bot()
                     local remaining=math.sqrt((r.target_x-px_now)^2
                         +(r.target_y-py_now)^2)
                     local finish=nil
+                    -- Every progress window must move meaningfully toward midfield.
+                    if age-r.progress_checked_at>=reset_cfg.progress_window_frames then
+                        local window_gain=(r.progress_x-px_now)*r.dir
+                        if window_gain<reset_cfg.min_window_progress then
+                            finish="STALLED_PROGRESS"
+                        else
+                            r.progress_x=px_now
+                            r.progress_checked_at=age
+                        end
+                    end
+                    local nearest_cpu=math.huge
+                    players.each_cpu(function(base)
+                        local ex,ey=players.xy(base)
+                        local d=math.sqrt((ex-px_now)^2+(ey-py_now)^2)
+                        if d<nearest_cpu then nearest_cpu=d end
+                    end)
+                    if nearest_cpu<=reset_cfg.pressure_abort_radius then
+                        finish="PRESSURE_ABORT"
+                    end
                     if (px_now-r.boundary)*r.dir<=-reset_cfg.midfield_margin then
                         finish="MIDFIELD_REACHED"
                     elseif remaining<=reset_cfg.arrive_distance then
                         finish="TARGET_REACHED"
-                    elseif age>=reset_cfg.max_frames then
+                    elseif not finish and age>=r.deadline then
                         finish="TIMEOUT"
-                    elseif age>=math.floor(reset_cfg.max_frames/2)
-                        and progress<reset_cfg.min_retreat_progress then
-                        finish="NO_RETREAT_PROGRESS"
                     end
                     if finish then
                         if finish=="TARGET_REACHED" and
@@ -969,7 +985,8 @@ local function step_bot()
                             "FINAL_THIRD_RESET_COMPLETE" or "FINAL_THIRD_RESET_ABORT",
                             true,{possession=possession,game_state=gs,my_base=my_base},
                             "RESET","reason="..finish..";age="..age
-                            ..";retreat="..progress)
+                            ..";retreat="..progress..";deadline="..r.deadline
+                            ..";remaining="..remaining..";nearest_cpu="..nearest_cpu)
                         if finish=="MIDFIELD_REACHED" then
                             midfield_rebuild={start=report.frame,dir=r.dir,
                                 boundary=r.boundary}
@@ -1006,9 +1023,15 @@ local function step_bot()
                     local guarded=target_x and
                         field_boundary.correct(px_now,py_now,target_x,target_y)
                     if guarded and (px_now-guarded.x)*dir>=reset_cfg.min_retreat_progress then
+                        local reset_distance=(px_now-guarded.x)*dir
+                        local deadline=math.min(reset_cfg.max_frames,
+                            math.max(reset_cfg.min_deadline_frames,
+                                math.ceil(reset_distance/reset_cfg.estimated_units_per_frame)
+                                +reset_cfg.deadline_slack_frames))
                         final_third_reset={carrier=my_base,start=report.frame,
                             start_x=px_now,dir=dir,target_x=guarded.x,
-                            target_y=guarded.y,boundary=boundary}
+                            target_y=guarded.y,boundary=boundary,
+                            deadline=deadline,progress_x=px_now,progress_checked_at=0}
                         final_third_lock=nil
                         final_third_decision=nil
                         attack={mode="FINAL_THIRD_RESET",
@@ -1017,7 +1040,8 @@ local function step_bot()
                         report:write("FINAL_THIRD_RESET_START",true,
                             {possession=possession,game_state=gs,my_base=my_base},
                             "RESET","failures="..final_third_failures.count
-                            ..";target_x="..guarded.x..";target_y="..guarded.y)
+                            ..";target_x="..guarded.x..";target_y="..guarded.y
+                            ..";deadline="..deadline..";distance="..reset_distance)
                     end
                 end
 
