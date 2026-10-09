@@ -44,6 +44,15 @@ M.PLAYER_STRIDE = 0x100
 
 -- Observational detection only; candidate height addresses from BizHawk traces.
 -- Observational only: do not press X until headers are calibrated.
+-- Experimental emergency header; success must be verified in BizHawk.
+M.DEFENSIVE_HEADER = {
+    goal_radius=330,
+    min_height=21,
+    max_height=80,
+    contact_distance=38,
+    cooldown_frames=24,
+}
+
 M.AERIAL_DEFENSIVE_CONTACT = {
     min_height=21,
     max_height=80,
