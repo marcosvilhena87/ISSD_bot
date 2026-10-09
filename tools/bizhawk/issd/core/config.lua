@@ -172,6 +172,12 @@ M.DEFENSIVE_PASS_ALIGNMENT = {
     retry_block_frames=45, -- avoid endless start/abort loop
 }
 
+M.CHARGED_DEFENSIVE_CLEARANCE = {
+    urgent_radius=38,
+    urgent_frames=3, -- prioritize release before tackle under immediate pressure
+    normal_frames=7, -- experimental, calibrate actual ball displacement
+}
+
 M.DEFENSIVE_EXIT = {
     lateral_min=65, lateral_max=190, max_horizontal=30,
     max_pass_distance=210, receiver_clearance=80,
