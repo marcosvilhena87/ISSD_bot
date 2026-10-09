@@ -328,7 +328,7 @@ local function step_bot()
     local control_change=player_switch.take_control_change()
     if control_change then
         local from,to=control_change.from,control_change.to
-        local bx,by=ball.xy()
+        local bx,by=ball.world_xy()
         local gx,gy=players.xy(config.MY_FIRST)
         local function measures(base)
             local px,py=players.xy(base)
