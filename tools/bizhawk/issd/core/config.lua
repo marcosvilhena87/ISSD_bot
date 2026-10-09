@@ -152,6 +152,10 @@ M.DEFENSIVE_MIDFIELD_TRANSITION = {
     max_frames=240,
 }
 
+M.DEFENSIVE_PASS_OUTCOME = {
+    max_frames=75, -- a commanded pass is not a confirmed reception
+}
+
 M.DEFENSIVE_PASS_ALIGNMENT = {
     confirm_frames=2, -- consecutive observations of ball ahead
     min_forward_offset=3, max_ball_offset=45,
