@@ -177,6 +177,7 @@ M.MID_ATTACK_TRANSITION = {
     stable_frames=8,
     max_frames=240,
     absolute_max_frames=360,
+    stability_grace_frames=8,
     extension_frames=60,
     progress_window_frames=60,
     min_recent_progress=25,
