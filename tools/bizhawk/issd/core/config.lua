@@ -307,6 +307,17 @@ M.BALL_CONTEST_FEASIBILITY = {
     outcome_frames=120,
 }
 
+M.BALL_PHYSICAL_CONTROL = {
+    near_radius=48,
+    min_speed=0.7,
+    max_motion_error=5,
+    error_weight=2,
+    min_candidate_margin=8,
+    max_dribble_height=8,
+    max_ground_height=3,
+    confirm_frames=5,
+}
+
 M.OWNERSHIP_PROBE = {
     max_contestable_height=20,
     contest_radius=75,
