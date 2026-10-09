@@ -1459,7 +1459,7 @@ local function step_bot()
                     state.gk_dist_lane_clearance = plan.lane_clearance
                     state.gk_dist_decision_reason = plan.decision_reason
                     state.gk_dist_mode = action and action.mode or plan.mode
-                    state.gk_dist_direction = action and action.direction or plan.direction
+                    state.gk_dist_direction = action and action.direction
                     state.gk_dist_button = action and action.button or plan.button
                     state.gk_dist_receiver = plan.receiver
                     state.gk_dist_receiver_distance =
