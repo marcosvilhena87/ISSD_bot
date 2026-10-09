@@ -115,7 +115,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="mid-attack-adaptive-timeout-20261009-v10"
+local BOT_BUILD_ID="mid-attack-stability-grace-20261009-v11"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -3175,7 +3175,9 @@ while true do
                 ..";unowned_frames="..tostring(event.unowned_frames)
                 ..";deadline="..tostring(event.deadline)
                 ..";extensions="..tostring(event.extensions)
-                ..";recent_gain="..tostring(event.recent_gain))
+                ..";recent_gain="..tostring(event.recent_gain)
+                ..";grace_granted="..tostring(event.grace_granted)
+                ..";grace_frames="..tostring(event.grace_frames))
         end
         local clearance=defensive_clearance_outcome.update(state,report.frame)
         if clearance then
