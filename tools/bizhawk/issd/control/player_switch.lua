@@ -11,6 +11,8 @@ function M.new(config, players)
         pending = nil,
         event = nil,
         settle = 0,
+        last_actual = nil,
+        control_change = nil,
     }
 
     local function distance(ax, ay, bx, by)
@@ -40,6 +42,19 @@ function M.new(config, players)
     end
 
     function obj.observe_control(actual)
+        -- Every valid RAM-observed selection change, with or without R.
+        -- A pending R is only evidence of a request, not of its cause.
+        if players.valid_my_base(actual) then
+            if obj.last_actual and obj.last_actual~=actual then
+                obj.control_change={from=obj.last_actual,to=actual,
+                    requested=obj.pending~=nil,
+                    requested_from=obj.pending and obj.pending.from or nil,
+                    expected=obj.pending and obj.pending.best or nil}
+            end
+            obj.last_actual=actual
+        else
+            obj.last_actual=nil
+        end
         local pending=obj.pending
         if not pending then return end
         pending.age=pending.age+1
@@ -65,6 +80,12 @@ function M.new(config, players)
         end
     end
 
+    function obj.take_control_change()
+        local event=obj.control_change
+        obj.control_change=nil
+        return event
+    end
+
     function obj.take_event()
         local event=obj.event
         obj.event=nil
@@ -86,6 +107,7 @@ function M.new(config, players)
         obj.last_best_distance = nil
         obj.last_improvement = nil
         obj.pending=nil; obj.event=nil; obj.settle=0
+        obj.last_actual=nil; obj.control_change=nil
     end
 
     function obj.consider(my_base, target_x, target_y)
