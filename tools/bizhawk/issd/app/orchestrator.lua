@@ -1401,14 +1401,17 @@ local function step_bot()
                     local fired=action~=nil
                     if fired then
                         movement.press_direction_button(action.direction,action.button)
-                        gk_distribution.mark_fired(action)
+                        gk_distribution.mark_fired(action,phase)
+                        if phase~="HOLD" then
                         report:write("GK_DISTRIBUTION_ATTEMPT",true,
                             {possession=possession,game_state=gs,my_base=my_base},
                             movement.last_command,
                             "attempt="..gk_distribution.attempts
                             ..";mode="..tostring(action.mode)
                             ..";reason="..tostring(action.decision_reason)
-                            ..";held_frames="..gk_distribution.held_frames)
+                            ..";held_frames="..gk_distribution.held_frames
+                            ..";press_frames="..config.GK_DISTRIBUTION.press_frames)
+                        end
                     else
                         movement.stop()
                     end
@@ -1420,6 +1423,8 @@ local function step_bot()
                             or "GK_DISTRIBUTION_WAIT", possession, gs
                     )
                     state.gk_dist_fired = fired
+                    state.gk_dist_phase=phase
+                    state.gk_dist_press_remaining=gk_distribution.press_remaining
                     state.gk_dist_attempts = gk_distribution.attempts
                     state.gk_dist_held_frames = gk_distribution.held_frames
                     state.gk_dist_lane_clearance = plan.lane_clearance
