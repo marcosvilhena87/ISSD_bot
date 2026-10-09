@@ -49,6 +49,7 @@ M.AERIAL_CONTEST_LOCK = {
     min_height=21, max_height=120,
     goal_radius=330,
     approach_distance=85,
+    ai_assist_enabled=true, -- experimental: neutral pad during aerial positioning
     max_frames=28,
 }
 
