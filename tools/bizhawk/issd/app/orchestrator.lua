@@ -781,8 +781,8 @@ local function step_bot()
                         state.forward_pass_intent="DEFENSIVE_LATERAL"
                         state.forward_pass_receiver=exit.receiver
                         state.forward_pass_distance=exit.distance
-                        state.forward_pass_forward=0
-                        state.forward_pass_lateral=exit.distance
+                        state.forward_pass_forward=exit.forward
+                        state.forward_pass_lateral=exit.lateral
                         state.forward_pass_clearance=exit.receiver_clearance
                         state.forward_pass_lane_clearance=exit.lane_clearance
                         state.forward_pass_score=exit.score
