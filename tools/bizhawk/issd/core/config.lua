@@ -152,6 +152,11 @@ M.DEFENSIVE_MIDFIELD_TRANSITION = {
     max_frames=240,
 }
 
+M.DEFENSIVE_PASS_ALIGNMENT = {
+    frames=3, -- cardinal facing input, not a verified in-game orientation
+    max_window_frames=12,
+}
+
 M.DEFENSIVE_EXIT = {
     lateral_min=65, lateral_max=190, max_horizontal=30,
     max_pass_distance=210, receiver_clearance=80,
