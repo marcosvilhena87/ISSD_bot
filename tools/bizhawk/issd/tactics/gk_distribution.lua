@@ -6,6 +6,8 @@ function M.new(config, players, field_side)
         last_action = nil,
         attempts = 0,
         held_frames = 0,
+        active_action = nil,
+        press_remaining = 0,
     }
 
     local function attack_direction(my_side)
@@ -156,6 +158,8 @@ function M.new(config, players, field_side)
         obj.last_action = nil
         obj.attempts = 0
         obj.held_frames = 0
+        obj.active_action = nil
+        obj.press_remaining = 0
     end
 
     function obj.tick()
@@ -227,6 +231,9 @@ function M.new(config, players, field_side)
     -- still owns the ball after the cooldown, vary the pulse safely instead
     -- of repeating the same ineffective input indefinitely.
     function obj.next_action(plan)
+        if obj.press_remaining>0 and obj.active_action then
+            return obj.active_action,"HOLD"
+        end
         if obj.wait_frames>0 then return nil,"WAIT" end
         local attempt=obj.attempts+1
         if attempt>config.GK_DISTRIBUTION.max_attempts then
@@ -248,10 +255,23 @@ function M.new(config, players, field_side)
         return obj.wait_frames == 0
     end
 
-    function obj.mark_fired(action)
-        obj.last_action = action
-        obj.attempts = obj.attempts+1
-        obj.wait_frames = config.GK_DISTRIBUTION.retry_frames
+    function obj.mark_fired(action,phase)
+        if phase=="HOLD" then
+            obj.press_remaining=obj.press_remaining-1
+            if obj.press_remaining==0 then
+                obj.active_action=nil
+                obj.wait_frames=config.GK_DISTRIBUTION.retry_frames
+            end
+            return
+        end
+        obj.last_action=action
+        obj.attempts=obj.attempts+1
+        obj.active_action=action
+        obj.press_remaining=config.GK_DISTRIBUTION.press_frames-1
+        if obj.press_remaining==0 then
+            obj.active_action=nil
+            obj.wait_frames=config.GK_DISTRIBUTION.retry_frames
+        end
     end
 
     return obj
