@@ -37,6 +37,7 @@ local DefensiveExit = dofile(DIR .. "../tactics/defensive_exit.lua")
 local DefensiveMidfieldTransition = dofile(DIR .. "../state/defensive_midfield_transition.lua")
 local MidAttackTransition = dofile(DIR .. "../state/mid_attack_transition.lua")
 local DefensiveClearanceOutcome = dofile(DIR .. "../state/defensive_clearance_outcome.lua")
+local LongPassPositionObserver = dofile(DIR .. "../state/long_pass_position_observer.lua")
 local GKDistribution = dofile(DIR .. "../tactics/gk_distribution.lua")
 local GoalKick = dofile(DIR .. "../tactics/goal_kick.lua")
 local CornerKick = dofile(DIR .. "../tactics/corner_kick.lua")
@@ -69,6 +70,7 @@ local field_side = FieldSide.new(config, mem)
 local defensive_midfield_transition = DefensiveMidfieldTransition.new(config,mem,players,field_side)
 local mid_attack_transition = MidAttackTransition.new(config,mem,players,field_side)
 local defensive_clearance_outcome = DefensiveClearanceOutcome.new(config,players,field_side)
+local long_pass_position_observer = LongPassPositionObserver.new(config,players)
 local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, field_side)
 local live_defense = LiveDefense.new(config, players, field_side)
@@ -115,7 +117,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="mid-attack-stability-grace-20261009-v11"
+local BOT_BUILD_ID="long-pass-passive-observer-20261009-v12"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -876,6 +878,7 @@ local function step_bot()
                             local sequence=defensive_clearance_outcome.start(
                                 report.frame,cbx,cby,ch.carrier,ch.frames,
                                 field_side.attack_direction())
+                            long_pass_position_observer.start(report.frame,ch.carrier)
                             report:write("DEF_CLEAR_CHARGE_RELEASE",true,
                                 {possession=possession,game_state=gs,my_base=my_base},
                                 movement.last_command,
@@ -3191,6 +3194,21 @@ while true do
                 ..";end_x="..tostring(clearance.end_x)
                 ..";charge_frames="..clearance.frames
                 ..";owner="..tostring(clearance.owner))
+        end
+        for _,event in ipairs(long_pass_position_observer.update(
+            state,report.frame,movement.last_command) or {}) do
+            report:write("LONG_PASS_POSITION_"..event.kind,true,state,
+                "OBSERVE_LONG_PASS",
+                "reason="..tostring(event.reason)
+                ..";sequence="..tostring(event.sequence)
+                ..";age="..tostring(event.age)
+                ..";neutral_frames="..tostring(event.neutral_frames)
+                ..";neutral_distance="..tostring(event.neutral_distance)
+                ..";directional_frames="..tostring(event.directional_frames)
+                ..";directional_distance="..tostring(event.directional_distance)
+                ..";switches="..tostring(event.switches)
+                ..";initial_ball_distance="..tostring(event.initial_ball_distance)
+                ..";min_ball_distance="..tostring(event.min_ball_distance))
         end
         if state.team_possession_conflict and
             (not team_possession_conflict_active or report.frame%60==0) then
