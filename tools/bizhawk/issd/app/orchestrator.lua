@@ -112,6 +112,7 @@ local rebound_lock_frames=0
 local latest_contest=nil
 local latest_contest_frame=nil
 local contest_intercept_lock=nil
+local my_recovery_lock=nil
 local contest_abort_until=0
 local final_third_lock=nil
 local final_third_decision=nil
@@ -494,6 +495,7 @@ local function step_bot()
     if gs~=1 then goal_kick.reset() end
     if possession~=0 or gs~=0 or not gameplay_active.is_active(gameplay_value) then
         contest_intercept_lock=nil
+        my_recovery_lock=nil
     end
 
     if not gameplay_active.is_active(gameplay_value) then
@@ -1589,6 +1591,7 @@ local function step_bot()
         end
 
         if possession == 0 and effective_unowned_team=="CPU" then
+            my_recovery_lock=nil -- logical side changed: do not carry over the old pursuit
             live_attack.reset()
             gk_distribution.reset()
             -- Contest an attacker who can collect a rebound before aiming at
@@ -1927,6 +1930,38 @@ local function step_bot()
                     return attach_live_state(state,"ORIGIN_OVERRIDE","MY_UNOWNED_BALL")
                 end
             end
+            -- A committed attempt survives short-lived ETA/class flicker.
+            -- It is deliberately bounded and cannot override the box emergency.
+            if my_recovery_lock then
+                local lock=my_recovery_lock
+                local rc=config.MY_UNOWNED_RECOVERY
+                local px,py=players.xy(my_base)
+                local drift=math.sqrt((bx-lock.bx)^2+(by-lock.by)^2)
+                local dist=math.sqrt((lock.x-px)^2+(lock.y-py)^2)
+                local age=report.frame-lock.frame
+                local height=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
+                local reason=nil
+                if age>=rc.lock_frames then reason="TIMEOUT"
+                elseif drift>rc.lock_max_ball_drift then reason="TRAJECTORY_CHANGED"
+                elseif height>rc.lock_max_height then reason="BALL_TOO_HIGH"
+                elseif dist>rc.max_controlled_distance then reason="OUT_OF_REACH"
+                elseif dist<=rc.lock_arrive_distance then reason="ARRIVED" end
+                if reason then
+                    report:write("MY_RECOVERY_LOCK_END",true,
+                        {possession=possession,game_state=gs,my_base=my_base,
+                         ball_x=bx,ball_y=by},"OBSERVE_RECOVERY",
+                        "reason="..reason..";age="..age..";distance="..dist)
+                    my_recovery_lock=nil
+                else
+                    local dx,dy=lock.x-px,lock.y-py
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,
+                        "MY_UNOWNED_RECOVERY_LOCK",possession,gs)
+                    state.intercept_target_x=lock.x
+                    state.intercept_target_y=lock.y
+                    return attach_live_state(state,"RECOVERY_CONTINUITY","MY_UNOWNED_BALL")
+                end
+            end
             -- Opportunistic recovery: logical MY ownership does not imply a
             -- Brazilian player controls the ball. Pursue only a stable, low
             -- ball with a meaningful arrival-time advantage.
@@ -1955,6 +1990,13 @@ local function step_bot()
                 -- Avoid dragging a distant controlled player across the field:
                 -- player selection uses R sequentially, not direct selection.
                 if distance<=recovery.max_controlled_distance then
+                    my_recovery_lock={x=tx,y=ty,bx=bx,by=by,
+                        frame=report.frame}
+                    report:write("MY_RECOVERY_LOCK_START",true,
+                        {possession=possession,game_state=gs,my_base=my_base,
+                         ball_x=bx,ball_y=by},"OBSERVE_RECOVERY",
+                        "target_x="..tx..";target_y="..ty
+                        ..";eta_advantage="..eta.eta_advantage)
                     movement.move_toward(dx,dy)
                     local state=make_state(my_base,dx,dy,
                         "MY_UNOWNED_RECOVERY",possession,gs)
