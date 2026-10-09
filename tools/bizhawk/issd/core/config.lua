@@ -149,6 +149,8 @@ M.DEFENSIVE_EXIT = {
     lane_clearance=60, hold_before_move=45,
     max_advance=70, field_margin=40, step=35,
     forward_step=12, min_escape_clearance=60,
+    escape_space_cap=180, escape_forward_weight=2.0,
+    escape_lateral_penalty=0.15,
     pressure_radius=95, emergency_radius=38,
     reassessment_frames=60, max_reassessments=2,
     total_advance_limit=140, action_settle_frames=20,
