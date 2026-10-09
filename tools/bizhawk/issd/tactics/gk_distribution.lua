@@ -115,6 +115,40 @@ function M.new(config, players, field_side)
         return best
     end
 
+    -- B+Up/Down is a lateral throw. Evaluate teammates near that actual
+    -- vertical corridor, not an arbitrary diagonal receiver.
+    local function best_lateral_receiver(gk_base)
+        local gx,gy=players.xy(gk_base)
+        local best=nil
+        players.each_my(function(base)
+            if base~=gk_base and base~=config.MY_FIRST then
+                local px,py=players.xy(base)
+                local lateral=py-gy
+                local axial=math.abs(lateral)
+                local offset=math.abs(px-gx)
+                local dst=distance(gx,gy,px,py)
+                if axial>=config.GK_DISTRIBUTION.min_lateral_throw
+                    and axial<=config.GK_DISTRIBUTION.max_throw_distance
+                    and offset<=config.GK_DISTRIBUTION.lateral_lane_half_width
+                    and dst<=config.GK_DISTRIBUTION.max_throw_distance then
+                    local clearance=nearest_cpu_clearance(px,py)
+                    local lane=lane_clearance(gx,gy,gx,py)
+                    if clearance>=config.GK_DISTRIBUTION.min_receiver_clearance
+                        and lane>=config.GK_DISTRIBUTION.min_lane_clearance then
+                        local score=clearance+lane*0.5-dst*0.2
+                        if not best or score>best.score then
+                            best={base=base,distance=dst,clearance=clearance,
+                                lane_clearance=lane,lateral_offset=offset,
+                                forward=0,score=score,
+                                direction=lateral<0 and "Up" or "Down"}
+                        end
+                    end
+                end
+            end
+        end)
+        return best
+    end
+
     function obj.reset()
         obj.wait_frames = 0
         obj.last_action = nil
@@ -150,6 +184,21 @@ function M.new(config, players, field_side)
                 receiver_forward = receiver.forward,
                 receiver_score = receiver.score,
                 my_side = my_side,
+            }
+        end
+
+        local lateral=best_lateral_receiver(gk_base)
+        if lateral then
+            return {
+                mode="THROW",button=config.GK_DISTRIBUTION.throw_button,
+                direction=lateral.direction,receiver=lateral.base,
+                receiver_distance=lateral.distance,
+                receiver_clearance=lateral.clearance,
+                lane_clearance=lateral.lane_clearance,
+                decision_reason="SAFE_LATERAL_B",
+                receiver_lateral_offset=lateral.lateral_offset,
+                receiver_forward=0,receiver_score=lateral.score,
+                my_side=my_side,
             }
         end
 
