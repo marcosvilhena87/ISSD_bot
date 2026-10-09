@@ -47,7 +47,9 @@ function M.new(config,players,field_side,mem)
   if width<200 or width>2000 or dir==0 then return {mode="HOLD",reason="BAD_FIELD",threat=threat,age=o.age} end
   local low,high=center-width/2+c.field_margin,center+width/2-c.field_margin
   local best=nil
-  if pass_cooldown==0 then
+  -- A pass just commanded is not yet confirmed. Do not spam another B pulse
+  -- while the game is still resolving it, even if cooldown is zero.
+  if o.pending_frames==0 and pass_cooldown==0 then
    players.each_my(function(base)
     if base~=carrier and base~=config.MY_FIRST then
      local rx,ry=players.xy(base)
@@ -67,11 +69,24 @@ function M.new(config,players,field_side,mem)
        end
       end)
       if rc>=c.receiver_clearance and lane>=c.lane_clearance then
+       -- Reward the receiver having a safe next step towards midfield.
+       -- Penalize passing into the touchline even when the immediate
+       -- receiving point is nominally clear.
+       local rx_forward=rx+dir*c.outlet_next_step
+       local next_space=space(rx_forward,ry)
+       local next_safe=math.min(rc,next_space)
+       local line_room=math.min(ry-low,high-ry)
        local score=math.min(rc,180)+math.min(lane,180)-dst*0.2
+        +c.outlet_forward_space_weight*math.min(next_safe,180)
+        +c.outlet_touchline_weight*math.min(line_room,120)
+        +c.outlet_progress_weight*math.max(0,dx*dir)
        if not best or score>best.score then
         best={mode="PASS",button="B",direction=dy<0 and "Up" or "Down",
          receiver=base,distance=dst,receiver_clearance=rc,
-         lane_clearance=lane,score=score,age=o.age}
+         lane_clearance=lane,score=score,age=o.age,
+         forward=dx*dir,lateral=math.abs(dy),
+         next_clearance=next_safe,line_room=line_room,
+         intent="DEFENSIVE_LATERAL"}
        end
       end
      end
