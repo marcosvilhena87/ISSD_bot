@@ -562,6 +562,14 @@ local function step_bot()
     end
     if gs~=1 then goal_kick.reset() end
     if possession~=0 or gs~=0 or not gameplay_active.is_active(gameplay_value) then
+        if first_rebound_lock then
+            report:write("FIRST_REBOUND_LOCK_END",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "OBSERVE_REBOUND",
+                "reason="..(possession~=0 and "POSSESSION_CONFIRMED"
+                    or gs~=0 and "STOPPAGE" or "GAMEPLAY_IDLE"))
+            first_rebound_lock=nil
+        end
         contest_intercept_lock=nil
         if my_recovery_lock then
             local reason=possession~=0 and "POSSESSION_CONFIRMED"
