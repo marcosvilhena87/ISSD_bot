@@ -33,6 +33,7 @@ local FieldBoundary = dofile(DIR .. "../tactics/field_boundary.lua")
 local Shoot = dofile(DIR .. "../tactics/shoot.lua")
 local ForwardPass = dofile(DIR .. "../tactics/forward_pass.lua")
 local DefensiveExit = dofile(DIR .. "../tactics/defensive_exit.lua")
+local DefensiveMidfieldTransition = dofile(DIR .. "../state/defensive_midfield_transition.lua")
 local GKDistribution = dofile(DIR .. "../tactics/gk_distribution.lua")
 local GoalKick = dofile(DIR .. "../tactics/goal_kick.lua")
 local CornerKick = dofile(DIR .. "../tactics/corner_kick.lua")
@@ -60,6 +61,7 @@ local contest_feasibility = BallContestFeasibility.new(config, players)
 local game_state = GameState.new(config, mem)
 local gameplay_active = GameplayActive.new(config, mem)
 local field_side = FieldSide.new(config, mem)
+local defensive_midfield_transition = DefensiveMidfieldTransition.new(config,mem,players,field_side)
 local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, field_side)
 local live_defense = LiveDefense.new(config, players, field_side)
@@ -2317,6 +2319,16 @@ while true do
                 ..";initial_cpu_eta="..tostring(contest_result.cpu_eta)
                 ..";initial_eta_advantage="..tostring(contest_result.advantage)
                 ..";initial_height="..tostring(contest_result.height))
+        end
+        local transition_events=defensive_midfield_transition.update(state,report.frame)
+        for _,event in ipairs(transition_events) do
+            report:write("DEF_MID_TRANSITION_"..event.kind,true,state,
+                "OBSERVE_TRANSITION",
+                "reason="..tostring(event.reason)
+                ..";sequence="..tostring(event.sequence)
+                ..";age="..tostring(event.age)
+                ..";route="..tostring(event.route)
+                ..";boundary="..tostring(event.boundary))
         end
         report:observe(true, state)
         -- Outcome monitoring only after an actual GK button pulse.
