@@ -53,6 +53,16 @@ M.AERIAL_CONTEST_LOCK = {
     max_frames=28,
 }
 
+M.AERIAL_NATURAL_RECEPTION_GUARD = {
+    enabled=true, -- experimental; disable to revert
+    min_height=21, max_height=42,
+    reception_distance=30,
+    min_cpu_clearance=95,
+    reset_height=12,
+    max_attempt_lock_frames=90,
+    outcome_frames=90,
+}
+
 M.AERIAL_CONTACT_DECISION = {
     enabled=true, -- experimental, disable to restore earlier behavior
     min_height=21, max_height=80,
