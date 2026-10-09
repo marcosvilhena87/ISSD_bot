@@ -410,6 +410,16 @@ local function step_bot()
     end
     local possession = ball.possession()
     local gs = game_state.read()
+    if defensive_clear_charge and
+        (possession~=defensive_clear_charge.carrier or gs~=0
+         or not gameplay_active.is_active(gameplay_value)) then
+        report:write("DEF_CLEAR_CHARGE_ABORT",true,
+            {possession=possession,game_state=gs,my_base=my_base},
+            "OBSERVE_CHARGE",
+            "reason=POSSESSION_OR_PLAY_CHANGED;frames="
+            ..defensive_clear_charge.frames)
+        defensive_clear_charge=nil
+    end
     -- Observe actual individual ownership on every frame, independent of
     -- the control selection, logical team flag, and the pass command.
     if defensive_pass_pending then
