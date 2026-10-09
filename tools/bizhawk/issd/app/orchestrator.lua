@@ -119,7 +119,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="long-pass-receiver-selection-20261009-v16"
+local BOT_BUILD_ID="aerial-natural-reception-20261009-v17"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -149,6 +149,8 @@ local aerial_contest_lock=nil
 local long_pass_ai_lock=nil
 local aerial_contact_previous_height=nil
 local aerial_contact_last_frame=-99999
+local aerial_contact_attempt_lock=nil
+local natural_reception_pending=nil
 -- Defensive sprint is deliberately separate from attack dash.
 local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=nil,
     start_x=nil,start_y=nil,target_x=nil,target_y=nil}
@@ -2023,10 +2025,46 @@ local function step_bot()
             local descending=aerial_contact_previous_height~=nil
                 and h<=aerial_contact_previous_height
             aerial_contact_previous_height=h
+            local ng=config.AERIAL_NATURAL_RECEPTION_GUARD
+            -- Only trust this guard away from our goal; emergency headers above
+            -- retain priority. Track a single observed aerial opportunity.
+            if aerial_contact_attempt_lock then
+                local lock=aerial_contact_attempt_lock
+                if possession~=0 or gs~=0 or h<ng.reset_height
+                    or report.frame-lock.frame>=ng.max_attempt_lock_frames then
+                    aerial_contact_attempt_lock=nil
+                end
+            end
+            local threat=math.huge
+            players.each_cpu(function(cpu)
+                local cx,cy=players.xy(cpu)
+                local d=math.sqrt((cx-px)^2+(cy-py)^2)
+                if d<threat then threat=d end
+            end)
+            local natural=ng.enabled and descending
+                and h>=ng.min_height and h<=ng.max_height
+                and distance<=ng.reception_distance
+                and threat>=ng.min_cpu_clearance
+                and own_goal_distance>config.DEFENSIVE_HEADER.goal_radius
+            if natural then
+                if not natural_reception_pending then
+                    natural_reception_pending={frame=report.frame,base=my_base}
+                    report:write("NATURAL_RECEPTION_ALLOWED",true,
+                        {possession=possession,game_state=gs,my_base=my_base},
+                        "OBSERVE_RECEPTION",
+                        "height="..h..";distance="..distance
+                        ..";cpu_clearance="..threat)
+                end
+                movement.stop()
+                local state=make_state(my_base,0,0,
+                    "AERIAL_NATURAL_RECEPTION",possession,gs)
+                return attach_live_state(state,"NATURAL_RECEPTION","MY_UNOWNED_BALL")
+            end
             if dir~=0 and field_length>=500 and field_length<=4000
                 and own_goal_distance>config.DEFENSIVE_HEADER.goal_radius
                 and h>=cc.min_height and h<=cc.max_height
                 and distance<=cc.contact_distance and descending
+                and not aerial_contact_attempt_lock
                 and report.frame-aerial_contact_last_frame>=cc.cooldown_frames then
                 local shot=opp_goal_distance<=cc.shot_goal_radius
                 local button=shot and "X" or "A"
@@ -2034,6 +2072,7 @@ local function step_bot()
                 -- No directional override while the game's positioning assists.
                 movement.press_button(button)
                 aerial_contact_last_frame=report.frame
+                aerial_contact_attempt_lock={frame=report.frame,base=my_base}
                 local state=make_state(my_base,0,0,
                     shot and "AERIAL_SHOT_ATTEMPT" or "AERIAL_PASS_ATTEMPT",
                     possession,gs)
@@ -3356,6 +3395,26 @@ while true do
                 ..";height="..tostring(event.height)
                 ..";switches="..tostring(event.switches)
                 ..";source="..tostring(event.source))
+        end
+        if natural_reception_pending then
+            local rp=natural_reception_pending
+            local result=nil
+            if players.valid_my_base(state.possession) then
+                result="MY_RECEIVED"
+            elseif players.valid_cpu_base(state.possession) then
+                result="CPU_RECEIVED"
+            elseif state.game_state~=0 or state.gameplay_active~=1 then
+                result="STOPPAGE"
+            elseif report.frame-rp.frame>=config.AERIAL_NATURAL_RECEPTION_GUARD.outcome_frames then
+                result="UNRESOLVED"
+            end
+            if result then
+                report:write("NATURAL_RECEPTION_RESULT",true,state,
+                    "OBSERVE_RECEPTION",
+                    "result="..result..";age="..(report.frame-rp.frame)
+                    ..";selected_base="..rp.base)
+                natural_reception_pending=nil
+            end
         end
         if state.team_possession_conflict and
             (not team_possession_conflict_active or report.frame%60==0) then
