@@ -30,10 +30,15 @@ function M.new(config,mem,players,field_side)
     remaining=math.max(0,a.boundary-a.max_progress),
     first_cross_age=a.first_cross and a.first_cross-a.start or nil,
     entries=a.entries,returns=a.returns,retreats=a.retreats,
-    unowned_frames=a.unowned_frames}
+    unowned_frames=a.unowned_frames,deadline=a.deadline,
+    extensions=a.extensions,recent_gain=a.recent_gain or 0}
   end
   if p then
    if my and progress then
+    p.history[#p.history+1]={frame=frame,progress=progress}
+    while #p.history>0 and frame-p.history[1].frame>c.progress_window_frames do
+     table.remove(p.history,1)
+    end
     p.last_progress=progress
     p.max_progress=math.max(p.max_progress,progress)
     if p.previous_progress and p.previous_progress-progress>=c.retreat_delta then
@@ -44,8 +49,20 @@ function M.new(config,mem,players,field_side)
    if not valid or dir~=p.dir then
     emit("FAILED","STOPPAGE_OR_SIDE_CHANGE",p);o.pending=nil
    elseif cpu then emit("FAILED","CPU_TURNOVER",p);o.pending=nil
-   elseif frame-p.start>=c.max_frames then
-    emit("FAILED","TIMEOUT",p);o.pending=nil
+   elseif frame-p.start>=p.deadline then
+    local baseline=p.history[1] and p.history[1].progress or p.last_progress
+    p.recent_gain=p.max_progress-baseline
+    if p.deadline<c.absolute_max_frames
+       and my and progress and p.recent_gain>=c.min_recent_progress then
+     p.deadline=math.min(c.absolute_max_frames,
+         p.deadline+c.extension_frames)
+     p.extensions=p.extensions+1
+     emit("EXTENDED","RECENT_TERRITORIAL_PROGRESS",p)
+    else
+     emit("FAILED",p.deadline>=c.absolute_max_frames
+        and "ABSOLUTE_TIMEOUT" or "NO_RECENT_PROGRESS",p)
+     o.pending=nil
+    end
    elseif my and z==3 then
     if not p.entered then
      p.entered=frame;p.entries=p.entries+1
@@ -70,7 +87,9 @@ function M.new(config,mem,players,field_side)
    o.pending={sequence=o.sequence,start=frame,dir=dir,route="CARRY",
     start_progress=progress,last_progress=progress,max_progress=progress,
     previous_progress=progress,boundary=boundary,entries=0,returns=0,
-    retreats=0,unowned_frames=0,entered=nil,first_cross=nil}
+    retreats=0,unowned_frames=0,entered=nil,first_cross=nil,
+    deadline=c.max_frames,extensions=0,recent_gain=0,
+    history={{frame=frame,progress=progress}}}
    emit("START","CONFIRMED_MIDFIELD_POSSESSION",o.pending)
   end
   if o.pending and s.forward_pass_fired then
