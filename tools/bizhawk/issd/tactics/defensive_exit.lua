@@ -11,6 +11,32 @@ function M.new(config,players,field_side,mem)
   end)
   return nearest
  end
+ local function deep_lateral_safe(px,py,rx,ry,dir,receiver_clearance)
+  local cfg=config.DEEP_DEFENSIVE_LATERAL
+  local length=mem.u16(config.ADDR.field_length)
+  local center=mem.u16(config.ADDR.center_field_x)
+  if length<500 or length>4000 or center<100 then return false end
+  local own_goal=center-dir*length/2
+  if (px-own_goal)*dir>cfg.max_own_goal_distance then return true end
+  -- Direction+B follows the cardinal vertical lane at the passer's X,
+  -- not the diagonal segment to a teammate offset horizontally.
+  if math.abs(rx-px)>cfg.max_receiver_axis_offset
+     or receiver_clearance<cfg.min_receiver_clearance then return false end
+  local lane=math.huge
+  local cpu_landing=math.huge
+  local bx,by=px,ry
+  players.each_cpu(function(base)
+   local ex,ey=players.xy(base)
+   local t=(ey-py)/(ry-py)
+   if t>=0 and t<=1 then
+    lane=math.min(lane,math.abs(ex-px))
+   end
+   cpu_landing=math.min(cpu_landing,d(ex,ey,bx,by))
+  end)
+  local my_landing=d(rx,ry,bx,by)
+  return lane>=cfg.min_lane_clearance
+     and cpu_landing-my_landing>=cfg.min_cpu_arrival_margin
+ end
  function o.reset() o.carrier=nil;o.age=0;o.start_x=nil;o.start_y=nil;o.clearance_used=false
   o.limit_age=0;o.total_start_x=nil;o.total_start_y=nil
   o.reassessments=0;o.pending_frames=0;o.hold_streak=0;o.clear_attempts=0 end
@@ -68,7 +94,8 @@ function M.new(config,players,field_side,mem)
         lane=math.min(lane,d(ex,ey,x+q*dx,y+q*dy))
        end
       end)
-      if rc>=c.receiver_clearance and lane>=c.lane_clearance then
+      if rc>=c.receiver_clearance and lane>=c.lane_clearance
+       and deep_lateral_safe(x,y,rx,ry,dir,rc) then
        -- Reward the receiver having a safe next step towards midfield.
        -- Penalize passing into the touchline even when the immediate
        -- receiving point is nominally clear.
