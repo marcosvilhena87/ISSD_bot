@@ -38,6 +38,7 @@ local DefensiveMidfieldTransition = dofile(DIR .. "../state/defensive_midfield_t
 local MidAttackTransition = dofile(DIR .. "../state/mid_attack_transition.lua")
 local DefensiveClearanceOutcome = dofile(DIR .. "../state/defensive_clearance_outcome.lua")
 local LongPassPositionObserver = dofile(DIR .. "../state/long_pass_position_observer.lua")
+local LongPassReceiverSelection = dofile(DIR .. "../state/long_pass_receiver_selection.lua")
 local GKDistribution = dofile(DIR .. "../tactics/gk_distribution.lua")
 local GoalKick = dofile(DIR .. "../tactics/goal_kick.lua")
 local CornerKick = dofile(DIR .. "../tactics/corner_kick.lua")
@@ -71,6 +72,7 @@ local defensive_midfield_transition = DefensiveMidfieldTransition.new(config,mem
 local mid_attack_transition = MidAttackTransition.new(config,mem,players,field_side)
 local defensive_clearance_outcome = DefensiveClearanceOutcome.new(config,players,field_side)
 local long_pass_position_observer = LongPassPositionObserver.new(config,players)
+local long_pass_receiver_selection = LongPassReceiverSelection.new(config,players)
 local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, field_side)
 local live_defense = LiveDefense.new(config, players, field_side)
@@ -117,7 +119,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="long-pass-flight-warmup-20261009-v15"
+local BOT_BUILD_ID="long-pass-receiver-selection-20261009-v16"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -820,6 +822,7 @@ local function step_bot()
             end
 
             movement.press_button(decision.button)
+            if decision.button=="R" then long_pass_receiver_selection.request(report.frame) end
             report:write("SWITCH_REQUEST", true,
                 {my_base=my_base,game_state=gs,
                  controller_command=movement.last_command},
@@ -882,6 +885,7 @@ local function step_bot()
                                 report.frame,cbx,cby,ch.carrier,ch.frames,
                                 field_side.attack_direction())
                             long_pass_position_observer.start(report.frame,ch.carrier)
+                            long_pass_receiver_selection.start(report.frame,cbx,cby,sequence,ch.carrier)
                             if config.LONG_PASS_AI_ASSIST_EXPERIMENT.enabled then
                                 long_pass_ai_lock={start=report.frame,carrier=ch.carrier,
                                     clearance_sequence=sequence,neutral_frames=0}
@@ -3338,6 +3342,20 @@ while true do
                 ..";switches="..tostring(event.switches)
                 ..";initial_ball_distance="..tostring(event.initial_ball_distance)
                 ..";min_ball_distance="..tostring(event.min_ball_distance))
+        end
+        for _,event in ipairs(long_pass_receiver_selection.update(state,report.frame) or {}) do
+            report:write("LONG_PASS_RECEIVER_"..event.kind,true,state,
+                "OBSERVE_LONG_PASS",
+                "sequence="..tostring(event.sequence)
+                ..";age="..tostring(event.age)
+                ..";previous="..tostring(event.previous)
+                ..";current="..tostring(event.current)
+                ..";travel="..tostring(event.travel)
+                ..";straight="..tostring(event.straight)
+                ..";ball_distance="..tostring(event.ball_distance)
+                ..";height="..tostring(event.height)
+                ..";switches="..tostring(event.switches)
+                ..";source="..tostring(event.source))
         end
         if state.team_possession_conflict and
             (not team_possession_conflict_active or report.frame%60==0) then
