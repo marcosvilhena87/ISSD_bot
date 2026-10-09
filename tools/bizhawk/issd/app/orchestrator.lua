@@ -117,7 +117,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="aerial-contact-decision-20261009-v13"
+local BOT_BUILD_ID="long-pass-ai-assist-experiment-20261009-v14"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -144,6 +144,7 @@ local danger_lock=nil
 local header_last_frame=-99999
 local header_last_height=nil
 local aerial_contest_lock=nil
+local long_pass_ai_lock=nil
 local aerial_contact_previous_height=nil
 local aerial_contact_last_frame=-99999
 -- Defensive sprint is deliberately separate from attack dash.
@@ -881,6 +882,13 @@ local function step_bot()
                                 report.frame,cbx,cby,ch.carrier,ch.frames,
                                 field_side.attack_direction())
                             long_pass_position_observer.start(report.frame,ch.carrier)
+                            if config.LONG_PASS_AI_ASSIST_EXPERIMENT.enabled then
+                                long_pass_ai_lock={start=report.frame,carrier=ch.carrier,
+                                    clearance_sequence=sequence,neutral_frames=0}
+                                report:write("LONG_PASS_AI_ASSIST_START",true,
+                                    {possession=possession,game_state=gs,my_base=my_base},
+                                    "OBSERVE_LONG_PASS","clearance_sequence="..sequence)
+                            end
                             report:write("DEF_CLEAR_CHARGE_RELEASE",true,
                                 {possession=possession,game_state=gs,my_base=my_base},
                                 movement.last_command,
@@ -2039,6 +2047,53 @@ local function step_bot()
             end
         else
             aerial_contact_previous_height=nil
+        end
+
+        -- Experimental long-clearance positioning: let the game guide the
+        -- selected receiver where safe. Contact decisions above retain priority.
+        if long_pass_ai_lock then
+            local lc=config.LONG_PASS_AI_ASSIST_EXPERIMENT
+            local lock=long_pass_ai_lock
+            local age=report.frame-lock.start
+            local h=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
+            local px,py=players.xy(my_base)
+            local gx,gy=players.xy(config.MY_FIRST)
+            local dist=math.sqrt((bx-px)^2+(by-py)^2)
+            local goal_dist=math.sqrt((bx-gx)^2+(by-gy)^2)
+            local danger=possession==0 and interception.danger_target(
+                bx,by,possession_context.ball_dx,possession_context.ball_dy,
+                possession_context.ball_speed,gx,gy,field_side.goal_direction())
+            local reason=nil
+            if not lc.enabled then reason="DISABLED"
+            elseif gs~=0 or not gameplay_active.is_active(gameplay_value) then
+                reason="STOPPAGE"
+            elseif age>=lc.max_frames then reason="TIMEOUT"
+            elseif players.valid_cpu_base(possession) then reason="CPU_POSSESSION"
+            elseif players.valid_my_base(possession) then reason="MY_POSSESSION"
+            elseif danger then reason="GOAL_BOUND_DANGER"
+            elseif not players.valid_my_base(my_base) or my_base==config.MY_FIRST then
+                reason="NO_OUTFIELDER"
+            elseif goal_dist<=config.DEFENSIVE_HEADER.goal_radius then
+                reason="DEFENSIVE_PRIORITY"
+            elseif h<lc.min_height then reason="NOT_AERIAL"
+            elseif dist<=lc.contact_distance then reason="CONTACT_WINDOW" end
+            if reason then
+                report:write("LONG_PASS_AI_ASSIST_END",true,
+                    {possession=possession,game_state=gs,my_base=my_base},
+                    "OBSERVE_LONG_PASS",
+                    "reason="..reason..";age="..age
+                    ..";neutral_frames="..lock.neutral_frames
+                    ..";clearance_sequence="..lock.clearance_sequence)
+                long_pass_ai_lock=nil
+            else
+                movement.stop()
+                lock.neutral_frames=lock.neutral_frames+1
+                local state=make_state(my_base,0,0,
+                    "LONG_PASS_AI_ASSIST",possession,gs)
+                state.header_height=h
+                state.header_distance=dist
+                return attach_live_state(state,"LONG_PASS_AI_ASSIST","MY_UNOWNED_BALL")
+            end
         end
 
         -- Keep manual chase/rebound arbitration from immediately overriding
