@@ -300,6 +300,7 @@ M.GK_DISTRIBUTION = {
 
     -- Se o primeiro pulso nao for aceito pelo jogo, permite retry tardio.
     retry_frames = 40,
+    press_frames = 6, -- hold the chosen GK action for multiple emulator frames
     max_attempts = 3, -- bounded alternative inputs if possession persists
 }
 
