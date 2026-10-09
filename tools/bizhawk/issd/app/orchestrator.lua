@@ -111,7 +111,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="deep-lateral-pass-guard-20261009-v6"
+local BOT_BUILD_ID="aerial-ai-assist-20261009-v7"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -1906,11 +1906,16 @@ local function step_bot()
                 and aerial_contest_lock.base==my_base
                 and dist>config.DEFENSIVE_HEADER.contact_distance then
                 local dx,dy=bx-px,by-py
-                movement.move_toward(dx,dy)
+                -- Experimental: neutral input permits the game's own
+                -- player-assist movement (if enabled in match settings).
+                if ac.ai_assist_enabled then movement.stop()
+                else movement.move_toward(dx,dy) end
                 local state=make_state(my_base,dx,dy,
-                    "AERIAL_CONTEST_APPROACH",possession,gs)
+                    ac.ai_assist_enabled and "AERIAL_AI_ASSIST"
+                    or "AERIAL_CONTEST_APPROACH",possession,gs)
                 state.header_height=height
                 state.header_distance=dist
+                state.aerial_ai_assist=ac.ai_assist_enabled
                 return attach_live_state(state,"AERIAL_CONTEST","MY_UNOWNED_BALL")
             end
         end
@@ -1970,6 +1975,29 @@ local function step_bot()
             end
         else
             header_last_height=nil
+        end
+
+        -- Keep manual chase/rebound arbitration from immediately overriding
+        -- neutral AI assistance inside the heading window. The header attempt
+        -- above has first priority and still sends X when eligible.
+        if config.AERIAL_CONTEST_LOCK.ai_assist_enabled
+            and aerial_contest_lock and possession==0
+            and players.valid_my_base(my_base)
+            and my_base==aerial_contest_lock.base then
+            local h=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
+            local ax,ay=players.xy(my_base)
+            local d=math.sqrt((bx-ax)^2+(by-ay)^2)
+            if h>=config.DEFENSIVE_HEADER.min_height
+                and h<=config.AERIAL_CONTEST_LOCK.max_height
+                and d<=config.DEFENSIVE_HEADER.contact_distance then
+                movement.stop()
+                local state=make_state(my_base,0,0,
+                    "AERIAL_AI_ASSIST_CONTACT_WAIT",possession,gs)
+                state.header_height=h
+                state.header_distance=d
+                state.aerial_ai_assist=true
+                return attach_live_state(state,"AERIAL_CONTEST","MY_UNOWNED_BALL")
+            end
         end
 
         -- Highest-priority goal-bound ball guard: independent of the logical
