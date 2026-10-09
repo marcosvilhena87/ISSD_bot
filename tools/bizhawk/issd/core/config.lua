@@ -204,6 +204,11 @@ M.LONG_PASS_AI_ASSIST_EXPERIMENT = {
     contact_distance=38,
 }
 
+M.LONG_PASS_RECEIVER_SELECTION = {
+    max_frames=120,
+    request_window_frames=6,
+}
+
 M.LONG_PASS_POSITION_OBSERVER = {
     max_frames=120, -- passive observational window after charged A release
 }
