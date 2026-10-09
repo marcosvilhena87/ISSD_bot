@@ -1951,7 +1951,7 @@ local function step_bot()
         if restart.taker_team ~= "MY" then corner_kick.reset() end
         if restart.taker_team == "MY" then
             if gs == 1 and restart.taker ~= config.MY_FIRST then
-                local plan=corner_kick.plan(bx,by,restart.taker,restart.taker_team)
+                local plan=corner_kick.plan(bx,by,restart.taker,restart.taker_team,my_base)
                 if plan then
                     local fired=corner_kick.fire(plan,movement)
                     if not fired then movement.stop() end
