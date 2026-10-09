@@ -507,7 +507,15 @@ local function step_bot()
     if gs~=1 then goal_kick.reset() end
     if possession~=0 or gs~=0 or not gameplay_active.is_active(gameplay_value) then
         contest_intercept_lock=nil
-        my_recovery_lock=nil
+        if my_recovery_lock then
+            local reason=possession~=0 and "POSSESSION_CONFIRMED"
+                or gs~=0 and "STOPPAGE" or "GAMEPLAY_IDLE"
+            report:write("MY_RECOVERY_LOCK_END",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "OBSERVE_RECOVERY",
+                "reason="..reason..";age="..(report.frame-my_recovery_lock.frame))
+            my_recovery_lock=nil
+        end
     end
 
     if not gameplay_active.is_active(gameplay_value) then
@@ -638,6 +646,20 @@ local function step_bot()
         end
 
         local function attach_live_state(state, source, class)
+            -- Centralized handoff: an old MY recovery commitment cannot
+            -- survive a higher-priority defensive action or a player switch.
+            if my_recovery_lock and state.status~="MY_UNOWNED_RECOVERY"
+                and state.status~="MY_UNOWNED_RECOVERY_LOCK" then
+                local lock=my_recovery_lock
+                local reason=state.status=="PLAYER_SWITCH" and "PLAYER_SWITCH"
+                    or "PREEMPTED"
+                report:write("MY_RECOVERY_LOCK_END",true,
+                    {possession=possession,game_state=gs,my_base=my_base,
+                     ball_x=bx,ball_y=by},"OBSERVE_RECOVERY",
+                    "reason="..reason..";next_status="..tostring(state.status)
+                    ..";age="..(report.frame-lock.frame))
+                my_recovery_lock=nil
+            end
             state.team_possession = team_value
             state.team_possession_kind = team_kind
             state.team_possession_kind_source = team_kind_source
@@ -1603,7 +1625,8 @@ local function step_bot()
         end
 
         if possession == 0 and effective_unowned_team=="CPU" then
-            my_recovery_lock=nil -- logical side changed: do not carry over the old pursuit
+            -- This branch can run without attach_live_state until its return;
+            -- centralized handoff will record the takeover there.
             live_attack.reset()
             gk_distribution.reset()
             -- Contest an attacker who can collect a rebound before aiming at
