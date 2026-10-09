@@ -5,11 +5,11 @@ function M.new(config,players,field_side,mem)
  local c=config.CORNER_KICK
  local o={taker=nil,stable=0,attempts=0,cooldown=0,
           fired_x=nil,fired_y=nil,ball_moved=false,held=0,
-          control_wait=0,switches=0,recovery=0}
+          control_wait=0,switches=0,recovery=0,held_button=nil,held_direction=nil}
  function o.reset()
   o.taker=nil;o.stable=0;o.attempts=0;o.cooldown=0
   o.fired_x=nil;o.fired_y=nil;o.ball_moved=false;o.held=0
-  o.control_wait=0;o.switches=0;o.recovery=0
+  o.control_wait=0;o.switches=0;o.recovery=0;o.held_button=nil;o.held_direction=nil
  end
  function o.plan(bx,by,taker,team,controlled)
   local dir=field_side.attack_direction()
@@ -67,13 +67,14 @@ function M.new(config,players,field_side,mem)
    movement.press_button("R");return false
   end
   if plan.reason=="HOLD_BUTTON" then
-   movement.press_direction_button(plan.direction,plan.button)
+   movement.press_direction_button(o.held_direction,o.held_button)
    o.held=o.held-1;return false
   end
   if plan.reason~="READY" and plan.reason~="RECOVERY_RETRY" then return false end
   movement.press_direction_button(plan.direction,plan.button)
   o.attempts=o.attempts+1
   o.held=c.hold_frames-1
+  o.held_button,o.held_direction=plan.button,plan.direction
   o.cooldown=c.retry_frames
   o.fired_x,o.fired_y=plan.ball_x,plan.ball_y
   return true
