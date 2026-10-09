@@ -524,8 +524,8 @@ M.DEFENSIVE_DASH = {
     start_distance = 105,
     recovery_start_distance = 70, -- accelerate on viable loose-ball approaches
     stop_distance = 55,
-    burst_frames = 10,
-    cooldown_frames = 16,
+    burst_frames = 20, -- sustained approach, bounded for safety
+    cooldown_frames = 10,
 }
 
 M.ACTIVE_TACKLE = {
