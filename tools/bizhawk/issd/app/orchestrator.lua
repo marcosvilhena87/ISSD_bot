@@ -82,6 +82,8 @@ local defense_interception = DefenseInterception.new(config, players)
 local player_switch = PlayerSwitch.new(config, players)
 local team_possession = TeamPossession.new(config, mem, players)
 local team_possession_conflict_active = false
+local gk_release_last_owner = nil
+local gk_release_lock = nil
 local possession_context = PossessionContext.new(config, players)
 local restart = Restart.new(config, players, Geometry, defense)
 local throw_in = ThrowIn.new(config, players, field_side, mem)
@@ -319,6 +321,30 @@ local function step_bot()
     end
     local possession = ball.possession()
     local gs = game_state.read()
+    -- The CPU goalkeeper can keep logical TeamPoss=0 even when holding the ball.
+    -- Preserve only the last confirmed origin after he releases; this is not ownership.
+    if gs~=0 or gameplay_value~=1 then
+        gk_release_lock=nil
+        gk_release_last_owner=nil
+    else
+        if gk_release_last_owner==config.CPU_FIRST and possession==0 then
+            gk_release_lock={start=report.frame,from=config.CPU_FIRST}
+            report:write("GK_RELEASE_ORIGIN_START",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "OBSERVE_GK_RELEASE","origin=CPU_GK")
+        end
+        if gk_release_lock and
+            (possession~=0 or
+             report.frame-gk_release_lock.start>=config.GK_RELEASE_ORIGIN_LOCK.max_frames) then
+            local reason=possession~=0 and "NEW_CONFIRMED_OWNER" or "TIMEOUT"
+            report:write("GK_RELEASE_ORIGIN_END",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "OBSERVE_GK_RELEASE",
+                "reason="..reason..";age="..(report.frame-gk_release_lock.start))
+            gk_release_lock=nil
+        end
+        gk_release_last_owner=possession
+    end
     if defensive_escape_pending then
         local p=defensive_escape_pending
         local bx,by=ball.world_xy()
@@ -534,12 +560,20 @@ local function step_bot()
         local team_value = team_possession.read()
         local team_kind,team_kind_source,team_kind_conflict =
             team_possession.resolve(team_value,possession)
+        local effective_unowned_team=team_kind
+        if possession==0 and gk_release_lock then
+            effective_unowned_team="CPU"
+            team_kind="CPU"
+            team_kind_source="CPU_GK_RELEASE_ORIGIN"
+        end
 
         local function attach_live_state(state, source, class)
             state.team_possession = team_value
             state.team_possession_kind = team_kind
             state.team_possession_kind_source = team_kind_source
             state.team_possession_conflict = team_kind_conflict
+            state.gk_release_origin_active = possession==0 and gk_release_lock~=nil
+            state.gk_release_origin_age = gk_release_lock and (report.frame-gk_release_lock.start) or nil
             state.team_possession_source = source
             state.possession_class = class or fallback_class
             state.context_last_team = possession_context.last_team
@@ -1444,7 +1478,7 @@ local function step_bot()
                         state.intercept_target_y=guarded.y
                         state.second_ball_sequence=second_ball_lock.sequence
                         return attach_live_state(state,"SHOT_COUNTER",
-                            team_possession.is_cpu(team_value)
+                            effective_unowned_team=="CPU"
                             and "CPU_UNOWNED_BALL" or "MY_UNOWNED_BALL")
                     end
                 end
@@ -1491,14 +1525,14 @@ local function step_bot()
                         state.intercept_target_y=guarded.y
                         state.gk_rebound_candidate=true
                         return attach_live_state(state,"GK_REBOUND_CANDIDATE",
-                            team_possession.is_cpu(team_value)
+                            effective_unowned_team=="CPU"
                             and "CPU_UNOWNED_BALL" or "MY_UNOWNED_BALL")
                     end
                 end
             end
         end
 
-        if possession == 0 and team_possession.is_cpu(team_value) then
+        if possession == 0 and effective_unowned_team=="CPU" then
             live_attack.reset()
             gk_distribution.reset()
             -- Contest an attacker who can collect a rebound before aiming at
@@ -1640,12 +1674,12 @@ local function step_bot()
 
             return attach_live_state(
                 state,
-                "TEAM_POSSESSION_RAM",
+                gk_release_lock and "CPU_GK_RELEASE_ORIGIN" or "TEAM_POSSESSION_RAM",
                 "CPU_UNOWNED_BALL"
             )
         end
 
-        if possession == 0 and team_possession.is_my(team_value) then
+        if possession == 0 and effective_unowned_team=="MY" then
             live_attack.reset()
             gk_distribution.reset()
             local guard=config.BOX_RECOVERY
@@ -2105,9 +2139,10 @@ while true do
             -- danger overrides, switches and intercept locks. No carrier must
             -- be confirmed: team possession RAM is only the logical side.
             if state.possession==0 and state.game_state==0 then
-                local logical_team=mem.u8(config.ADDR.team_possession)
-                if logical_team==0 or logical_team==1 then
-                    local side=logical_team==0 and "MY" or "CPU"
+                local side=state.gk_release_origin_active and "CPU"
+                    or (mem.u8(config.ADDR.team_possession)==0 and "MY"
+                    or mem.u8(config.ADDR.team_possession)==1 and "CPU" or nil)
+                if side then
                     state.ball_situation_class=side.."_BALL_"..flight.height_band
                 end
             end
