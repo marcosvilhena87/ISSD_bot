@@ -176,6 +176,10 @@ M.DEFENSIVE_PASS_ALIGNMENT = {
 M.MID_ATTACK_TRANSITION = {
     stable_frames=8,
     max_frames=240,
+    absolute_max_frames=360,
+    extension_frames=60,
+    progress_window_frames=60,
+    min_recent_progress=25,
     retreat_delta=24, -- significant backwards shift while in possession
 }
 M.DEFENSIVE_CLEARANCE_OUTCOME = {
