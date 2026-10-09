@@ -1,200 +1,96 @@
 # ISSD Bot ⚽🤖
 
-Bot de IA para **International Superstar Soccer Deluxe (SNES)**.
+Bot experimental para **International Superstar Soccer Deluxe (SNES)**, executado no **BizHawk**, com leitura de RAM, controle via Lua e decisões táticas baseadas em regras. O objetivo de longo prazo é evoluir para aprendizado por reforço (RL) com Gymnasium/PPO e, depois, self-play.
 
-O objetivo do projeto é construir um agente capaz de aprender a jogar ISS Deluxe usando **estado extraído da RAM do emulador + Reinforcement Learning**, evoluindo por currículo até partidas completas e, posteriormente, **self-play**.
+> **Estado em 09/10/2026:** já existe um controlador Lua modular com lógica de jogo, telemetria CSV e sondas de RAM. **Gymnasium, treinamento PPO e self-play ainda não estão integrados/validados.** Ter código de uma tática não significa que ela tenha desempenho comprovado em partidas.
 
-## Estratégia principal
+## Como executar o controlador atual
 
-```text
-ISS Deluxe
-   ↓
-Emulador
-   ↓
-Leitura de RAM
-   ↓
-Estado estruturado
-   ↓
-Gymnasium Environment
-   ↓
-PPO
-   ↓
-Curriculum Learning
-   ↓
-Self-play
-```
+1. Abra a ROM compatível do jogo no **BizHawk/EmuHawk** (consulte [TARGET_ROM](docs/TARGET_ROM.md)).
+2. Abra o **Lua Console** do BizHawk.
+3. Execute `tools/bizhawk/issd/main.lua` mantendo a árvore de módulos do repositório.
+4. Observe o HUD e os eventos em `tools/bizhawk/issd/issd_report.csv`. Os atalhos e parâmetros operacionais estão no código e na documentação de diagnóstico.
 
-A prioridade é evitar, no começo, aprendizado puramente por pixels. Ler diretamente variáveis relevantes da RAM reduz drasticamente a complexidade do problema e permite validar a lógica do agente antes de adicionar visão computacional.
+O script legado `tools/bizhawk/issd/entry/chase_ball.lua` é apenas um ponto de compatibilidade; use `main.lua` para novas execuções. A geração do CSV depende da execução local no emulador; atualizar o GitHub não gera relatórios automaticamente.
 
-## Fase 0 — Descoberta da RAM
-
-Primeiro objetivo técnico:
-
-- posição X/Y da bola;
-- posição X/Y do jogador controlado;
-- identificação do jogador controlado;
-- posse de bola;
-- placar;
-- cronômetro/estado da partida.
-
-Com esse conjunto mínimo já será possível criar um primeiro ambiente de RL.
-
-Veja [docs/RAM_MAP.md](docs/RAM_MAP.md).
-
-## Espaço de observação inicial
-
-Exemplo conceitual:
+## Arquitetura atual
 
 ```text
-ball_x
-ball_y
-ball_vx
-ball_vy
-
-controlled_player_x
-controlled_player_y
-controlled_player_vx
-controlled_player_vy
-
-possession
-score_for
-score_against
-match_time
-attacking_direction
+International Superstar Soccer Deluxe
+              |
+        BizHawk / Lua
+              |
+   WRAM -> state/* e core/*
+              |
+      app/orchestrator.lua
+         /    |    \
+ tactics/* control/* ui/*
+              |
+    comandos do controle
+              |
+  eventos / relatório CSV
 ```
 
-Depois o estado poderá ser expandido para incluir todos os companheiros e adversários.
+Principais diretórios:
 
-## Espaço de ações
+| Caminho | Responsabilidade |
+| --- | --- |
+| `tools/bizhawk/issd/main.lua` | Entrada oficial no emulador |
+| `app/orchestrator.lua` | Loop principal, coordenação de estados e decisões |
+| `core/` | Endereços/configuração, acesso à memória, geometria e relatórios |
+| `state/` | Bola, jogadores, posse, contexto físico, voo, rebotes e transições |
+| `control/` | Movimento e troca de jogador |
+| `tactics/` | Ataque, defesa, interceptação, cobranças e distribuição do goleiro |
+| `ui/` | HUD |
+| `probes/` | Sondas e ferramentas de investigação da RAM |
+| `src/issd_bot/` | Base Python para a futura integração com RL; não é o controlador operacional atual |
 
-Primeira versão:
+Para detalhes, consulte [LUA_ARCHITECTURE](docs/LUA_ARCHITECTURE.md), [RAM_MAP](docs/RAM_MAP.md) e [FIRST_CONTROL_LOOP](docs/FIRST_CONTROL_LOOP.md).
+
+## Capacidades implementadas no código Lua
+
+- Leitura estruturada da RAM: posição da bola, jogadores, estados de jogo e sinais de posse.
+- Controle por estados e emissão de comandos, incluindo movimentação, defesa e ataque.
+- Módulos específicos para passe, finalização, interceptação, laterais, escanteios, faltas, tiros de meta e goleiro.
+- Tratamento de bola aérea, posse física, contexto de voo, recuperação de rebote e transições.
+- Telemetria e diagnóstico por HUD, CSV e probes.
+
+**Atenção à semântica da posse:** `Team_Ball_Possession` é um sinal bruto do jogo, **não prova um toque, domínio ou recuperação efetiva**. O monitor `state/ball_logical_team_transition.lua` observa mudanças e registra contexto; não deve converter automaticamente `CPU_UNOWNED_BALL ↔ MY_UNOWNED_BALL` em troca de posse confirmada. A análise de rebote do goleiro também produz **candidatos**, não confirmação de defesa.
+
+## Próxima prioridade
+
+**Validar e classificar a bola em disputa com evidências observáveis**, distinguindo sinal lógico, dono individual, trajetória, proximidade e contato efetivo. Em especial:
+
+1. Correlacionar transições lógicas com `Last_Player_Ball_Possession`, altura, deslocamento da bola e distância aos jogadores.
+2. Diferenciar rebote do goleiro, passe/chute em voo, recuperação e bola genuinamente disputável, sem inferir posse apenas pelo sinal de equipe.
+3. Criar casos de regressão baseados em CSV e critérios objetivos para não degradar decisões existentes.
+4. Medir efeitos táticos após validar o classificador, antes de aumentar a complexidade do agente.
+
+A ordem de execução e os marcos de RL estão em [ROADMAP](docs/ROADMAP.md).
+
+## Caminho para aprendizado por reforço (planejado)
 
 ```text
-NOOP
-UP
-DOWN
-LEFT
-RIGHT
-UP_LEFT
-UP_RIGHT
-DOWN_LEFT
-DOWN_RIGHT
-PASS
-SHOOT
-SPECIAL
-direction + PASS
-direction + SHOOT
+Estado validado da RAM + controlador Lua instrumentado
+                    |
+       bridge e reset reproduzíveis
+                    |
+       Gymnasium (observações/ações)
+                    |
+          baseline + currículo
+                    |
+         PPO / avaliação isolada
+                    |
+               self-play
 ```
 
-O agente não precisa decidir em todos os frames. A ideia inicial é usar **frame skip de 3–6 frames**, reduzindo a frequência de decisão e tornando as ações mais próximas de comandos humanos.
+A ideia é explorar primeiro observações estruturadas, em vez de depender somente de pixels. O plano contempla recompensas por aproximação, recuperação, progressão, passes e finalizações, com redução posterior dos incentivos intermediários para priorizar gols e vitórias. **Isso é uma direção de pesquisa, não uma capacidade pronta.**
 
-## Curriculum Learning
+## Documentação
 
-O bot não começará tentando vencer uma partida completa.
-
-1. aproximar-se da bola;
-2. conquistar posse;
-3. manter posse;
-4. conduzir em direção ao gol;
-5. completar passe;
-6. receber passe;
-7. entrar no terço ofensivo;
-8. finalizar;
-9. marcar gol;
-10. recuperar a bola;
-11. defender;
-12. disputar partidas completas;
-13. self-play.
-
-## Recompensa
-
-No início, recompensas intermediárias ajudam o agente a descobrir comportamento útil:
-
-```text
-+ aproximação da bola
-+ conquista de posse
-+ avanço territorial
-+ passe completo
-+ entrada em zona ofensiva
-+ finalização
-+ gol
-
-- perda de posse
-- finalização perigosa sofrida
-- gol sofrido
-```
-
-À medida que o agente melhora, essas recompensas devem ser reduzidas (**reward annealing**) para que o objetivo final se aproxime de:
-
-```text
-gol
-saldo de gols
-vitória
-```
-
-## Algoritmo
-
-Primeiro baseline:
-
-- **PPO**
-- Gymnasium
-- Stable-Baselines3
-- PyTorch
-
-Uma evolução possível é:
-
-```text
-Behavioral Cloning
-        ↓
-       PPO
-        ↓
-Curriculum Learning
-        ↓
-    Self-play
-```
-
-## Estrutura inicial
-
-```text
-ISSD_bot/
-├── docs/
-│   ├── RAM_MAP.md
-│   └── ROADMAP.md
-├── src/
-│   └── issd_bot/
-│       ├── __init__.py
-│       └── env.py
-├── .gitignore
-├── requirements.txt
-└── README.md
-```
-
-## Próximo marco
-
-**Milestone 0: descobrir e validar os endereços de RAM da bola.**
-
-Critério de conclusão:
-
-- localizar X e Y;
-- confirmar que os valores acompanham a bola durante a partida;
-- identificar escala/faixa dos valores;
-- verificar se os endereços permanecem estáveis após reiniciar a partida.
-
-Depois disso, repetir o procedimento para o jogador controlado e a posse de bola.
-
-## Status
-
-🟡 **Fase inicial — engenharia reversa / mapeamento da RAM**
-
-
-## Arquitetura Lua modular
-
-A lógica do BizHawk é modular. O ponto de entrada oficial é:
-
-```text
-tools/bizhawk/issd/main.lua
-```
-
-A implementação fica em `tools/bizhawk/issd/`, organizada por responsabilidade em `app/`, `core/`, `state/`, `control/`, `tactics/`, `ui/`, `probes/` e `entry/` (somente compatibilidade). O launcher `entry/chase_ball.lua` permanece apenas para compatibilidade.
-
-Veja [docs/LUA_ARCHITECTURE.md](docs/LUA_ARCHITECTURE.md).
+- [ROADMAP.md](docs/ROADMAP.md) — entregas realizadas e pendências priorizadas.
+- [RAM_MAP.md](docs/RAM_MAP.md) — memória e campos investigados.
+- [CSV_REPORT.md](docs/CSV_REPORT.md) — eventos, colunas e diagnóstico.
+- [LUA_ARCHITECTURE.md](docs/LUA_ARCHITECTURE.md) — módulos do controlador.
+- [TARGET_ROM.md](docs/TARGET_ROM.md) — referência da versão do jogo.
+- [WCH_SOURCES.md](docs/WCH_SOURCES.md) — fontes de investigação da memória.
