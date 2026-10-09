@@ -3,7 +3,8 @@ local M={}
 function M.new(config,players,field_side)
  local c=config.FREE_KICK
  local o={candidate=nil,stable=0,attempts=0,cooldown=0,
-          kick_x=nil,kick_y=nil,ball_moved=false,control_wait=0,switches=0}
+          kick_x=nil,kick_y=nil,ball_moved=false,control_wait=0,switches=0,
+          last_x=nil,last_y=nil,stationary=0,moved_age=0}
  local function dist(ax,ay,bx,by)
   return math.sqrt((ax-bx)^2+(ay-by)^2)
  end
@@ -11,13 +12,34 @@ function M.new(config,players,field_side)
   o.candidate=nil;o.stable=0;o.attempts=0;o.cooldown=0
   o.kick_x=nil;o.kick_y=nil;o.ball_moved=false
   o.control_wait=0;o.switches=0
+  o.last_x=nil;o.last_y=nil;o.stationary=0;o.moved_age=0
  end
  function o.plan(bx,by,controlled,gs)
   if o.cooldown>0 then o.cooldown=o.cooldown-1 end
   local displacement=0
+  if o.last_x~=nil and dist(bx,by,o.last_x,o.last_y)<=c.stationary_tolerance then
+   o.stationary=o.stationary+1
+  else
+   o.stationary=0
+  end
+  o.last_x,o.last_y=bx,by
   if o.kick_x~=nil then
    displacement=dist(bx,by,o.kick_x,o.kick_y)
    if displacement>=c.ball_move_threshold then o.ball_moved=true end
+  end
+  if o.ball_moved then
+   o.moved_age=o.moved_age+1
+   -- Some GS=3 sequences keep the restart flag after the first movement.
+   -- Never treat coordinate displacement alone as successful resumption.
+   -- If GS persists and the ball stops, allow a bounded fresh pulse.
+   if o.moved_age>=c.moved_retry_delay
+       and o.stationary>=c.stationary_retry_frames
+       and o.attempts<c.max_attempts then
+    o.ball_moved=false
+    o.cooldown=0
+    o.kick_x,o.kick_y=bx,by
+    o.moved_age=0
+   end
   end
   local my,md=nil,math.huge
   players.each_my(function(base)
@@ -88,6 +110,8 @@ function M.new(config,players,field_side)
   movement.press_direction_button(plan.direction,plan.button)
   o.attempts=o.attempts+1
   o.cooldown=c.retry_frames
+  o.stationary=0
+  o.moved_age=0
   return true
  end
  function o.remember_ball(bx,by)
