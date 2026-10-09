@@ -127,6 +127,8 @@ local final_third_cooldown_until=0
 local last_flight_discrepancy=false
 local flight_interception_pending=nil
 local danger_lock=nil
+local header_last_frame=-99999
+local header_last_height=nil
 -- Defensive sprint is deliberately separate from attack dash.
 local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=nil,
     start_x=nil,start_y=nil,target_x=nil,target_y=nil}
@@ -1525,6 +1527,46 @@ local function step_bot()
                     "CPU_CONTROLLED"
                 )
             end
+        end
+
+        -- Near-contact defensive heading on a descending cross.
+        -- X is also SHOOT: only issue it for a free aerial ball next to a
+        -- controlled outfielder inside our defensive goalkeeper radius.
+        -- The observation-only header window is not itself a button command.
+        if possession==0 and players.valid_my_base(my_base)
+            and my_base~=config.MY_FIRST then
+            local hc=config.DEFENSIVE_HEADER
+            local gx,gy=players.xy(config.MY_FIRST)
+            local px,py=players.xy(my_base)
+            local height=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
+            local dist=math.sqrt((bx-px)^2+(by-py)^2)
+            local goal_dist=math.sqrt((bx-gx)^2+(by-gy)^2)
+            local descending=header_last_height~=nil
+                and height<=header_last_height
+            header_last_height=height
+            if goal_dist<=hc.goal_radius
+                and height>=hc.min_height and height<=hc.max_height
+                and dist<=hc.contact_distance and descending
+                and report.frame-header_last_frame>=hc.cooldown_frames then
+                local dx,dy=bx-px,by-py
+                movement.move_toward_button(dx,dy,"X")
+                header_last_frame=report.frame
+                local state=make_state(my_base,dx,dy,
+                    "DEFENSIVE_HEADER_ATTEMPT",possession,gs)
+                state.header_height=height
+                state.header_distance=dist
+                state.header_goal_distance=goal_dist
+                report:write("DEFENSIVE_HEADER_ATTEMPT",true,state,
+                    movement.last_command,
+                    "height="..height..";distance="..dist
+                    ..";goal_distance="..goal_dist
+                    ..";controlled_base="..my_base)
+                return attach_live_state(state,"AERIAL_CLEARANCE_ATTEMPT",
+                    effective_unowned_team=="CPU"
+                    and "CPU_UNOWNED_BALL" or "MY_UNOWNED_BALL")
+            end
+        else
+            header_last_height=nil
         end
 
         -- Highest-priority goal-bound ball guard: independent of the logical
