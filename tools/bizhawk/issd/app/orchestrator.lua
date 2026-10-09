@@ -115,7 +115,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="transition-monitors-20261009-v8"
+local BOT_BUILD_ID="mid-attack-diagnostics-20261009-v9"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -3162,7 +3162,17 @@ while true do
                 "reason="..tostring(event.reason)
                 ..";sequence="..tostring(event.sequence)
                 ..";age="..tostring(event.age)
-                ..";route="..tostring(event.route))
+                ..";route="..tostring(event.route)
+                ..";start_progress="..tostring(event.start_progress)
+                ..";max_progress="..tostring(event.max_progress)
+                ..";progress_gain="..tostring(event.progress_gain)
+                ..";net_progress="..tostring(event.net_progress)
+                ..";remaining="..tostring(event.remaining)
+                ..";first_cross_age="..tostring(event.first_cross_age)
+                ..";entries="..tostring(event.entries)
+                ..";stability_resets="..tostring(event.returns)
+                ..";retreats="..tostring(event.retreats)
+                ..";unowned_frames="..tostring(event.unowned_frames))
         end
         local clearance=defensive_clearance_outcome.update(state,report.frame)
         if clearance then
