@@ -198,6 +198,8 @@ M.DEFENSIVE_CLEARANCE_OUTCOME = {
 M.LONG_PASS_AI_ASSIST_EXPERIMENT = {
     enabled=true, -- disable to restore existing manual recovery behavior
     max_frames=75,
+    warmup_frames=18,
+    release_grace_frames=5,
     min_height=21,
     contact_distance=38,
 }
