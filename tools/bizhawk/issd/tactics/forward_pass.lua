@@ -16,6 +16,32 @@ function M.new(config,players,field_side,mem)
         if forward<0 or forward>len then return nil end
         return math.min(3,1+math.floor(forward/(len/3)))
     end
+    local function deep_lateral_safe(px,py,rx,ry,dir,receiver_clearance)
+     local cfg=config.DEEP_DEFENSIVE_LATERAL
+     local length=mem.u16(config.ADDR.field_length)
+     local center=mem.u16(config.ADDR.center_field_x)
+     if length<500 or length>4000 or center<100 then return false end
+     local own_goal=center-dir*length/2
+     if (px-own_goal)*dir>cfg.max_own_goal_distance then return true end
+     -- Direction+B follows the cardinal vertical lane at the passer's X,
+     -- not the diagonal segment to a teammate offset horizontally.
+     if math.abs(rx-px)>cfg.max_receiver_axis_offset
+        or receiver_clearance<cfg.min_receiver_clearance then return false end
+     local lane=math.huge
+     local cpu_landing=math.huge
+     local bx,by=px,ry
+     players.each_cpu(function(base)
+      local ex,ey=players.xy(base)
+      local t=(ey-py)/(ry-py)
+      if t>=0 and t<=1 then
+       lane=math.min(lane,math.abs(ex-px))
+      end
+      cpu_landing=math.min(cpu_landing,distance(ex,ey,bx,by))
+     end)
+     local my_landing=distance(rx,ry,bx,by)
+     return lane>=cfg.min_lane_clearance
+        and cpu_landing-my_landing>=cfg.min_cpu_arrival_margin
+    end
     function obj.tick()
         if obj.cooldown>0 then obj.cooldown=obj.cooldown-1 end
     end
@@ -81,7 +107,8 @@ function M.new(config,players,field_side,mem)
                         or c.min_receiver_clearance
                     local min_lc=zone==3 and c.lateral_lane_clearance
                         or c.min_lane_clearance
-                    if receiver_clearance>=min_rc and corridor>=min_lc then
+                    if receiver_clearance>=min_rc and corridor>=min_lc
+                        and (intent~="LATERAL" or deep_lateral_safe(px,py,rx,ry,dir,receiver_clearance)) then
                         local score=math.min(receiver_clearance,180)*c.weight_clearance
                             +math.min(corridor,180)*c.weight_lane
                         if zone<3 then
