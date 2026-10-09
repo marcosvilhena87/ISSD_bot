@@ -153,8 +153,11 @@ M.DEFENSIVE_MIDFIELD_TRANSITION = {
 }
 
 M.DEFENSIVE_PASS_ALIGNMENT = {
-    frames=3, -- cardinal facing input, not a verified in-game orientation
+    confirm_frames=2, -- consecutive observations of ball ahead
+    min_forward_offset=3, max_ball_offset=45,
+    max_lateral_offset=23, dominance_ratio=1.15,
     max_window_frames=12,
+    retry_block_frames=45, -- avoid endless start/abort loop
 }
 
 M.DEFENSIVE_EXIT = {
