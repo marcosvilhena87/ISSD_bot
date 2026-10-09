@@ -141,6 +141,10 @@ local function defensive_dash_step(state)
         GK_REBOUND_RECOVERY=true, BOX_SECOND_BALL_CONTINUITY=true, MY_FLIGHT_BOX_DANGER=true, MY_BOX_GROUND_RECOVERY=true,
         MY_BOX_LOW_RECOVERY=true, MY_BOX_AERIAL_COVER=true,
         LIVE_FALLBACK_CHASE=true,
+        -- Interception uses Y only for approach, never to imply a tackle.
+        MY_UNOWNED_RECOVERY=true, MY_UNOWNED_RECOVERY_LOCK=true,
+        BALL_CONTEST_INTERCEPT=true, BALL_CONTEST_INTERCEPT_LOCK=true,
+        MY_FLIGHT_INTERCEPTION=true,
     }
     local active=state.game_state==0
         and gameplay_active.is_active(state.gameplay_active)
@@ -184,7 +188,15 @@ local function defensive_dash_step(state)
             defensive_dash.remaining=defensive_dash.remaining-1
         end
     end
-    if active and directional and d>=cfg.start_distance
+    local approach_threshold=cfg.start_distance
+    if active and (state.status=="MY_UNOWNED_RECOVERY"
+        or state.status=="MY_UNOWNED_RECOVERY_LOCK"
+        or state.status=="BALL_CONTEST_INTERCEPT"
+        or state.status=="BALL_CONTEST_INTERCEPT_LOCK"
+        or state.status=="MY_FLIGHT_INTERCEPTION") then
+        approach_threshold=cfg.recovery_start_distance
+    end
+    if active and directional and d>=approach_threshold
         and (defensive_dash.remaining>0 or defensive_dash.cooldown==0) then
         if defensive_dash.remaining==0 then
             defensive_dash.remaining=cfg.burst_frames
