@@ -19,7 +19,7 @@ function M.new(config,players)
     initial_ball_distance=nil,min_ball_distance=nil}
   return o.sequence
  end
- function o.update(s,frame)
+ function o.update(s,frame,command)
   local p=o.pending
   if not p then return nil end
   local out={}
@@ -61,7 +61,7 @@ function M.new(config,players)
    elseif p.prior and p.prior.base~=selected then
     p.switches=p.switches+1
    end
-   p.prior={base=selected,x=px,y=py,command=s.controller_command}
+   p.prior={base=selected,x=px,y=py,command=command}
   end
   if frame-p.start>=c.max_frames then
    emit("END","TIMEOUT");o.pending=nil
