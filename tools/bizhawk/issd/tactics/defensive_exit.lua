@@ -104,13 +104,23 @@ function M.new(config,players,field_side,mem)
    o.limit_age=o.limit_age+1
    -- Never allow indefinite stationary possession, but cap overall travel.
    local total=d(x,y,o.total_start_x,o.total_start_y)
+   -- Renew a short escape segment only after real forward progress and
+   -- only when the carrier remains unpressured with room directly ahead.
+   -- plan() is called solely for a confirmed, controlled MY carrier.
+   local forward_progress=(x-o.total_start_x)*dir
+   local forward_clearance=space(x+dir*c.reassess_forward_probe,y)
+   local can_continue=forward_progress>=c.reassess_min_forward_progress
+      and forward_clearance>=c.reassess_min_clearance
+      and threat>=c.reassess_min_pressure_distance
    if o.limit_age>=c.reassessment_frames
       and total<c.total_advance_limit
-      and o.reassessments<c.max_reassessments then
+      and o.reassessments<c.max_reassessments
+      and can_continue then
     o.limit_age=0;o.start_x,o.start_y=x,y
     o.reassessments=o.reassessments+1
-    return {mode="REASSESS",reason="NEW_ESCAPE_WINDOW",age=o.age,
-      threat=threat,reassessments=o.reassessments,total=total}
+    return {mode="REASSESS",reason="SAFE_FORWARD_CONTINUATION",age=o.age,
+      threat=threat,reassessments=o.reassessments,total=total,
+      forward_progress=forward_progress,forward_clearance=forward_clearance}
    end
    if threat<=c.emergency_radius and not o.clearance_used then
     o.clearance_used=true;o.clear_attempts=o.clear_attempts+1
