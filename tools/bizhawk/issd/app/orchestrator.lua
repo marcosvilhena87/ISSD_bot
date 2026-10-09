@@ -1526,6 +1526,41 @@ local function step_bot()
             end
         end
 
+        -- Highest-priority goal-bound ball guard: independent of the logical
+        -- team flag, and before second-ball / goalkeeper-rebound arbitration.
+        -- Do not spend emergency frames switching players (R); the current
+        -- outfielder pursues the projected interception point.
+        if possession==0 then
+            local gx,gy=players.xy(config.MY_FIRST)
+            local critical=interception.danger_target(bx,by,
+                possession_context.ball_dx,possession_context.ball_dy,
+                possession_context.ball_speed,gx,gy,field_side.goal_direction())
+            if critical then
+                local px,py=players.xy(my_base)
+                if players.valid_my_base(my_base) and my_base~=config.MY_FIRST then
+                    local target=field_boundary.correct(px,py,critical.x,critical.y)
+                    local dx,dy=target.x-px,target.y-py
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,
+                        "GOAL_BOUND_INTERCEPT_PRIORITY",possession,gs)
+                    state.intercept_target_x=target.x
+                    state.intercept_target_y=target.y
+                    state.intercept_danger=true
+                    state.intercept_frames_to_goal=critical.frames_to_goal
+                    if report.frame%15==0 then
+                        report:write("GOAL_BOUND_PRIORITY",true,state,
+                            movement.last_command,
+                            "frames_to_goal="..tostring(critical.frames_to_goal)
+                            ..";target_x="..tostring(target.x)
+                            ..";target_y="..tostring(target.y))
+                    end
+                    return attach_live_state(state,"CRITICAL_TRAJECTORY",
+                        effective_unowned_team=="CPU"
+                        and "CPU_UNOWNED_BALL" or "MY_UNOWNED_BALL")
+                end
+            end
+        end
+
         -- Quando nenhum jogador esta fisicamente ligado a bola,
         -- 0x104C passa a ser a fonte primaria para o lado da posse.
         -- Rebound recovery belongs to an individually free ball, regardless
