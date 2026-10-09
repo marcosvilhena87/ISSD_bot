@@ -1940,7 +1940,8 @@ local function step_bot()
                 and eta.my_distance<=recovery.max_distance
                 and eta.eta_advantage>=recovery.min_eta_advantage then
                 local tx,ty=eta.target_x,eta.target_y
-                local guarded=field_boundary.correct(tx,ty,bx,by)
+                local current_x,current_y=players.xy(my_base)
+                local guarded=field_boundary.correct(current_x,current_y,tx,ty)
                 tx,ty=guarded.x,guarded.y
                 local switch_state=maybe_switch_player(tx,ty,"MY_UNOWNED_RECOVERY")
                 if switch_state then
