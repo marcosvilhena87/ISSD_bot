@@ -19,6 +19,7 @@ local AerialDefensiveContact = dofile(DIR .. "../state/aerial_defensive_contact.
 local GKReboundRecovery = dofile(DIR .. "../state/gk_rebound_recovery.lua")
 local BallFlightContext = dofile(DIR .. "../state/ball_flight_context.lua")
 local OwnershipProbe = dofile(DIR .. "../state/ownership_probe.lua")
+local BallPhysicalControl = dofile(DIR .. "../state/ball_physical_control.lua")
 local BallContestFeasibility = dofile(DIR .. "../state/ball_contest_feasibility.lua")
 local GameState = dofile(DIR .. "../state/game_state.lua")
 local GameplayActive = dofile(DIR .. "../state/gameplay_active.lua")
@@ -57,6 +58,7 @@ local aerial_defensive_contact = AerialDefensiveContact.new(config, players)
 local gk_rebound_recovery = GKReboundRecovery.new(config, players)
 local flight_context = BallFlightContext.new(config, mem, players)
 local ownership_probe = OwnershipProbe.new(config, mem, players)
+local ball_physical_control = BallPhysicalControl.new(config,players)
 local contest_feasibility = BallContestFeasibility.new(config, players)
 local game_state = GameState.new(config, mem)
 local gameplay_active = GameplayActive.new(config, mem)
@@ -2252,6 +2254,20 @@ while true do
                 ..";nearest_team="..tostring(contact.nearest_team)
                 ..";nearest_distance="..tostring(contact.nearest_distance)
                 ..";plausible_near_player="..tostring(contact.plausible_near_player))
+        end
+        local physical_control=ball_physical_control.update(state)
+        if physical_control and (physical_control.changed or report.frame%60==0) then
+            report:write("BALL_PHYSICAL_CONTROL_CLASS",true,state,
+                "OBSERVE_CONTROL",
+                "class="..tostring(physical_control.class)
+                ..";confidence="..tostring(physical_control.confidence)
+                ..";candidate="..tostring(physical_control.candidate)
+                ..";team="..tostring(physical_control.team)
+                ..";distance="..tostring(physical_control.distance)
+                ..";motion_error="..tostring(physical_control.error)
+                ..";streak="..tostring(physical_control.streak)
+                ..";ambiguous="..tostring(physical_control.ambiguous)
+                ..";height="..tostring(physical_control.height))
         end
         local ownership=ownership_probe.update(state)
         if ownership and ownership.changed then
