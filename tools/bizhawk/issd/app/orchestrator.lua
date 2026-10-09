@@ -119,7 +119,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="aerial-natural-reception-20261009-v17"
+local BOT_BUILD_ID="defensive-pursuit-continuity-20261009-v18"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -153,7 +153,7 @@ local aerial_contact_attempt_lock=nil
 local natural_reception_pending=nil
 -- Defensive sprint is deliberately separate from attack dash.
 local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=nil,
-    start_x=nil,start_y=nil,target_x=nil,target_y=nil}
+    start_x=nil,start_y=nil,target_x=nil,target_y=nil,frames=0}
 local function defensive_dash_step(state)
     local cfg=config.DEFENSIVE_DASH
     local eligible={
@@ -185,10 +185,17 @@ local function defensive_dash_step(state)
     if defensive_dash.cooldown>0 then
         defensive_dash.cooldown=defensive_dash.cooldown-1
     end
-    if defensive_dash.remaining>0 then
-        local ending=not active or not directional
-            or defensive_dash.base~=state.my_base or d<=cfg.stop_distance
-            or defensive_dash.remaining<=1
+    local reserved=command:find("B",1,true) or command:find("R",1,true)
+        or command:find("A",1,true) or command:find("X",1,true)
+    if defensive_dash.remaining>0 or defensive_dash.frames>0 then
+        local reason=nil
+        if not active then reason="TACTICAL_PREEMPTION"
+        elseif reserved then reason="BUTTON_PRIORITY"
+        elseif not directional then reason="NO_DIRECTION"
+        elseif defensive_dash.base~=state.my_base then reason="PLAYER_CHANGED"
+        elseif d<=cfg.stop_distance then reason="ARRIVED"
+        elseif defensive_dash.remaining<=0 then reason="BURST_LIMIT" end
+        local ending=reason~=nil
         if ending then
             local px,py=nil,nil
             if players.valid_my_base(defensive_dash.base) then
@@ -199,7 +206,8 @@ local function defensive_dash_step(state)
             local fixed_end=px and math.sqrt(
                 (px-defensive_dash.target_x)^2+(py-defensive_dash.target_y)^2) or nil
             report:write("DEFENSIVE_DASH_END",true,state,"Y",
-                "mode="..tostring(defensive_dash.mode)
+                "reason="..tostring(reason)..";frames="..tostring(defensive_dash.frames)
+                ..";mode="..tostring(defensive_dash.mode)
                 ..";player_displacement="..tostring(displacement)
                 ..";fixed_target_end_distance="..tostring(fixed_end)
                 ..";fixed_target_gain="..tostring(fixed_end
@@ -209,9 +217,8 @@ local function defensive_dash_step(state)
                 ..";gain="..tostring(d and defensive_dash.start_distance
                     and (defensive_dash.start_distance-d) or nil))
             defensive_dash.remaining=0
+            defensive_dash.frames=0
             defensive_dash.cooldown=cfg.cooldown_frames
-        else
-            defensive_dash.remaining=defensive_dash.remaining-1
         end
     end
     local approach_threshold=cfg.start_distance
@@ -222,10 +229,12 @@ local function defensive_dash_step(state)
         or state.status=="MY_FLIGHT_INTERCEPTION") then
         approach_threshold=cfg.recovery_start_distance
     end
-    if active and directional and d>=approach_threshold
-        and (defensive_dash.remaining>0 or defensive_dash.cooldown==0) then
+    if active and directional and not reserved and d>=approach_threshold
+        and (defensive_dash.remaining>0 or (defensive_dash.frames==0
+            and defensive_dash.cooldown==0)) then
         if defensive_dash.remaining==0 then
             defensive_dash.remaining=cfg.burst_frames
+            defensive_dash.frames=0
             defensive_dash.base=state.my_base
             defensive_dash.start_distance=d
             defensive_dash.mode=state.status
@@ -236,9 +245,10 @@ local function defensive_dash_step(state)
                 "mode="..tostring(state.status)..";distance="..tostring(d)
                 ..";burst_frames="..tostring(cfg.burst_frames))
         end
-        -- Preserve B tackle and R switch commands: only override movement.
+        -- Do not replace tackle/switch/contact commands with Y.
         movement.move_toward_button(state.dx,state.dy,cfg.button)
         defensive_dash.remaining=defensive_dash.remaining-1
+        defensive_dash.frames=defensive_dash.frames+1
         state.defensive_dash=true
     end
 end
