@@ -122,6 +122,7 @@ local final_third_reset_cooldown=0
 local midfield_rebuild=nil
 local second_ball_last_shots_cpu=nil
 local second_ball_lock=nil
+local first_rebound_lock=nil
 local second_ball_sequence=0
 local final_third_cooldown_until=0
 local last_flight_discrepancy=false
@@ -144,6 +145,7 @@ local function defensive_dash_step(state)
         MY_BOX_LOW_RECOVERY=true, MY_BOX_AERIAL_COVER=true,
         LIVE_FALLBACK_CHASE=true,
         GOAL_BOUND_INTERCEPT_PRIORITY=true,
+        FIRST_REBOUND_RECOVERY=true,
         -- Interception uses Y only for approach, never to imply a tackle.
         MY_UNOWNED_RECOVERY=true, MY_UNOWNED_RECOVERY_LOCK=true,
         BALL_CONTEST_INTERCEPT=true, BALL_CONTEST_INTERCEPT_LOCK=true,
@@ -1679,6 +1681,85 @@ local function step_bot()
                         and "CPU_UNOWNED_BALL" or "MY_UNOWNED_BALL")
                 end
             end
+        end
+
+        -- First loose rebound: reach the ball before pressuring its likely
+        -- recipient. Use current-frame positions only, conservative ETA
+        -- advantage, and a short same-defender commitment.
+        if possession==0 then
+            local cfg=config.FIRST_REBOUND_RECOVERY
+            local gx,gy=players.xy(config.MY_FIRST)
+            local goal_dist=math.sqrt((bx-gx)^2+(by-gy)^2)
+            local height=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
+            local critical=interception.danger_target(bx,by,
+                possession_context.ball_dx,possession_context.ball_dy,
+                possession_context.ball_speed,gx,gy,field_side.goal_direction())
+            local lock=first_rebound_lock
+            if lock then
+                local age=report.frame-lock.frame
+                local drift=math.sqrt((bx-lock.bx)^2+(by-lock.by)^2)
+                local reason=nil
+                if my_base~=lock.base then reason="CONTROL_CHANGED"
+                elseif age>=cfg.lock_frames then reason="TIMEOUT"
+                elseif drift>cfg.max_ball_drift then reason="BALL_MOVED"
+                elseif height>cfg.max_height then reason="BALL_TOO_HIGH"
+                elseif goal_dist>cfg.goal_radius then reason="LEFT_DANGER_ZONE"
+                elseif critical then reason="SHOT_DANGER" end
+                if reason then
+                    report:write("FIRST_REBOUND_LOCK_END",true,
+                        {possession=possession,game_state=gs,my_base=my_base,
+                         ball_x=bx,ball_y=by},"OBSERVE_REBOUND",
+                        "reason="..reason..";age="..age)
+                    first_rebound_lock=nil
+                end
+            end
+            if not critical and goal_dist<=cfg.goal_radius
+                and height<=cfg.max_height
+                and players.valid_my_base(my_base)
+                and my_base~=config.MY_FIRST then
+                local px,py=players.xy(my_base)
+                local my_distance=math.sqrt((bx-px)^2+(by-py)^2)
+                local cpu_distance=math.huge
+                players.each_cpu(function(base)
+                    if base~=config.CPU_FIRST then
+                        local ax,ay=players.xy(base)
+                        cpu_distance=math.min(cpu_distance,
+                            math.sqrt((bx-ax)^2+(by-ay)^2))
+                    end
+                end)
+                local my_eta=my_distance/cfg.estimated_speed
+                local cpu_eta=cpu_distance/cfg.estimated_speed
+                local advantage=cpu_eta-my_eta
+                if first_rebound_lock or (my_distance<=cfg.max_my_distance
+                    and advantage>=cfg.min_eta_advantage) then
+                    local guarded=field_boundary.correct(px,py,bx,by)
+                    local dx,dy=guarded.x-px,guarded.y-py
+                    if not first_rebound_lock then
+                        first_rebound_lock={frame=report.frame,base=my_base,
+                            bx=bx,by=by}
+                        report:write("FIRST_REBOUND_LOCK_START",true,
+                            {possession=possession,game_state=gs,my_base=my_base,
+                             ball_x=bx,ball_y=by},"OBSERVE_REBOUND",
+                            "my_eta="..my_eta..";cpu_eta="..cpu_eta
+                            ..";advantage="..advantage)
+                    end
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,
+                        "FIRST_REBOUND_RECOVERY",possession,gs)
+                    state.intercept_target_x=guarded.x
+                    state.intercept_target_y=guarded.y
+                    state.contest_my_eta=my_eta
+                    state.contest_cpu_eta=cpu_eta
+                    return attach_live_state(state,"FIRST_REBOUND",
+                        effective_unowned_team=="CPU"
+                        and "CPU_UNOWNED_BALL" or "MY_UNOWNED_BALL")
+                end
+            end
+        elseif first_rebound_lock then
+            report:write("FIRST_REBOUND_LOCK_END",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "OBSERVE_REBOUND","reason=POSSESSION_CONFIRMED")
+            first_rebound_lock=nil
         end
 
         -- Quando nenhum jogador esta fisicamente ligado a bola,
