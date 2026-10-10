@@ -120,7 +120,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="gk-hand-distribution-recovery-20261010-v22"
+local BOT_BUILD_ID="aerial-reception-decision-20261010-v23"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -2185,12 +2185,16 @@ local function step_bot()
                 local d=math.sqrt((cx-px)^2+(cy-py)^2)
                 if d<threat then threat=d end
             end)
-            local natural=ng.enabled and descending
-                and h>=ng.min_height and h<=ng.max_height
-                and distance<=ng.reception_distance
+            -- A safe flight is not automatically a header opportunity.
+            -- Approach the ball before its low reception window; avoid A/X.
+            local safe_flight=ng.enabled and descending
+                and h>=ng.min_height and h<=ng.approach_max_height
+                and distance<=ng.approach_distance
                 and threat>=ng.min_cpu_clearance
                 and own_goal_distance>config.DEFENSIVE_HEADER.goal_radius
-            if natural then
+            local natural=safe_flight and h<=ng.max_height
+                and distance<=ng.reception_distance
+            if safe_flight then
                 if not natural_reception_pending then
                     natural_reception_pending={frame=report.frame,base=my_base}
                     report:write("NATURAL_RECEPTION_ALLOWED",true,
@@ -2199,15 +2203,32 @@ local function step_bot()
                         "height="..h..";distance="..distance
                         ..";cpu_clearance="..threat)
                 end
-                movement.stop()
-                local state=make_state(my_base,0,0,
-                    "AERIAL_NATURAL_RECEPTION",possession,gs)
+                local dx,dy=bx-px,by-py
+                local approaching=distance>ng.stop_distance
+                if approaching then
+                    movement.move_toward(dx,dy)
+                else
+                    movement.stop()
+                end
+                local state=make_state(my_base,dx,dy,
+                    approaching and "AERIAL_NATURAL_APPROACH"
+                        or "AERIAL_NATURAL_RECEPTION",possession,gs)
+                if report.frame%ng.telemetry_every_frames==0 then
+                    report:write("AERIAL_RECEPTION_DECISION",true,state,
+                        movement.last_command,
+                        "decision=NATURAL;reason=SAFE_DESCENDING"
+                        ..";height="..h..";distance="..distance
+                        ..";cpu_clearance="..threat
+                        ..";phase="..(approaching and "APPROACH" or "WAIT"))
+                end
                 return attach_live_state(state,"NATURAL_RECEPTION","MY_UNOWNED_BALL")
             end
             if dir~=0 and field_length>=500 and field_length<=4000
                 and own_goal_distance>config.DEFENSIVE_HEADER.goal_radius
                 and h>=cc.min_height and h<=cc.max_height
                 and distance<=cc.contact_distance and descending
+                and (not ng.enabled or threat<ng.min_cpu_clearance
+                    or opp_goal_distance<=cc.shot_goal_radius)
                 and not aerial_contact_attempt_lock
                 and report.frame-aerial_contact_last_frame>=cc.cooldown_frames then
                 local shot=opp_goal_distance<=cc.shot_goal_radius
@@ -2228,7 +2249,8 @@ local function step_bot()
                     ..";distance="..distance
                     ..";own_goal_distance="..own_goal_distance
                     ..";opp_goal_distance="..opp_goal_distance
-                    ..";contact_confirmed=false")
+                    ..";contact_confirmed=false;reason="
+                    ..(shot and "GOAL_FINISH" or "CONTESTED_AERIAL"))
                 return attach_live_state(state,"AERIAL_CONTACT_ATTEMPT",
                     "MY_UNOWNED_BALL")
             end
