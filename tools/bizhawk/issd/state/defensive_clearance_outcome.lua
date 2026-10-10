@@ -6,7 +6,7 @@ function M.new(config,players,field_side)
  function o.start(frame,x,y,carrier,frames,dir)
   o.sequence=o.sequence+1
   o.pending={frame=frame,x=x,y=y,carrier=carrier,frames=frames,
-    dir=dir,sequence=o.sequence}
+    dir=dir,sequence=o.sequence, inactive_frames=0, first_receiver=nil}
   return o.pending.sequence
  end
  function o.update(state,frame)
@@ -16,8 +16,11 @@ function M.new(config,players,field_side)
   local dir=field_side.attack_direction()
   local progress=dir*(state.ball_x-p.x)
   local kind,reason=nil,nil
-  if state.game_state~=0 or state.gameplay_active~=1 or dir~=p.dir then
-   kind="UNRESOLVED";reason="STOPPAGE_OR_SIDE_CHANGE"
+  if state.gameplay_active~=1 then p.inactive_frames=p.inactive_frames+1 end
+  if state.game_state~=0 then
+   kind="UNRESOLVED";reason="GAME_STATE_STOPPAGE"
+  elseif dir~=p.dir then
+   kind="UNRESOLVED";reason="ATTACK_DIRECTION_CHANGED"
   elseif age>0 and players.valid_my_base(state.possession)
        and state.possession~=p.carrier then
    kind="RECEIVED";reason="MY_POSSESSION"
@@ -30,7 +33,11 @@ function M.new(config,players,field_side)
    o.pending=nil
    return {kind=kind,reason=reason,sequence=p.sequence,age=age,
     progress=progress,start_x=p.x,end_x=state.ball_x,
-    frames=p.frames,owner=state.possession}
+    frames=p.frames,owner=state.possession,
+    receiver=kind=="RECEIVED" and state.possession or nil,
+    receiver_x=kind=="RECEIVED" and players.xy(state.possession) or nil,
+    inactive_frames=p.inactive_frames,game_state=state.game_state,
+    gameplay_active=state.gameplay_active}
   end
  end
  return o
