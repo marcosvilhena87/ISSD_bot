@@ -49,17 +49,26 @@ function M.new(config,players,field_side,mem)
         obj.cooldown=0;obj.last_carrier=nil
     end
     function obj.plan(carrier, prefer_central)
-        if obj.cooldown>0 or not players.valid_my_base(carrier)
-            or carrier==config.MY_FIRST then return nil end
+        local diag={candidate_count=0,geometry_rejected=0,
+            clearance_rejected=0,lane_rejected=0,
+            deep_lateral_rejected=0,valid_count=0,reason="NONE"}
+        if obj.cooldown>0 then diag.reason="COOLDOWN";return nil,diag end
+        if not players.valid_my_base(carrier)
+            or carrier==config.MY_FIRST then
+            diag.reason="INVALID_CARRIER";return nil,diag
+        end
         local dir=field_side.attack_direction()
-        if dir~=1 and dir~=-1 then return nil end
+        if dir~=1 and dir~=-1 then
+            diag.reason="INVALID_DIRECTION";return nil,diag
+        end
         local px,py=players.xy(carrier)
         local _,goal_y=players.xy(config.CPU_FIRST)
         local zone=zone_for(px,dir)
-        if not zone then return nil end
+        if not zone then diag.reason="INVALID_ZONE";return nil,diag end
         local best=nil
         players.each_my(function(base)
             if base~=carrier and base~=config.MY_FIRST then
+                diag.candidate_count=diag.candidate_count+1
                 local rx,ry=players.xy(base)
                 local forward=(rx-px)*dir
                 local vertical=ry-py
@@ -88,7 +97,9 @@ function M.new(config,players,field_side,mem)
                     suitable=suitable and zone==3
                         and math.abs(ry-goal_y)+20<math.abs(py-goal_y)
                 end
-                if suitable and zone_for(rx,dir)~=nil then
+                if not suitable or zone_for(rx,dir)==nil then
+                    diag.geometry_rejected=diag.geometry_rejected+1
+                else
                     local receiver_clearance=99999
                     local corridor=99999
                     local dx,dy=rx-px,ry-py
@@ -107,8 +118,16 @@ function M.new(config,players,field_side,mem)
                         or c.min_receiver_clearance
                     local min_lc=zone==3 and c.lateral_lane_clearance
                         or c.min_lane_clearance
-                    if receiver_clearance>=min_rc and corridor>=min_lc
-                        and (intent~="LATERAL" or deep_lateral_safe(px,py,rx,ry,dir,receiver_clearance)) then
+                    local lateral_safe=intent~="LATERAL"
+                        or deep_lateral_safe(px,py,rx,ry,dir,receiver_clearance)
+                    if receiver_clearance<min_rc then
+                        diag.clearance_rejected=diag.clearance_rejected+1
+                    elseif corridor<min_lc then
+                        diag.lane_rejected=diag.lane_rejected+1
+                    elseif not lateral_safe then
+                        diag.deep_lateral_rejected=diag.deep_lateral_rejected+1
+                    else
+                        diag.valid_count=diag.valid_count+1
                         local score=math.min(receiver_clearance,180)*c.weight_clearance
                             +math.min(corridor,180)*c.weight_lane
                         if zone<3 then
@@ -132,7 +151,12 @@ function M.new(config,players,field_side,mem)
                 end
             end
         end)
-        return best
+        if best then diag.reason="OUTLET_AVAILABLE"
+        elseif diag.candidate_count==0 then diag.reason="NO_TEAMMATE"
+        elseif diag.geometry_rejected==diag.candidate_count then
+            diag.reason="NO_CARDINAL_LANE"
+        else diag.reason="SAFETY_FILTER" end
+        return best,diag
     end
     function obj.fire(plan,movement)
         if not plan or obj.cooldown>0 then return false end
