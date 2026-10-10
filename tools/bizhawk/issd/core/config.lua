@@ -328,6 +328,18 @@ M.POSSESSION_FALLBACK = {
     min_goal_separation=120,
 }
 
+M.CLEAR_LANE_SHOT_APPROACH = {
+    enabled=true,
+    target_distance=140,
+    start_margin=20,
+    max_advance=60,
+    max_frames=25,
+    min_defender_clearance=75,
+    min_forward=25,
+    lane_width=46,
+    max_lateral_drift=24,
+}
+
 M.SHOOT = {
     button = "X",
     dash_shoot_calibration = true, -- alternate normal and Y+X shots
