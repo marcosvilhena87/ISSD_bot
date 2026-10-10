@@ -453,6 +453,9 @@ local function step_bot()
     end
     local possession = ball.possession()
     local gs = game_state.read()
+    if possession~=my_base or not game_state.is_live(gs) then
+        clear_lane_shot_approach.reset()
+    end
     if defensive_clear_charge and
         (possession~=defensive_clear_charge.carrier or gs~=0
          or not gameplay_active.is_active(gameplay_value)) then
