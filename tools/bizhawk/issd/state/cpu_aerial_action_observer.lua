@@ -56,7 +56,15 @@ function M.new(config,mem,players)
   local w=o.window
   -- Buffer each frame; it is only emitted when a candidate contact appears.
   local prior=history[#history]
+  local cpu_positions={}
+  players.each_cpu(function(base)
+   if base~=config.CPU_FIRST then
+    local px,py=players.xy(base)
+    cpu_positions[base]={x=px,y=py}
+   end
+  end)
   history[#history+1]={frame=frame,x=x,y=y,height=height,
+      cpu_positions=cpu_positions,
       owner=owner,nearest=nearest,distance=distance,
       horizontal_dx=prior and x-prior.x or nil,
       horizontal_dy=prior and y-prior.y or nil,
@@ -95,16 +103,35 @@ function M.new(config,mem,players)
          and change>=CHANGE_THRESHOLD then
       w.trajectory_changes=w.trajectory_changes+1
       w.last_event=frame
-      -- Emit the preceding trajectory for retrospective contact analysis.
+      -- Freeze the CPU player's identity at the candidate instant.
+      -- Past positions are read from stored frames, never from current RAM.
+      local contact_player=nearest
+      local contact_position=cpu_positions[contact_player]
       for i=1,#history-1 do
        local h=history[i]
        if frame-h.frame<=PRE_FRAMES then
+        local fixed=h.cpu_positions[contact_player]
+        local prior_fixed=i>1 and history[i-1].cpu_positions[contact_player] or nil
+        local fixed_distance=fixed and math.sqrt(
+         (h.x-fixed.x)^2+(h.y-fixed.y)^2) or nil
         event(events,"CPU_AERIAL_PRECONTACT_SAMPLE",
-         "RETROSPECTIVE_BALL_AND_CPU_PROXIMITY",w,h.frame,
+         "RETROSPECTIVE_SAME_CPU_PLAYER",w,h.frame,
          h.owner,h.x,h.y,h.height,h.nearest,h.distance,
          {contact_frame=frame,frames_before_contact=frame-h.frame,
           horizontal_dx=h.horizontal_dx,horizontal_dy=h.horizontal_dy,
-          vertical_delta=h.vertical_delta})
+          vertical_delta=h.vertical_delta,
+          contact_player=contact_player,
+          contact_player_x=contact_position and contact_position.x or nil,
+          contact_player_y=contact_position and contact_position.y or nil,
+          fixed_player_x=fixed and fixed.x or nil,
+          fixed_player_y=fixed and fixed.y or nil,
+          fixed_player_distance=fixed_distance,
+          fixed_player_dx=prior_fixed and fixed.x-prior_fixed.x or nil,
+          fixed_player_dy=prior_fixed and fixed.y-prior_fixed.y or nil,
+          relative_dx=prior_fixed and h.horizontal_dx and
+              h.horizontal_dx-(fixed.x-prior_fixed.x) or nil,
+          relative_dy=prior_fixed and h.horizontal_dy and
+              h.horizontal_dy-(fixed.y-prior_fixed.y) or nil})
        end
       end
       event(events,"CPU_AERIAL_TRAJECTORY_CHANGE",
