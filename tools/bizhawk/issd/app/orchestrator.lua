@@ -128,7 +128,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="cpu-aerial-precontact-history-20261010-v49"
+local BOT_BUILD_ID="cpu-aerial-fixed-player-history-20261010-v50"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -485,7 +485,10 @@ local function step_bot()
             "before_vx","before_vy","after_vx","after_vy",
             "delta_velocity","sample_dt","previous_sample_dt",
             "contact_frame","frames_before_contact",
-            "horizontal_dx","horizontal_dy","vertical_delta"}) do
+            "horizontal_dx","horizontal_dy","vertical_delta",
+            "contact_player","contact_player_x","contact_player_y",
+            "fixed_player_x","fixed_player_y","fixed_player_distance",
+            "fixed_player_dx","fixed_player_dy","relative_dx","relative_dy"}) do
             detail=detail..";"..key.."="..tostring(ev[key])
         end
         report:write(ev.kind,true,
