@@ -119,7 +119,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="defensive-pursuit-continuity-20261009-v18"
+local BOT_BUILD_ID="aerial-contact-outcome-20261009-v19"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -144,6 +144,7 @@ local last_flight_discrepancy=false
 local flight_interception_pending=nil
 local danger_lock=nil
 local header_last_frame=-99999
+local defensive_header_pending=nil
 local header_last_height=nil
 local aerial_contest_lock=nil
 local long_pass_ai_lock=nil
@@ -1991,6 +1992,8 @@ local function step_bot()
                     movement.move_toward_button(dx,dy,"X")
                 end
                 header_last_frame=report.frame
+                defensive_header_pending={frame=report.frame,base=my_base,
+                    x=bx,y=by,height=height,observed_unowned=false}
                 local state=make_state(my_base,dx,dy,
                     "DEFENSIVE_HEADER_ATTEMPT",possession,gs)
                 state.header_height=height
@@ -2169,6 +2172,33 @@ local function step_bot()
                 return attach_live_state(state,"LONG_PASS_AI_ASSIST","MY_UNOWNED_BALL")
             end
             -- During warmup, preserve existing tactical decisions.
+        end
+
+        -- A failed defensive header must not leave the defender neutral while
+        -- the ball remains near the own goal. Contact is inferred, never assumed.
+        if defensive_header_pending and possession==0 and gs==0
+            and players.valid_my_base(my_base)
+            and my_base~=config.MY_FIRST then
+            local hc=config.AERIAL_CONTACT_OUTCOME_GUARD
+            local age=report.frame-defensive_header_pending.frame
+            local hh=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
+            local gx,gy=players.xy(config.MY_FIRST)
+            local px,py=players.xy(my_base)
+            local gd=math.sqrt((bx-gx)^2+(by-gy)^2)
+            local dist=math.sqrt((bx-px)^2+(by-py)^2)
+            if age>=hc.recovery_delay_frames and age<hc.max_frames
+                and hh<=hc.recovery_max_height
+                and gd<=config.DEFENSIVE_HEADER.goal_radius
+                and dist<=hc.recovery_distance then
+                local dx,dy=bx-px,by-py
+                movement.move_toward(dx,dy)
+                local state=make_state(my_base,dx,dy,
+                    "AERIAL_CONTACT_RECOVERY",possession,gs)
+                state.header_height=hh
+                state.header_distance=dist
+                return attach_live_state(state,"AERIAL_CONTACT_RECOVERY",
+                    "MY_UNOWNED_BALL")
+            end
         end
 
         -- Keep manual chase/rebound arbitration from immediately overriding
@@ -3405,6 +3435,29 @@ while true do
                 ..";height="..tostring(event.height)
                 ..";switches="..tostring(event.switches)
                 ..";source="..tostring(event.source))
+        end
+        if defensive_header_pending then
+            local pending=defensive_header_pending
+            local age=report.frame-pending.frame
+            local result=nil
+            if players.valid_my_base(state.possession) then
+                result="MY_POSSESSION_AFTER_ATTEMPT"
+            elseif players.valid_cpu_base(state.possession) then
+                result="CPU_FIRST_POSSESSION"
+            elseif state.game_state~=0 or state.gameplay_active~=1 then
+                result="STOPPAGE"
+            elseif age>=config.AERIAL_CONTACT_OUTCOME_GUARD.max_frames then
+                result="UNRESOLVED"
+            end
+            if result then
+                report:write("AERIAL_CONTACT_OUTCOME",true,state,
+                    "OBSERVE_AERIAL",
+                    "result="..result..";age="..age
+                    ..";header_base="..pending.base
+                    ..";initial_height="..pending.height
+                    ..";contact_confirmed=unknown")
+                defensive_header_pending=nil
+            end
         end
         if natural_reception_pending then
             local rp=natural_reception_pending
