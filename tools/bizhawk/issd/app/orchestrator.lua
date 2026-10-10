@@ -126,7 +126,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="cpu-aerial-observer-20261010-v46"
+local BOT_BUILD_ID="cpu-aerial-motion-normalized-20261010-v47"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -479,7 +479,9 @@ local function step_bot()
         local detail="sequence="..tostring(ev.sequence)
         for _,key in ipairs({"reason","age","nearest","distance",
             "ball_x","ball_y","height","owner","dx","dy",
-            "min_distance","max_height","trajectory_changes"}) do
+            "min_distance","max_height","trajectory_changes",
+            "before_vx","before_vy","after_vx","after_vy",
+            "delta_velocity","sample_dt","previous_sample_dt"}) do
             detail=detail..";"..key.."="..tostring(ev[key])
         end
         report:write(ev.kind,true,
