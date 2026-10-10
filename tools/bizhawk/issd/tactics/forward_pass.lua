@@ -63,7 +63,11 @@ function M.new(config,players,field_side,mem)
             near_longitudinal_safe=0,near_longitudinal_unsafe=0,
             near_longitudinal_receiver=nil,near_longitudinal_gap=nil,
             near_longitudinal_forward=nil,near_longitudinal_lateral=nil,
-            near_longitudinal_clearance=nil,near_longitudinal_lane=nil}
+            near_longitudinal_clearance=nil,near_longitudinal_lane=nil,
+            diagonal_candidates=0,diagonal_safe=0,diagonal_unsafe=0,
+            diagonal_receiver=nil,diagonal_forward=nil,
+            diagonal_lateral=nil,diagonal_distance=nil,
+            diagonal_lane=nil,diagonal_receiver_clearance=nil}
         if obj.cooldown>0 then diag.reason="COOLDOWN";return nil,diag end
         if not players.valid_my_base(carrier)
             or carrier==config.MY_FIRST then
@@ -86,6 +90,46 @@ function M.new(config,players,field_side,mem)
                 local vertical=ry-py
                 local lateral=math.abs(vertical)
                 local d=distance(px,py,rx,ry)
+                -- Passive counterfactual: diagonal ground pass to a teammate
+                -- rejected by the cardinal progressive geometry. Segment
+                -- clearance is not proof that diagonal+B works in the ROM.
+                if zone<3 and forward>=c.min_forward
+                    and forward<=c.max_forward
+                    and lateral>c.max_lateral
+                    and lateral<=c.max_lateral+100
+                    and d<=c.max_distance then
+                    diag.diagonal_candidates=diag.diagonal_candidates+1
+                    local receiver_space=99999
+                    local lane=99999
+                    local dx,dy=rx-px,ry-py
+                    players.each_cpu(function(cpu)
+                        local ex,ey=players.xy(cpu)
+                        receiver_space=math.min(receiver_space,
+                            distance(rx,ry,ex,ey))
+                        local t=((ex-px)*dx+(ey-py)*dy)/(d*d)
+                        if t>0.05 and t<1.05 then
+                            local q=math.max(0,math.min(1,t))
+                            lane=math.min(lane,
+                                distance(ex,ey,px+q*dx,py+q*dy))
+                        end
+                    end)
+                    local safe=receiver_space>=c.min_receiver_clearance
+                        and lane>=c.min_lane_clearance
+                    if safe then diag.diagonal_safe=diag.diagonal_safe+1
+                    else diag.diagonal_unsafe=diag.diagonal_unsafe+1 end
+                    if not diag.diagonal_receiver or
+                        (safe and diag.diagonal_receiver_clearance<c.min_receiver_clearance)
+                        or (safe==(diag.diagonal_receiver_clearance>=c.min_receiver_clearance
+                                  and diag.diagonal_lane>=c.min_lane_clearance)
+                            and d<diag.diagonal_distance) then
+                        diag.diagonal_receiver=base
+                        diag.diagonal_forward=forward
+                        diag.diagonal_lateral=lateral
+                        diag.diagonal_distance=d
+                        diag.diagonal_lane=lane
+                        diag.diagonal_receiver_clearance=receiver_space
+                    end
+                end
                 if zone<3 then
                     local category=forward<0 and "BEHIND"
                         or forward<c.min_forward and "TOO_CLOSE"
