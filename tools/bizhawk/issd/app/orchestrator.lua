@@ -147,7 +147,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="five-direction-outlet-observer-20261010-v69"
+local BOT_BUILD_ID="reporting-register-refactor-20261010-v70"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -531,6 +531,75 @@ local function observe_five_direction_pass(my_base,outlet)
     end
     report:write(result.kind,true,{my_base=my_base},
         "OBSERVE_FIVE_DIRECTION_PASS",table.concat(pieces,";"))
+end
+
+-- Keep reporting and its expression registers outside the tactical step.
+local function observe_clearance_and_long_pass(state)
+        local clearance=defensive_clearance_outcome.update(state,report.frame)
+        if clearance then
+            report:write("DEF_CLEAR_OUTCOME_"..clearance.kind,true,state,
+                "OBSERVE_CLEARANCE",
+                "reason="..tostring(clearance.reason)
+                ..";sequence="..clearance.sequence
+                ..";age="..clearance.age
+                ..";progress="..tostring(clearance.progress)
+                ..";start_x="..tostring(clearance.start_x)
+                ..";end_x="..tostring(clearance.end_x)
+                ..";variant="..tostring(clearance.variant)
+                ..";charge_frames="..clearance.frames
+                ..";owner="..tostring(clearance.owner)
+                ..";receiver="..tostring(clearance.receiver)
+                ..";receiver_x="..tostring(clearance.receiver_x)
+                ..";inactive_frames="..tostring(clearance.inactive_frames)
+                ..";game_state="..tostring(clearance.game_state)
+                ..";gameplay_active="..tostring(clearance.gameplay_active))
+        end
+        for _,event in ipairs(long_pass_position_observer.update(
+            state,report.frame,movement.last_command) or {}) do
+            report:write("LONG_PASS_POSITION_"..event.kind,true,state,
+                "OBSERVE_LONG_PASS",
+                "reason="..tostring(event.reason)
+                ..";sequence="..tostring(event.sequence)
+                ..";age="..tostring(event.age)
+                ..";neutral_frames="..tostring(event.neutral_frames)
+                ..";neutral_distance="..tostring(event.neutral_distance)
+                ..";directional_frames="..tostring(event.directional_frames)
+                ..";directional_distance="..tostring(event.directional_distance)
+                ..";switches="..tostring(event.switches)
+                ..";initial_ball_distance="..tostring(event.initial_ball_distance)
+                ..";min_ball_distance="..tostring(event.min_ball_distance)
+                ..";gameplay_active="..tostring(event.gameplay_active)
+                ..";game_state="..tostring(event.game_state))
+        end
+        for _,event in ipairs(long_pass_receiver_selection.update(state,report.frame,movement.last_command) or {}) do
+            report:write("LONG_PASS_RECEIVER_"..event.kind,true,state,
+                "OBSERVE_LONG_PASS",
+                "sequence="..tostring(event.sequence)
+                ..";age="..tostring(event.age)
+                ..";previous="..tostring(event.previous)
+                ..";current="..tostring(event.current)
+                ..";travel="..tostring(event.travel)
+                ..";straight="..tostring(event.straight)
+                ..";ball_distance="..tostring(event.ball_distance)
+                ..";height="..tostring(event.height)
+                ..";switches="..tostring(event.switches)
+                ..";source="..tostring(event.source)
+                ..";band="..tostring(event.band)
+                ..";selected="..tostring(event.selected)
+                ..";neutral_frames="..tostring(event.neutral_frames)
+                ..";neutral_movement="..tostring(event.neutral_movement)
+                ..";direction_frames="..tostring(event.direction_frames)
+                ..";direction_movement="..tostring(event.direction_movement)
+                ..";intervention_frames="..tostring(event.intervention_frames)
+                ..";intervention_movement="..tostring(event.intervention_movement)
+                ..";closest="..tostring(event.closest)
+                ..";closest_distance="..tostring(event.closest_distance)
+                ..";previous_distance="..tostring(event.previous_distance)
+                ..";selected_distance="..tostring(event.selected_distance)
+                ..";available="..tostring(event.available)
+                ..";gameplay_active="..tostring(event.gameplay_active)
+                ..";game_state="..tostring(event.game_state))
+        end
 end
 
 local function step_bot()
@@ -4506,71 +4575,7 @@ while true do
                 ..";initial_height="..tostring(contest_result.height))
         end
         observe_field_transitions(state)
-        local clearance=defensive_clearance_outcome.update(state,report.frame)
-        if clearance then
-            report:write("DEF_CLEAR_OUTCOME_"..clearance.kind,true,state,
-                "OBSERVE_CLEARANCE",
-                "reason="..tostring(clearance.reason)
-                ..";sequence="..clearance.sequence
-                ..";age="..clearance.age
-                ..";progress="..tostring(clearance.progress)
-                ..";start_x="..tostring(clearance.start_x)
-                ..";end_x="..tostring(clearance.end_x)
-                ..";variant="..tostring(clearance.variant)
-                ..";charge_frames="..clearance.frames
-                ..";owner="..tostring(clearance.owner)
-                ..";receiver="..tostring(clearance.receiver)
-                ..";receiver_x="..tostring(clearance.receiver_x)
-                ..";inactive_frames="..tostring(clearance.inactive_frames)
-                ..";game_state="..tostring(clearance.game_state)
-                ..";gameplay_active="..tostring(clearance.gameplay_active))
-        end
-        for _,event in ipairs(long_pass_position_observer.update(
-            state,report.frame,movement.last_command) or {}) do
-            report:write("LONG_PASS_POSITION_"..event.kind,true,state,
-                "OBSERVE_LONG_PASS",
-                "reason="..tostring(event.reason)
-                ..";sequence="..tostring(event.sequence)
-                ..";age="..tostring(event.age)
-                ..";neutral_frames="..tostring(event.neutral_frames)
-                ..";neutral_distance="..tostring(event.neutral_distance)
-                ..";directional_frames="..tostring(event.directional_frames)
-                ..";directional_distance="..tostring(event.directional_distance)
-                ..";switches="..tostring(event.switches)
-                ..";initial_ball_distance="..tostring(event.initial_ball_distance)
-                ..";min_ball_distance="..tostring(event.min_ball_distance)
-                ..";gameplay_active="..tostring(event.gameplay_active)
-                ..";game_state="..tostring(event.game_state))
-        end
-        for _,event in ipairs(long_pass_receiver_selection.update(state,report.frame,movement.last_command) or {}) do
-            report:write("LONG_PASS_RECEIVER_"..event.kind,true,state,
-                "OBSERVE_LONG_PASS",
-                "sequence="..tostring(event.sequence)
-                ..";age="..tostring(event.age)
-                ..";previous="..tostring(event.previous)
-                ..";current="..tostring(event.current)
-                ..";travel="..tostring(event.travel)
-                ..";straight="..tostring(event.straight)
-                ..";ball_distance="..tostring(event.ball_distance)
-                ..";height="..tostring(event.height)
-                ..";switches="..tostring(event.switches)
-                ..";source="..tostring(event.source)
-                ..";band="..tostring(event.band)
-                ..";selected="..tostring(event.selected)
-                ..";neutral_frames="..tostring(event.neutral_frames)
-                ..";neutral_movement="..tostring(event.neutral_movement)
-                ..";direction_frames="..tostring(event.direction_frames)
-                ..";direction_movement="..tostring(event.direction_movement)
-                ..";intervention_frames="..tostring(event.intervention_frames)
-                ..";intervention_movement="..tostring(event.intervention_movement)
-                ..";closest="..tostring(event.closest)
-                ..";closest_distance="..tostring(event.closest_distance)
-                ..";previous_distance="..tostring(event.previous_distance)
-                ..";selected_distance="..tostring(event.selected_distance)
-                ..";available="..tostring(event.available)
-                ..";gameplay_active="..tostring(event.gameplay_active)
-                ..";game_state="..tostring(event.game_state))
-        end
+        observe_clearance_and_long_pass(state)
         if defensive_header_pending then
             local pending=defensive_header_pending
             local age=report.frame-pending.frame
