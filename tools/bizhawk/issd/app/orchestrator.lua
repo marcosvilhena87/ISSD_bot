@@ -24,6 +24,7 @@ local BallContestFeasibility = dofile(DIR .. "../state/ball_contest_feasibility.
 local GameState = dofile(DIR .. "../state/game_state.lua")
 local GameplayActive = dofile(DIR .. "../state/gameplay_active.lua")
 local FieldSide = dofile(DIR .. "../state/field_side.lua")
+local OrientationConsistencyObserver = dofile(DIR .. "../state/orientation_consistency_observer.lua")
 local Movement = dofile(DIR .. "../control/movement.lua")
 local Geometry = dofile(DIR .. "../core/geometry.lua")
 local Defense = dofile(DIR .. "../tactics/defense.lua")
@@ -73,6 +74,7 @@ local contest_feasibility = BallContestFeasibility.new(config, players)
 local game_state = GameState.new(config, mem)
 local gameplay_active = GameplayActive.new(config, mem)
 local field_side = FieldSide.new(config, mem)
+local orientation_consistency_observer = OrientationConsistencyObserver.new(config,mem,players)
 local defensive_midfield_transition = DefensiveMidfieldTransition.new(config,mem,players,field_side)
 local cpu_pass_observer = CPUPassObserver.new(config,players,field_side)
 local cpu_aerial_observer = CPUAerialActionObserver.new(config,mem,players)
@@ -131,7 +133,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="offensive-direction-near-goal-20261010-v54"
+local BOT_BUILD_ID="orientation-consistency-20261010-v55"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -457,6 +459,26 @@ local function step_bot()
             "reason=POSSESSION_OR_PLAY_CHANGED;frames="
             ..defensive_clear_charge.frames)
         defensive_clear_charge=nil
+    end
+    -- Monitor orientation without modifying field_side decisions.
+    local orientation=orientation_consistency_observer.update(report.frame,gs,
+        gameplay_active.is_active(gameplay_value),possession)
+    if orientation then
+        report:write(orientation.kind,true,
+            {possession=possession,game_state=gs,my_base=my_base,
+             gameplay_active=gameplay_value},
+            "OBSERVE_ORIENTATION",
+            "status="..tostring(orientation.status)
+            ..";my_side="..tostring(orientation.my_side)
+            ..";cpu_side="..tostring(orientation.cpu_side)
+            ..";flag_attack="..tostring(orientation.flag_attack)
+            ..";cpu_flag_attack="..tostring(orientation.cpu_flag_attack)
+            ..";geometry_attack="..tostring(orientation.geometry_attack)
+            ..";my_gk_x="..tostring(orientation.my_gk_x)
+            ..";cpu_gk_x="..tostring(orientation.cpu_gk_x)
+            ..";gk_separation="..tostring(orientation.gk_separation)
+            ..";cpu_ball_progress="..tostring(orientation.cpu_ball_progress)
+            ..";cpu_motion_samples="..tostring(orientation.cpu_motion_samples))
     end
     -- CPU telemetry observes only; never issues game commands.
     local cbx,cby=ball.world_xy()
