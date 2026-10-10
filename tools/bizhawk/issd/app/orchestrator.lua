@@ -133,7 +133,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="period-time-up-classification-20261010-v57"
+local BOT_BUILD_ID="fast-period-orientation-20261010-v58"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -463,7 +463,7 @@ local function step_bot()
     end
     -- Operational orientation uses confirmed GK geometry; raw flags remain observed.
     local resolved=field_side.diagnostic()
-    if report.frame%30==0 or resolved.source=="GOALKEEPER_GEOMETRY_CONFIRMED" then
+    if report.frame%30==0 or (resolved.source=="GOALKEEPER_GEOMETRY_CONFIRMED" or resolved.source=="PERIOD_RESTART_CONFIRMED") then
         report:write("ORIENTATION_RESOLVED",true,
             {possession=possession,game_state=gs,my_base=my_base,
              gameplay_active=gameplay_value},
@@ -472,6 +472,7 @@ local function step_bot()
             ..";source="..tostring(resolved.source)
             ..";candidate="..tostring(resolved.candidate)
             ..";candidate_frames="..tostring(resolved.candidate_frames)
+            ..";restart_budget="..tostring(resolved.restart_budget)
             ..";geometry="..tostring(resolved.geometry)
             ..";my_gk_x="..tostring(resolved.my_gk_x)
             ..";cpu_gk_x="..tostring(resolved.cpu_gk_x)
