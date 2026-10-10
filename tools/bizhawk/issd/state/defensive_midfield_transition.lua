@@ -43,7 +43,10 @@ function M.new(config,mem,players,field_side)
      progress_after_receive=p and p.receive_progress and x
        and (x-p.receive_progress)*dir or nil,
      max_progress_after_receive=p and p.max_progress_after_receive,
-     source=p and p.source}
+     source=p and p.source,
+     reception_kind=p and p.reception_kind,
+     grace_deadline=p and p.grace_deadline,
+     grace_granted=p and p.grace_granted}
   end
   local valid=state.game_state==0 -- 0x00BA authoritative for transition observation
   local my=players.valid_my_base(owner)
@@ -55,18 +58,20 @@ function M.new(config,mem,players,field_side)
   if pending then
    -- Link the first individually confirmed reception after an action.
    -- The command itself never counts as a successful pass or clearance.
-   if pending.action_frame and owner==0 then
+   if valid and pending.action_frame and owner==0 then
     pending.action_saw_loose=true
    end
-   if pending.action_frame and not pending.first_receiver
+   if valid and pending.action_frame and not pending.first_receiver
       and frame>pending.action_frame and my
       and (owner~=pending.action_owner or pending.action_saw_loose) then
     pending.first_receiver=owner
     pending.receive_frame=frame
     pending.receive_progress=x
     pending.received_zone=z
+    pending.reception_kind=owner~=pending.action_owner
+      and "OTHER_PLAYER" or "SAME_PLAYER_RECOVERY"
     pending.max_progress_after_receive=0
-    emit("RECEIVED","MY_INDIVIDUAL_RECEPTION",pending)
+    emit("RECEIVED",pending.reception_kind,pending)
    end
    if pending.receive_progress and my and x then
     pending.max_progress_after_receive=math.max(
@@ -80,9 +85,21 @@ function M.new(config,mem,players,field_side)
     emit("FAILED",reason,pending);o.pending=nil
    elseif cpu then
     emit("FAILED","CPU_TURNOVER",pending);o.pending=nil
-   elseif frame-pending.start>=c.max_frames then
-    emit("FAILED","TIMEOUT",pending);o.pending=nil
-   elseif my and z==2 then
+   elseif frame-pending.start>=c.max_frames
+      and not (pending.grace_deadline and frame<=pending.grace_deadline) then
+    -- Only a currently confirmed midfield carrier can earn a short grace.
+    if my and z==2 and pending.first_middle
+       and not pending.grace_granted
+       and frame-pending.first_middle<c.stable_frames then
+      pending.grace_granted=true
+      pending.grace_deadline=c.max_frames+pending.start
+        +(c.stability_grace_frames or c.stable_frames)
+      emit("GRACE","MIDFIELD_STABILITY_PENDING",pending)
+    else
+      emit("FAILED","TIMEOUT",pending);o.pending=nil
+    end
+   end
+   if o.pending and my and z==2 then
     if pending.first_middle==nil then
      pending.first_middle=frame
      emit("CROSSED","INDIVIDUAL_MY_POSSESSION",pending)
@@ -90,8 +107,13 @@ function M.new(config,mem,players,field_side)
     if frame-pending.first_middle>=c.stable_frames then
      emit("ESTABLISHED","STABLE_MY_POSSESSION",pending);o.pending=nil
     end
-   else
-    pending.first_middle=nil
+   elseif o.pending then
+    -- Stability must be consecutive; losing control cancels the grace.
+    if pending.grace_granted then
+      emit("FAILED","GRACE_INTERRUPTED",pending);o.pending=nil
+    else
+      pending.first_middle=nil
+    end
    end
   end
   if o.pending then
@@ -112,7 +134,8 @@ function M.new(config,mem,players,field_side)
       action_count=0,action_frame=nil,action_kind=nil,
       action_owner=nil,action_saw_loose=false,
       first_receiver=nil,receive_frame=nil,
-      receive_progress=nil,received_zone=nil,max_progress_after_receive=0}
+      receive_progress=nil,received_zone=nil,max_progress_after_receive=0,
+      reception_kind=nil,grace_deadline=nil,grace_granted=false}
     emit("START","CONFIRMED_FIRST_THIRD_POSSESSION",o.pending)
    end
   end
@@ -135,6 +158,7 @@ function M.new(config,mem,players,field_side)
    p.receive_frame=nil
    p.receive_progress=nil
    p.received_zone=nil
+   p.reception_kind=nil
    p.max_progress_after_receive=0
    emit(action,action=="PASS" and "PASS_COMMANDED_NOT_CONFIRMED"
      or "CLEARANCE_NOT_CONFIRMED",p)
