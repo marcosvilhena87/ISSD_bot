@@ -493,6 +493,17 @@ M.OWNERSHIP_PROBE = {
 -- Only wired to MY_UNOWNED_BALL; CPU_UNOWNED_BALL retains its existing chase.
 -- World-unit thresholds are provisional pending CSV-based calibration.
 -- Ground-only interception; aerial/goal emergencies retain priority.
+-- Passive ETA opportunity observer; no control changes.
+M.GROUND_OPPORTUNITY_OBSERVER = {
+    max_height=8,
+    min_advantage=6,
+    stability_frames=3,
+    max_my_distance=180,
+    max_episode_frames=120,
+    my_speed=5,
+    cpu_speed=5,
+}
+
 M.GROUND_BALL_INTERCEPTION = {
     enabled=true,
     max_height=8,
