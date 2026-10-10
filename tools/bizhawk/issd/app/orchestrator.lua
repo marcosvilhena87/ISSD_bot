@@ -466,6 +466,7 @@ local function step_bot()
     local possession = ball.possession()
     local gs = game_state.read()
     local loss_bx,loss_by=ball.world_xy()
+    do -- restrict temporary telemetry locals to this block
     local outcome=ground_intercept_outcome_tracker.update(report.frame,
         gameplay_active.is_active(gameplay_value),gs,possession,loss_bx,loss_by)
     if outcome then
@@ -487,6 +488,8 @@ local function step_bot()
             ..";end_y="..tostring(outcome.end_y)
             ..";reason="..tostring(outcome.reason))
     end
+    end -- ground intercept outcome
+    do -- restrict possession-loss telemetry locals
     local loss_events=my_possession_loss_tracker.update(report.frame,
         gameplay_active.is_active(gameplay_value),gs,
         possession,loss_bx,loss_by)
@@ -507,6 +510,7 @@ local function step_bot()
             ..";confirmation_frames="..tostring(loss_ev.confirmation_frames)
             ..";reason="..tostring(loss_ev.reason))
     end
+    end -- possession-loss telemetry
     if possession~=my_base or not game_state.is_live(gs) then
         clear_lane_shot_approach.reset()
     end
@@ -821,6 +825,7 @@ local function step_bot()
         second_ball_lock=nil
     end
     second_ball_last_shots_cpu=shots_cpu
+    do -- restrict second-ball race telemetry locals
     local race_bx,race_by=ball.world_xy()
     local race_sample=gk_rebound_race_tracker.update(report.frame,
         second_ball_lock and second_ball_lock.sequence or nil,
@@ -843,6 +848,7 @@ local function step_bot()
             ..";eta_gap="..race_sample.eta_gap
             ..";evidence="..race_sample.note)
     end
+    end -- second-ball race telemetry
     if second_ball_lock then
         if possession==0 then second_ball_lock.saw_unowned=true end
         local reason=nil
