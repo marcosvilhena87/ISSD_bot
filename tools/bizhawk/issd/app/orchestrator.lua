@@ -120,7 +120,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="long-pass-observers-game-state-20261010-v31"
+local BOT_BUILD_ID="cpu-runner-noposs-continuity-20261010-v32"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -785,12 +785,13 @@ local function step_bot()
             elseif runner_step>continuity_cfg.max_runner_step then
                 reason="RUNNER_DISPLACEMENT"
             else
+                t.noposs=age
                 if not t.active and age>=1 then
                     t.active=true
                     report:write("CPU_CARRIER_CONTINUITY_START",true,
                         {possession=possession,game_state=gs,my_base=my_base},
                         "OBSERVE_CARRIER","base="..t.base..";distance="..dist
-                        ..";age="..age)
+                        ..";age="..age..";noposs="..tostring(t.noposs))
                 end
                 t.x,t.y=cx,cy
                 t.ball_x,t.ball_y=bx,by
@@ -801,7 +802,8 @@ local function step_bot()
                 report:write("CPU_CARRIER_CONTINUITY_END",true,
                     {possession=possession,game_state=gs,my_base=my_base},
                     "OBSERVE_CARRIER","base="..t.base..";reason="..reason
-                    ..";age="..(report.frame-t.last_confirmed))
+                    ..";age="..(report.frame-t.last_confirmed)
+                    ..";noposs="..tostring(t.noposs or 0))
             end
             cpu_carrier_continuity=nil
         end
@@ -813,10 +815,12 @@ local function step_bot()
                     {possession=possession,game_state=gs,my_base=my_base},
                     "OBSERVE_CARRIER","base="..t.base
                     ..";reason=POSSESSION_RECONFIRMED;age="
-                    ..(report.frame-t.last_confirmed))
+                    ..(report.frame-t.last_confirmed)
+                    ..";noposs="..tostring(t.noposs or 0))
             end
             cpu_carrier_continuity={base=possession,x=cx,y=cy,
-                ball_x=bx,ball_y=by,last_confirmed=report.frame,active=false}
+                ball_x=bx,ball_y=by,last_confirmed=report.frame,active=false,
+                noposs=0}
         end
     end
 
@@ -2495,10 +2499,12 @@ local function step_bot()
                 local state=make_state(my_base,dx,dy,
                     "CPU_CARRIER_CONTINUITY_PRESS",possession,gs)
                 state.live_carrier=base
+                state.cpu_noposs=cpu_carrier_continuity.noposs
+                state.cpu_carrier_inferred=true
                 state.live_target_x=tx
                 state.live_target_y=ty
                 return attach_live_state(state,"CPU_CARRIER_CONTINUITY",
-                    "CPU_UNOWNED_BALL")
+                    "CPU_CONTROLLED")
             end
         end
 
