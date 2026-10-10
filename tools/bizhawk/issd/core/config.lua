@@ -56,7 +56,11 @@ M.AERIAL_CONTEST_LOCK = {
 M.AERIAL_NATURAL_RECEPTION_GUARD = {
     enabled=true, -- experimental; disable to revert
     min_height=21, max_height=42,
+    approach_max_height=80,
+    approach_distance=85,
     reception_distance=30,
+    stop_distance=18,
+    telemetry_every_frames=12,
     min_cpu_clearance=95,
     reset_height=12,
     max_attempt_lock_frames=90,
