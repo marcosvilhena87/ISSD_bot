@@ -120,7 +120,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="def-clear-charge-calibration-20261010-v28"
+local BOT_BUILD_ID="def-clear-second-ball-recovery-20261010-v29"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -2336,6 +2336,48 @@ local function step_bot()
                     ..";clearance_sequence="..lock.clearance_sequence)
                 long_pass_ai_lock=nil
             elseif lock.flight_started then
+                -- Intervene only when the selected player has a plausible
+                -- uncontested interception; otherwise preserve game AI movement.
+                local rc=config.DEFENSIVE_CLEARANCE_SECOND_BALL_RECOVERY
+                local nearest_cpu=math.huge
+                players.each_cpu(function(base)
+                    if base~=config.CPU_FIRST then
+                        local cx,cy=players.xy(base)
+                        local d=math.sqrt((bx-cx)^2+(by-cy)^2)
+                        if d<nearest_cpu then nearest_cpu=d end
+                    end
+                end)
+                local nearest_my=math.huge
+                local nearest_base=nil
+                players.each_my(function(base)
+                    if base~=config.MY_FIRST then
+                        local mx,my=players.xy(base)
+                        local d=math.sqrt((bx-mx)^2+(by-my)^2)
+                        if d<nearest_my then nearest_my=d;nearest_base=base end
+                    end
+                end)
+                if rc.enabled and nearest_base==my_base
+                    and dist>lc.contact_distance
+                    and dist<=rc.approach_distance
+                    and nearest_cpu-dist>=rc.min_cpu_margin
+                    and goal_dist>config.DEFENSIVE_HEADER.goal_radius then
+                    local dx,dy=bx-px,by-py
+                    movement.move_toward(dx,dy)
+                    local state=make_state(my_base,dx,dy,
+                        "DEF_CLEAR_SECOND_BALL_APPROACH",possession,gs)
+                    state.live_target_x=bx
+                    state.live_target_y=by
+                    if report.frame%rc.log_interval==0 then
+                        report:write("DEF_CLEAR_SECOND_BALL_DECISION",true,state,
+                            movement.last_command,
+                            "decision=APPROACH;sequence="..lock.clearance_sequence
+                            ..";my_base="..my_base..";my_distance="..dist
+                            ..";cpu_distance="..nearest_cpu
+                            ..";height="..h)
+                    end
+                    return attach_live_state(state,"DEF_CLEAR_SECOND_BALL",
+                        "MY_UNOWNED_BALL")
+                end
                 movement.stop()
                 lock.neutral_frames=lock.neutral_frames+1
                 local state=make_state(my_base,0,0,
