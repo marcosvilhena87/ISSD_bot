@@ -17,6 +17,7 @@ local Ball = dofile(DIR .. "../state/ball.lua")
 local AerialContact = dofile(DIR .. "../state/aerial_contact.lua")
 local AerialDefensiveContact = dofile(DIR .. "../state/aerial_defensive_contact.lua")
 local GKReboundRecovery = dofile(DIR .. "../state/gk_rebound_recovery.lua")
+local GKReboundRaceTracker = dofile(DIR .. "../state/gk_rebound_race_tracker.lua")
 local BallFlightContext = dofile(DIR .. "../state/ball_flight_context.lua")
 local OwnershipProbe = dofile(DIR .. "../state/ownership_probe.lua")
 local BallPhysicalControl = dofile(DIR .. "../state/ball_physical_control.lua")
@@ -71,6 +72,7 @@ local aerial_contact = AerialContact.new(config, mem, players)
 local aerial_contact_unified = AerialContact.new(config, mem, players)
 local aerial_defensive_contact = AerialDefensiveContact.new(config, players)
 local gk_rebound_recovery = GKReboundRecovery.new(config, players)
+local gk_rebound_race_tracker = GKReboundRaceTracker.new(config,players)
 local flight_context = BallFlightContext.new(config, mem, players)
 local ownership_probe = OwnershipProbe.new(config, mem, players)
 local ball_physical_control = BallPhysicalControl.new(config,players)
@@ -141,7 +143,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="ground-intercept-outcomes-20261010-v63"
+local BOT_BUILD_ID="gk-rebound-race-20261010-v64"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -815,6 +817,28 @@ local function step_bot()
         second_ball_lock=nil
     end
     second_ball_last_shots_cpu=shots_cpu
+    local race_bx,race_by=ball.world_xy()
+    local race_sample=gk_rebound_race_tracker.update(report.frame,
+        second_ball_lock and second_ball_lock.sequence or nil,
+        possession,race_bx,race_by)
+    if race_sample then
+        local one,two,cpu=race_sample.my1,race_sample.my2,race_sample.cpu
+        report:write(race_sample.kind,true,
+            {possession=possession,game_state=gs,my_base=my_base,
+             ball_x=race_bx,ball_y=race_by},
+            "OBSERVE_SECOND_BALL_RACE",
+            "sequence="..race_sample.sequence
+            ..";my1_base="..one.base..";my1_distance="..one.distance
+            ..";my1_eta="..one.eta
+            ..";my2_base="..tostring(two and two.base)
+            ..";my2_distance="..tostring(two and two.distance)
+            ..";my2_eta="..tostring(two and two.eta)
+            ..";cpu_base="..cpu.base
+            ..";cpu_distance="..cpu.distance
+            ..";cpu_eta="..cpu.eta
+            ..";eta_gap="..race_sample.eta_gap
+            ..";evidence="..race_sample.note)
+    end
     if second_ball_lock then
         if possession==0 then second_ball_lock.saw_unowned=true end
         local reason=nil
