@@ -1337,7 +1337,7 @@ local function step_bot()
                         state.forward_pass_direction=outlet.direction
                         return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                     end
-                    local exit=defensive_exit.plan(my_base,forward_pass.cooldown)
+                    local exit=defensive_exit.plan(my_base,forward_pass.cooldown,outlet_diag)
                     if exit.mode=="HOLD" and exit.reason=="NO_SAFE_SPACE" then
                         if not defensive_hold_guard then
                             defensive_hold_guard={carrier=my_base,start=report.frame}
