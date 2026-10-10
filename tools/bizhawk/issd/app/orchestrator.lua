@@ -133,7 +133,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="orientation-consistency-20261010-v55"
+local BOT_BUILD_ID="stable-field-orientation-20261010-v56"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -374,6 +374,7 @@ local function step_bot()
 
     local gameplay_value = gameplay_active.read()
     local my_base = read_my_base()
+    field_side.tick(gameplay_active.is_active(gameplay_value),game_state.read())
     if not bot_build_logged then
         report:write("BOT_BUILD",true,
             {my_base=my_base,game_state=game_state.read(),
@@ -460,7 +461,24 @@ local function step_bot()
             ..defensive_clear_charge.frames)
         defensive_clear_charge=nil
     end
-    -- Monitor orientation without modifying field_side decisions.
+    -- Operational orientation uses confirmed GK geometry; raw flags remain observed.
+    local resolved=field_side.diagnostic()
+    if report.frame%30==0 or resolved.source=="GOALKEEPER_GEOMETRY_CONFIRMED" then
+        report:write("ORIENTATION_RESOLVED",true,
+            {possession=possession,game_state=gs,my_base=my_base,
+             gameplay_active=gameplay_value},
+            "STABLE_ORIENTATION",
+            "direction="..tostring(resolved.direction)
+            ..";source="..tostring(resolved.source)
+            ..";candidate="..tostring(resolved.candidate)
+            ..";candidate_frames="..tostring(resolved.candidate_frames)
+            ..";geometry="..tostring(resolved.geometry)
+            ..";my_gk_x="..tostring(resolved.my_gk_x)
+            ..";cpu_gk_x="..tostring(resolved.cpu_gk_x)
+            ..";raw_my_side="..tostring(resolved.raw_my_side)
+            ..";raw_cpu_side="..tostring(resolved.raw_cpu_side))
+    end
+    -- Monitor independent raw signals for subsequent calibration.
     local orientation=orientation_consistency_observer.update(report.frame,gs,
         gameplay_active.is_active(gameplay_value),possession)
     if orientation then
