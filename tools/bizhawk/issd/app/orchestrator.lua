@@ -121,7 +121,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="cpu-carrier-noposs-reconfirmation-20261010-v33"
+local BOT_BUILD_ID="cpu-carrier-noposs-reconfirmation-hotfix-20261010-v34"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -803,7 +803,7 @@ local function step_bot()
             report:write("CPU_NOPOSS_RECONFIRMATION_START",true,
                 {possession=possession,game_state=gs,my_base=my_base},
                 "OBSERVE_NOPOSS","sequence="..obs.sequence
-                ..";base="..obs.last_cpu..";window="..window)
+                ..";base="..obs.pending.base..";window="..window)
         end
         if cpu then obs.last_cpu=possession
         elseif possession~=0 or not valid then obs.last_cpu=nil end
