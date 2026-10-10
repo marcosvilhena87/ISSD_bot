@@ -120,7 +120,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="aerial-reception-decision-20261010-v23"
+local BOT_BUILD_ID="def-mid-transition-diagnostic-20261010-v24"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -3550,7 +3550,16 @@ while true do
                 ..";sequence="..tostring(event.sequence)
                 ..";age="..tostring(event.age)
                 ..";route="..tostring(event.route)
-                ..";boundary="..tostring(event.boundary))
+                ..";boundary="..tostring(event.boundary)
+                ..";game_state="..tostring(event.game_state)
+                ..";gameplay_active="..tostring(event.gameplay_active)
+                ..";possession="..tostring(event.possession)
+                ..";selected="..tostring(event.selected)
+                ..";status="..tostring(event.status)
+                ..";direction="..tostring(event.direction)
+                ..";zone="..tostring(event.zone)
+                ..";owner_changes="..tostring(event.owner_changes)
+                ..";loose_frames="..tostring(event.loose_frames))
         end
         for _,event in ipairs(mid_attack_transition.update(state,report.frame)) do
             report:write("MID_ATTACK_TRANSITION_"..event.kind,true,state,
