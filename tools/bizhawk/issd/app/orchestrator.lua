@@ -120,7 +120,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="game-state-transition-continuity-20261010-v25"
+local BOT_BUILD_ID="long-pass-ai-selection-correlation-20261010-v26"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -3612,7 +3612,7 @@ while true do
                 ..";initial_ball_distance="..tostring(event.initial_ball_distance)
                 ..";min_ball_distance="..tostring(event.min_ball_distance))
         end
-        for _,event in ipairs(long_pass_receiver_selection.update(state,report.frame) or {}) do
+        for _,event in ipairs(long_pass_receiver_selection.update(state,report.frame,movement.last_command) or {}) do
             report:write("LONG_PASS_RECEIVER_"..event.kind,true,state,
                 "OBSERVE_LONG_PASS",
                 "sequence="..tostring(event.sequence)
@@ -3624,7 +3624,13 @@ while true do
                 ..";ball_distance="..tostring(event.ball_distance)
                 ..";height="..tostring(event.height)
                 ..";switches="..tostring(event.switches)
-                ..";source="..tostring(event.source))
+                ..";source="..tostring(event.source)
+                ..";band="..tostring(event.band)
+                ..";selected="..tostring(event.selected)
+                ..";neutral_frames="..tostring(event.neutral_frames)
+                ..";neutral_movement="..tostring(event.neutral_movement)
+                ..";direction_frames="..tostring(event.direction_frames)
+                ..";direction_movement="..tostring(event.direction_movement))
         end
         if defensive_header_pending then
             local pending=defensive_header_pending
