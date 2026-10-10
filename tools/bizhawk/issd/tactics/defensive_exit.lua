@@ -60,7 +60,7 @@ function M.new(config,players,field_side,mem)
   return {mode="HOLD",reason=reason,age=o.age,threat=threat,total=total,
     hold_streak=o.hold_streak,clear_attempts=o.clear_attempts}
  end
- function o.plan(carrier,pass_cooldown)
+ function o.plan(carrier,pass_cooldown,outlet_diag)
   if o.carrier~=carrier then o.reset();o.carrier=carrier end
   o.age=o.age+1
   local x,y=players.xy(carrier)
@@ -191,9 +191,38 @@ function M.new(config,players,field_side,mem)
       local score=math.min(safe,c.escape_space_cap)
         +c.escape_forward_weight*forward
         -c.escape_lateral_penalty*math.abs(v.dy)
+      -- Near-miss pass geometry only biases already-safe dribbles.
+      -- Never turn a rejected diagonal candidate into an actual B pass.
+      local outlet_adjustment=nil
+      if not pressured and outlet_diag and pass_cooldown==0 then
+       local near=outlet_diag.near_longitudinal_receiver
+       local gap=outlet_diag.near_longitudinal_gap
+       if near and players.valid_my_base(near)
+          and outlet_diag.near_longitudinal_safe>0
+          and gap and gap>0 and gap<=40
+          and outlet_diag.near_longitudinal_forward
+          and outlet_diag.near_longitudinal_forward>config.FORWARD_PASS.max_forward
+          and forward>0 then
+        score=score+math.min(forward,gap)*0.8
+        outlet_adjustment="LONGITUDINAL_TOO_FAR"
+       end
+       local lateral_receiver=outlet_diag.closest_receiver
+       local excess=outlet_diag.closest_lateral_excess
+       if lateral_receiver and players.valid_my_base(lateral_receiver)
+          and excess and excess>0 and excess<=24 then
+        local _,receiver_y=players.xy(lateral_receiver)
+        local old_gap=math.abs(receiver_y-y)
+        local new_gap=math.abs(receiver_y-ty)
+        if new_gap<old_gap and v.dy~=0 then
+         score=score+math.min(old_gap-new_gap,excess)*0.8
+         outlet_adjustment="CARDINAL_LATERAL_NEAR_MISS"
+        end
+       end
+      end
       if not best_move or score>best_move.score then
        best_move={mode="MOVE",dx=v.dx,dy=v.dy,
         reason="SAFE_"..v.kind,score=score,clearance=safe,
+        outlet_adjustment=outlet_adjustment,
         age=o.age,threat=threat}
       end
      end
