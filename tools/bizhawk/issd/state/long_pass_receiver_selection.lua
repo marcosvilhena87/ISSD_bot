@@ -71,7 +71,8 @@ function M.new(config,players)
    p.last_band=band
    events[#events+1]={kind="DISTANCE_BAND",sequence=p.sequence,
     age=frame-p.start,travel=p.distance,band=band,
-    selected=selected,ball_distance=px
+    selected=selected,gameplay_active=state.gameplay_active,
+    game_state=state.game_state,ball_distance=px
       and math.sqrt((x-px)^2+(y-py)^2) or nil,
     neutral_frames=p.neutral_frames,neutral_movement=p.neutral_movement,
     direction_frames=p.direction_frames,direction_movement=p.direction_movement,
@@ -90,7 +91,8 @@ function M.new(config,players)
     previous=p.previous,current=selected,travel=p.distance,
     straight=math.sqrt((x-p.x)^2+(y-p.y)^2),
     ball_distance=math.sqrt((x-px)^2+(y-py)^2),
-    height=state.ball_height,band=band,
+    height=state.ball_height,gameplay_active=state.gameplay_active,
+    game_state=state.game_state,band=band,
     closest=closest,closest_distance=closest_dist,
     previous_distance=receiver_geometry(p.previous),
     selected_distance=receiver_geometry(selected),available=available,
@@ -103,7 +105,7 @@ function M.new(config,players)
   end
   p.previous=selected
   local reason=nil
-  if state.game_state~=0 or state.gameplay_active~=1 then reason="STOPPAGE"
+  if state.game_state~=0 then reason="GAME_STATE_STOPPAGE"
   elseif frame-p.start>=c.max_frames then reason="TIMEOUT"
   elseif frame>p.start and players.valid_cpu_base(state.possession) then reason="CPU_POSSESSION"
   elseif frame>p.start and players.valid_my_base(state.possession)
@@ -112,6 +114,7 @@ function M.new(config,players)
    events[#events+1]={kind="END",sequence=p.sequence,age=frame-p.start,
     travel=p.distance,straight=math.sqrt((x-p.x)^2+(y-p.y)^2),
     switches=p.switches,source=reason,
+    gameplay_active=state.gameplay_active,game_state=state.game_state,
     neutral_frames=p.neutral_frames,neutral_movement=p.neutral_movement,
     direction_frames=p.direction_frames,direction_movement=p.direction_movement,
     intervention_frames=p.intervention_frames,
