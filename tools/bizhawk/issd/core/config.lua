@@ -260,7 +260,7 @@ M.DEEP_DEFENSIVE_LATERAL = {
 M.DEFENSIVE_EXIT = {
     lateral_min=65, lateral_max=190, max_horizontal=30,
     max_pass_distance=210, receiver_clearance=80,
-    lane_clearance=60, hold_before_move=45,
+    lane_clearance=60, hold_before_move=8, -- short settling delay before probing a safe escape
     outlet_next_step=60, outlet_forward_space_weight=0.35,
     outlet_touchline_weight=0.2, outlet_progress_weight=0.15,
     max_advance=70, field_margin=40, step=35,
