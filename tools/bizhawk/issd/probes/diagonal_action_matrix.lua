@@ -36,7 +36,7 @@ local function csv(v)
 end
 local function write(file,fields)
  local out={}
- for _,v in ipairs(fields) do out[#out+1]=csv(v) end
+ for i=1,23 do out[#out+1]=csv(fields[i]) end
  file:write(table.concat(out,",").."\n")
 end
 local function tick(pad)
