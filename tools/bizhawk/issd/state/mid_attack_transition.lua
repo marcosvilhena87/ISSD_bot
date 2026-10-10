@@ -14,7 +14,7 @@ function M.new(config,mem,players,field_side)
  function o.update(s,frame)
   local out={}
   local dir=field_side.attack_direction()
-  local valid=s.game_state==0 and s.gameplay_active==1
+  local valid=s.game_state==0 -- gameplay_active is diagnostic only
   local owner=s.possession
   local my=players.valid_my_base(owner)
   local cpu=players.valid_cpu_base(owner)
