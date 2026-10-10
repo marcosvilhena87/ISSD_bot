@@ -590,6 +590,24 @@ M.SHOT_LANE = {
     telemetry_frames = 15,
 }
 
+-- Interposition and pressure beyond the immediate defensive danger zone.
+M.GLOBAL_GOAL_SIDE_PRESS = {
+    enabled=true,
+    min_goal_distance=35,
+    defense_radius=340, -- retain v51 priority near our goal
+    midfield_radius=900, -- provisional goalkeeper-relative boundary
+    midfield_width=30,
+    attack_width=40,
+    enter_fraction=0.65, -- hysteresis: enter PRESS only well aligned
+    min_along=10,
+    goal_margin=20,
+    cover_offset=55,
+    max_fraction=0.6,
+    midfield_press_offset=30,
+    attack_press_offset=35,
+    deadzone=8,
+}
+
 -- Conservative pressing along the carrier-to-goal blocking corridor.
 M.GOAL_SIDE_TACKLE = {
     enabled=true,
