@@ -149,7 +149,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="throw-in-origin-observer-20261010-v71"
+local BOT_BUILD_ID="five-direction-veto-audit-20261010-v72"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -512,7 +512,7 @@ local function observe_field_transitions(state)
 end
 
 -- Keep passive pass observation outside step_bot to conserve Lua registers.
-local function observe_five_direction_pass(my_base,outlet)
+local function observe_five_direction_pass(my_base,outlet,diagnostic)
     local result=five_direction_pass_observer.evaluate(report.frame,my_base,
         outlet and outlet.receiver or nil)
     if not result then return end
@@ -533,6 +533,45 @@ local function observe_five_direction_pass(my_base,outlet)
     end
     report:write(result.kind,true,{my_base=my_base},
         "OBSERVE_FIVE_DIRECTION_PASS",table.concat(pieces,";"))
+    -- Passive comparison between proposed candidate and real pass-policy veto.
+    if best and not outlet then
+        local diag=diagnostic or {}
+        local counts={
+            {"GEOMETRY",diag.geometry_rejected or 0},
+            {"RECEIVER_PRESSURE",diag.clearance_rejected or 0},
+            {"LANE_BLOCKED",diag.lane_rejected or 0},
+            {"FORWARD",diag.rejected_forward or 0},
+            {"DISTANCE",diag.rejected_distance or 0},
+            {"LATERAL",diag.rejected_lateral or 0},
+            {"DEEP_LATERAL",diag.deep_lateral_rejected or 0}
+        }
+        local largest="NONE"
+        local max_count=0
+        for _,entry in ipairs(counts) do
+            if entry[2]>max_count then
+                largest=entry[1];max_count=entry[2]
+            end
+        end
+        report:write("FIVE_DIRECTION_OUTLET_VETO",true,
+            {my_base=my_base},"OBSERVE_PASS_VETO",
+            "best_sector="..tostring(result.best_sector)
+            ..";candidate="..tostring(best.base)
+            ..";score="..tostring(best.score)
+            ..";lane="..tostring(best.lane)
+            ..";receiver_clearance="..tostring(best.receiver_clearance)
+            ..";policy_reason="..tostring(diag.reason)
+            ..";dominant_rejection="..largest
+            ..";dominant_count="..max_count
+            ..";candidates="..tostring(diag.candidate_count)
+            ..";valid="..tostring(diag.valid_count)
+            ..";geometry="..tostring(diag.geometry_rejected)
+            ..";receiver_pressure="..tostring(diag.clearance_rejected)
+            ..";lane_blocked="..tostring(diag.lane_rejected)
+            ..";rejected_forward="..tostring(diag.rejected_forward)
+            ..";rejected_distance="..tostring(diag.rejected_distance)
+            ..";rejected_lateral="..tostring(diag.rejected_lateral)
+            ..";diagonal_safe="..tostring(diag.diagonal_safe))
+    end
 end
 
 -- Keep reporting and its expression registers outside the tactical step.
@@ -1714,7 +1753,7 @@ local function step_bot()
                     end
                                         -- No forward dribble or Y dash while holding the defensive line.
                     local outlet,outlet_diag=forward_pass.plan(my_base)
-                    observe_five_direction_pass(my_base,outlet)
+                    observe_five_direction_pass(my_base,outlet,outlet_diag)
                     -- Report rejected outlet candidates sparingly. This never
                     -- changes the chosen movement or emergency clearance.
                     if not outlet and outlet_diag
