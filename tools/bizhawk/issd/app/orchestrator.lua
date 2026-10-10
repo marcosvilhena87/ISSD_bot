@@ -122,7 +122,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="defensive-diagonal-observer-20261010-v42"
+local BOT_BUILD_ID="defensive-diagonal-experimental-20261010-v43"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -1187,6 +1187,7 @@ local function step_bot()
                     local function align_defensive_pass(plan)
                         local cfg=config.DEFENSIVE_PASS_ALIGNMENT
                         local key=my_base..":"..tostring(plan.receiver)..":"..tostring(plan.direction)
+                            ..":"..tostring(plan.vertical)
                         local a=defensive_pass_alignment
                         local blocked=defensive_alignment_blocks[key]
                         if blocked and report.frame<blocked then return false end
@@ -1211,6 +1212,14 @@ local function step_bot()
                         elseif plan.direction=="Down" then along,across=dy,math.abs(dx)
                         elseif plan.direction=="Up" then along,across=-dy,math.abs(dx)
                         else along,across=0,math.huge end
+                        if plan.intent=="SHORT_DIAGONAL" then
+                            local sx=plan.direction=="Right" and 1 or -1
+                            local sy=plan.vertical=="Down" and 1 or -1
+                            -- Validate ball position projected on desired
+                            -- diagonal; do not reuse cardinal-facing test.
+                            along=(dx*sx+dy*sy)/math.sqrt(2)
+                            across=math.abs(dx*sx-dy*sy)/math.sqrt(2)
+                        end
                         local facing=along>=cfg.min_forward_offset
                             and along<=cfg.max_ball_offset
                             and across<=cfg.max_lateral_offset
@@ -1235,12 +1244,17 @@ local function step_bot()
                                 ..";dx="..dx..";dy="..dy..";age="..age)
                             return false
                         end
-                        movement.press_direction_button(plan.direction,nil)
+                        if plan.intent=="SHORT_DIAGONAL" then
+                            movement.press_diagonal_button(plan.direction,plan.vertical,nil)
+                        else
+                            movement.press_direction_button(plan.direction,nil)
+                        end
                         local state=make_state(my_base,0,0,
                             "DEFENSIVE_PASS_ALIGN",possession,gs)
                         state.defensive_recovery=true
                         state.forward_pass_receiver=plan.receiver
                         state.forward_pass_direction=plan.direction
+                        state.forward_pass_vertical=plan.vertical
                         state.forward_pass_alignment_frames=age
                         return attach_live_state(state,"PASS_ALIGNMENT","MY_CONTROLLED")
                     end
@@ -1329,13 +1343,17 @@ local function step_bot()
                             sequence=defensive_pass_sequence,
                             frame=report.frame,passer=my_base,
                             receiver=outlet.receiver,direction=outlet.direction}
-                        report:write("DEFENSIVE_PASS_SENT",true,
+                        report:write(outlet.intent=="SHORT_DIAGONAL"
+                                and "DEFENSIVE_DIAGONAL_PASS_SENT"
+                                or "DEFENSIVE_PASS_SENT",true,
                             {possession=possession,game_state=gs,my_base=my_base},
                             movement.last_command,
                             "sequence="..defensive_pass_sequence
                             ..";passer="..my_base
                             ..";expected_receiver="..tostring(outlet.receiver)
-                            ..";direction="..tostring(outlet.direction))
+                            ..";direction="..tostring(outlet.direction)
+                            ..";vertical="..tostring(outlet.vertical)
+                            ..";intent="..tostring(outlet.intent))
                         defensive_pass_alignment=nil
                         defensive_alignment_blocks={}
                         local state=make_state(my_base,0,0,
@@ -1355,6 +1373,7 @@ local function step_bot()
                         state.forward_pass_score=outlet.score
                         state.forward_pass_button=outlet.button
                         state.forward_pass_direction=outlet.direction
+                        state.forward_pass_vertical=outlet.vertical
                         return attach_live_state(state,"DEFENSIVE_TRANSITION","MY_CONTROLLED")
                     end
                     local exit=defensive_exit.plan(my_base,forward_pass.cooldown,outlet_diag)
