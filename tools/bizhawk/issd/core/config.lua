@@ -492,6 +492,20 @@ M.OWNERSHIP_PROBE = {
 -- Conservative positive-ETA recovery for either logical team assignment.
 -- Only wired to MY_UNOWNED_BALL; CPU_UNOWNED_BALL retains its existing chase.
 -- World-unit thresholds are provisional pending CSV-based calibration.
+-- Ground-only interception; aerial/goal emergencies retain priority.
+M.GROUND_BALL_INTERCEPTION = {
+    enabled=true,
+    max_height=8,
+    max_ball_speed=24,
+    min_ball_speed=1,
+    max_player_distance=165,
+    estimated_player_speed=5,
+    max_lead_frames=6,
+    lock_frames=5,
+    max_ball_drift=28,
+    max_target_drift=34,
+}
+
 M.MY_UNOWNED_RECOVERY = {
     max_age_frames=2,
     stability_frames=4,
