@@ -125,7 +125,12 @@ function M.new(config,players,field_side,mem)
    o.pending_frames=o.pending_frames-1
    return {mode="HOLD",reason="ACTION_SETTLING",age=o.age,threat=threat}
   end
-  if not pressured and o.age<c.hold_before_move then return hold("WAIT_OUTLET",threat) end
+  -- A safe outlet pass was already attempted above. Avoid a prolonged
+  -- stationary hold after winning possession: probe a safe forward/lateral
+  -- escape after a brief settling interval. Pressure skips that wait.
+  if not pressured and o.age<c.hold_before_move then
+   return hold("WAIT_OUTLET",threat)
+  end
   if not o.start_x then o.start_x,o.start_y=x,y end
   if d(x,y,o.start_x,o.start_y)>=c.max_advance then
    o.limit_age=o.limit_age+1
