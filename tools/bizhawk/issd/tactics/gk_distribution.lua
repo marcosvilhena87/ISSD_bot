@@ -8,6 +8,7 @@ function M.new(config, players, field_side)
         held_frames = 0,
         active_action = nil,
         press_remaining = 0,
+        recovery_cycles = 0,
     }
 
     local function attack_direction(my_side)
@@ -160,6 +161,7 @@ function M.new(config, players, field_side)
         obj.held_frames = 0
         obj.active_action = nil
         obj.press_remaining = 0
+        obj.recovery_cycles=0
     end
 
     function obj.tick()
@@ -237,11 +239,27 @@ function M.new(config, players, field_side)
         if obj.wait_frames>0 then return nil,"WAIT" end
         local attempt=obj.attempts+1
         if attempt>config.GK_DISTRIBUTION.max_attempts then
-            return nil,"EXHAUSTED"
+            if obj.recovery_cycles>=config.GK_DISTRIBUTION.max_recovery_cycles then
+                return nil,"EXHAUSTED"
+            end
+            obj.attempts=0
+            obj.recovery_cycles=obj.recovery_cycles+1
+            attempt=1
         end
         local dir=plan.direction
         if dir==nil then
             dir=field_side.attack_direction()==1 and "Right" or "Left"
+        end
+        if obj.recovery_cycles>0 then
+            -- Recovery cycle: isolate button from directional input.
+            -- A neutral B pulse can work when a directed throw is rejected.
+            local button=attempt<=2 and config.GK_DISTRIBUTION.throw_button
+                or config.GK_DISTRIBUTION.long_kick_button
+            local frames=attempt==2 and config.GK_DISTRIBUTION.long_press_frames or 1
+            return {mode="GK_RECOVERY_"..(button=="B" and "THROW" or "KICK"),
+                button=button,direction=nil,receiver=nil,press_frames=frames,
+                decision_reason="UNDIRECTED_RECOVERY_CYCLE_"..obj.recovery_cycles},
+                "RECOVERY"
         end
         if attempt==1 then
             return {mode="SHORT_THROW",button=config.GK_DISTRIBUTION.throw_button,
