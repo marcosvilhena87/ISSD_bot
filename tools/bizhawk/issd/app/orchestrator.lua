@@ -131,7 +131,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="global-goal-side-press-20261010-v53"
+local BOT_BUILD_ID="offensive-direction-near-goal-20261010-v54"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -2159,11 +2159,21 @@ local function step_bot()
                 local dir=field_side.attack_direction()
                 local source="FIELD_SIDE"
                 if dir~=1 and dir~=-1 then
-                    -- Only infer attacking direction if goals are clearly
-                    -- separated; never use an arbitrary sign near midfield.
-                    if math.abs(gx-px)>=config.POSSESSION_FALLBACK.min_goal_separation then
-                        dir=gx>px and 1 or -1
-                        source="OPPONENT_GK"
+                    -- Do not infer direction from carrier-to-opponent-GK distance:
+                    -- it becomes small precisely when the striker reaches the box.
+                    local own_gkx=players.xy(config.MY_FIRST)
+                    local separation=gx-own_gkx
+                    if math.abs(separation)>=config.POSSESSION_FALLBACK.min_goal_separation then
+                        dir=separation>0 and 1 or -1
+                        source="GK_TO_GK"
+                    else
+                        local center=mem.u16(config.ADDR.center_field_x)
+                        local length=mem.u16(config.ADDR.field_length)
+                        if length>=500 and length<=4000 and center>=100
+                            and math.abs(gx-center)>=length*0.22 then
+                            dir=gx>center and 1 or -1
+                            source="OPPONENT_GK_FIELD_HALF"
+                        end
                     end
                 end
                 if dir==1 or dir==-1 then
