@@ -135,7 +135,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="clear-lane-shot-approach-20261010-v59"
+local BOT_BUILD_ID="shot-approach-diagnostics-20261010-v60"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -1728,6 +1728,24 @@ local function step_bot()
                 local shot = shoot.plan(my_base)
                 local shoot_diag = shoot.last_diagnostic
                 local approach=clear_lane_shot_approach.update(report.frame,my_base,shot)
+                local evaluation=clear_lane_shot_approach.evaluation()
+                if evaluation and evaluation.frame==report.frame
+                    and (report.frame%30==0 or shot~=nil
+                        or evaluation.reason=="READY"
+                        or evaluation.reason=="INVALID_DIRECTION") then
+                    report:write("CLEAR_LANE_SHOT_APPROACH_EVALUATION",true,
+                        {possession=possession,game_state=gs,my_base=my_base},
+                        "EVALUATE_APPROACH",
+                        "reason="..tostring(evaluation.reason)
+                        ..";carrier="..tostring(evaluation.carrier)
+                        ..";shot_ready="..tostring(evaluation.shot_ready)
+                        ..";distance="..tostring(evaluation.distance)
+                        ..";forward="..tostring(evaluation.forward)
+                        ..";blocked="..tostring(evaluation.blocked)
+                        ..";nearest="..tostring(evaluation.nearest)
+                        ..";nearest_ahead="..tostring(evaluation.nearest_ahead)
+                        ..";nearest_behind="..tostring(evaluation.nearest_behind))
+                end
                 if approach then
                     local detail="carrier="..tostring(my_base)
                         ..";distance="..tostring(approach.distance)
