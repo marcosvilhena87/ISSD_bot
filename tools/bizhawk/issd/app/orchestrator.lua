@@ -3801,7 +3801,18 @@ while true do
                 ..";direction="..tostring(event.direction)
                 ..";zone="..tostring(event.zone)
                 ..";owner_changes="..tostring(event.owner_changes)
-                ..";loose_frames="..tostring(event.loose_frames))
+                ..";loose_frames="..tostring(event.loose_frames)
+                ..";source="..tostring(event.source)
+                ..";action_count="..tostring(event.action_count)
+                ..";action_kind="..tostring(event.action_kind)
+                ..";action_age="..tostring(event.action_age)
+                ..";action_owner="..tostring(event.action_owner)
+                ..";action_saw_loose="..tostring(event.action_saw_loose)
+                ..";first_receiver="..tostring(event.first_receiver)
+                ..";receive_age="..tostring(event.receive_age)
+                ..";received_zone="..tostring(event.received_zone)
+                ..";progress_after_receive="..tostring(event.progress_after_receive)
+                ..";max_progress_after_receive="..tostring(event.max_progress_after_receive))
         end
         for _,event in ipairs(mid_attack_transition.update(state,report.frame)) do
             report:write("MID_ATTACK_TRANSITION_"..event.kind,true,state,
