@@ -55,6 +55,7 @@ local PlayerSwitch = dofile(DIR .. "../control/player_switch.lua")
 local TeamPossession = dofile(DIR .. "../state/team_possession.lua")
 local BallLogicalTeamTransition = dofile(DIR .. "../state/ball_logical_team_transition.lua")
 local PossessionContext = dofile(DIR .. "../state/possession_context.lua")
+local MyPossessionLossTracker = dofile(DIR .. "../state/my_possession_loss_tracker.lua")
 local Restart = dofile(DIR .. "../tactics/restart.lua")
 local ThrowIn = dofile(DIR .. "../tactics/throw_in.lua")
 local Overlay = dofile(DIR .. "../ui/overlay.lua")
@@ -111,6 +112,7 @@ local Last_Player_Ball_Possession_Team = nil
 local gk_release_lock = nil
 local gk_release_pending = nil
 local possession_context = PossessionContext.new(config, players)
+local my_possession_loss_tracker = MyPossessionLossTracker.new(config,players)
 local restart = Restart.new(config, players, Geometry, defense)
 local throw_in = ThrowIn.new(config, players, field_side, mem)
 local overlay = Overlay.new(players, game_state)
@@ -135,7 +137,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="shot-approach-diagnostics-20261010-v60"
+local BOT_BUILD_ID="my-possession-loss-tracker-20261010-v61"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -453,6 +455,27 @@ local function step_bot()
     end
     local possession = ball.possession()
     local gs = game_state.read()
+    local loss_bx,loss_by=ball.world_xy()
+    local loss_events=my_possession_loss_tracker.update(report.frame,
+        gameplay_active.is_active(gameplay_value),gs,
+        possession,loss_bx,loss_by)
+    for _,loss_ev in ipairs(loss_events) do
+        report:write(loss_ev.kind,true,
+            {possession=possession,game_state=gs,my_base=my_base,
+             gameplay_active=gameplay_value},
+            "OBSERVE_POSSESSION_LOSS",
+            "sequence="..tostring(loss_ev.sequence)
+            ..";origin="..tostring(loss_ev.origin)
+            ..";receiver="..tostring(loss_ev.receiver)
+            ..";start="..tostring(loss_ev.start)
+            ..";age="..tostring(loss_ev.age)
+            ..";from_x="..tostring(loss_ev.from_x)
+            ..";from_y="..tostring(loss_ev.from_y)
+            ..";end_x="..tostring(loss_ev.end_x)
+            ..";end_y="..tostring(loss_ev.end_y)
+            ..";confirmation_frames="..tostring(loss_ev.confirmation_frames)
+            ..";reason="..tostring(loss_ev.reason))
+    end
     if possession~=my_base or not game_state.is_live(gs) then
         clear_lane_shot_approach.reset()
     end
