@@ -11,6 +11,8 @@ function M.new(config,mem,players)
  local CHANGE_THRESHOLD=5
  local MIN_SPEED=3
  local COOLDOWN=10
+ local PRE_FRAMES=15
+ local history={}
  local function nearest_cpu(x,y)
   local best,nearest=nil,math.huge
   players.each_cpu(function(base)
@@ -32,6 +34,7 @@ function M.new(config,mem,players)
   events[#events+1]=e
  end
  function o.reset()
+  history={}
   o.window=nil;o.last_motion=nil;o.prior_motion=nil
   o.last_x=nil;o.last_y=nil;o.last_frame=nil;o.rearm=true
  end
@@ -51,6 +54,14 @@ function M.new(config,mem,players)
   local height=math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr))
   local nearest,distance=nearest_cpu(x,y)
   local w=o.window
+  -- Buffer each frame; it is only emitted when a candidate contact appears.
+  local prior=history[#history]
+  history[#history+1]={frame=frame,x=x,y=y,height=height,
+      owner=owner,nearest=nearest,distance=distance,
+      horizontal_dx=prior and x-prior.x or nil,
+      horizontal_dy=prior and y-prior.y or nil,
+      vertical_delta=prior and height-prior.height or nil}
+  while #history>PRE_FRAMES+1 do table.remove(history,1) end
   if height<MIN_HEIGHT then o.rearm=true end
   if not w and o.rearm and height>=MIN_HEIGHT and distance<=NEAR then
    o.sequence=o.sequence+1
@@ -84,6 +95,18 @@ function M.new(config,mem,players)
          and change>=CHANGE_THRESHOLD then
       w.trajectory_changes=w.trajectory_changes+1
       w.last_event=frame
+      -- Emit the preceding trajectory for retrospective contact analysis.
+      for i=1,#history-1 do
+       local h=history[i]
+       if frame-h.frame<=PRE_FRAMES then
+        event(events,"CPU_AERIAL_PRECONTACT_SAMPLE",
+         "RETROSPECTIVE_BALL_AND_CPU_PROXIMITY",w,h.frame,
+         h.owner,h.x,h.y,h.height,h.nearest,h.distance,
+         {contact_frame=frame,frames_before_contact=frame-h.frame,
+          horizontal_dx=h.horizontal_dx,horizontal_dy=h.horizontal_dy,
+          vertical_delta=h.vertical_delta})
+       end
+      end
       event(events,"CPU_AERIAL_TRAJECTORY_CHANGE",
        "DISTINCT_SAMPLE_VELOCITY_CHANGE_NOT_CONFIRMED_CONTACT",
        w,frame,owner,x,y,height,nearest,distance,
