@@ -34,6 +34,7 @@ local ActiveTackle = dofile(DIR .. "../tactics/active_tackle.lua")
 local LiveAttack = dofile(DIR .. "../tactics/live_attack.lua")
 local FieldBoundary = dofile(DIR .. "../tactics/field_boundary.lua")
 local Shoot = dofile(DIR .. "../tactics/shoot.lua")
+local ClearLaneShotApproach = dofile(DIR .. "../tactics/clear_lane_shot_approach.lua")
 local ForwardPass = dofile(DIR .. "../tactics/forward_pass.lua")
 local DefensiveExit = dofile(DIR .. "../tactics/defensive_exit.lua")
 local DefensiveMidfieldTransition = dofile(DIR .. "../state/defensive_midfield_transition.lua")
@@ -91,6 +92,7 @@ local active_tackle = ActiveTackle.new(config, players)
 local live_attack = LiveAttack.new(config, players, field_side)
 local field_boundary = FieldBoundary.new(config, mem)
 local shoot = Shoot.new(config, players, field_side)
+local clear_lane_shot_approach = ClearLaneShotApproach.new(config,players,field_side)
 local forward_pass = ForwardPass.new(config, players, field_side, mem)
 local defensive_exit = DefensiveExit.new(config, players, field_side, mem)
 local gk_distribution = GKDistribution.new(config, players, field_side)
@@ -133,7 +135,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="fast-period-orientation-20261010-v58"
+local BOT_BUILD_ID="clear-lane-shot-approach-20261010-v59"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -1722,6 +1724,28 @@ local function step_bot()
                 end
                 local shot = shoot.plan(my_base)
                 local shoot_diag = shoot.last_diagnostic
+                local approach=clear_lane_shot_approach.update(report.frame,my_base,shot)
+                if approach then
+                    local detail="carrier="..tostring(my_base)
+                        ..";distance="..tostring(approach.distance)
+                        ..";nearest_defender="..tostring(approach.nearest)
+                        ..";gain="..tostring(approach.gain)
+                        ..";age="..tostring(approach.age)
+                    if approach.kind=="MOVE" then
+                        movement.press_direction_button(approach.direction,nil)
+                        local state=make_state(my_base,0,0,
+                            "CLEAR_LANE_SHOT_APPROACH",possession,gs)
+                        state.approach_distance=approach.distance
+                        state.approach_nearest_defender=approach.nearest
+                        report:write(approach.start and "CLEAR_LANE_SHOT_APPROACH_START"
+                            or "CLEAR_LANE_SHOT_APPROACH_MOVE",true,state,
+                            movement.last_command,detail)
+                        return attach_live_state(state,"PLAYER_POSSESSION","MY_CONTROLLED")
+                    end
+                    report:write("CLEAR_LANE_SHOT_APPROACH_END",true,
+                        {possession=possession,game_state=gs,my_base=my_base},
+                        "RESUME_SHOOT",detail..";reason="..approach.reason)
+                end
                 if shot and shoot.fire(shot, movement) then
                     if midfield_rebuild then
                         report:write("MIDFIELD_REBUILD_OUTCOME",true,
