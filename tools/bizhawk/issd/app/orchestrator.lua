@@ -120,7 +120,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="long-pass-ai-selection-correlation-20261010-v26"
+local BOT_BUILD_ID="def-clear-game-state-continuity-20261010-v27"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -3595,7 +3595,12 @@ while true do
                 ..";start_x="..tostring(clearance.start_x)
                 ..";end_x="..tostring(clearance.end_x)
                 ..";charge_frames="..clearance.frames
-                ..";owner="..tostring(clearance.owner))
+                ..";owner="..tostring(clearance.owner)
+                ..";receiver="..tostring(clearance.receiver)
+                ..";receiver_x="..tostring(clearance.receiver_x)
+                ..";inactive_frames="..tostring(clearance.inactive_frames)
+                ..";game_state="..tostring(clearance.game_state)
+                ..";gameplay_active="..tostring(clearance.gameplay_active))
         end
         for _,event in ipairs(long_pass_position_observer.update(
             state,report.frame,movement.last_command) or {}) do
