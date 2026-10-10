@@ -8,10 +8,6 @@ function M.new(config,mem)
  local candidate=nil
  local candidate_frames=0
  local source="UNKNOWN"
- local function flag(addr)
-  local v=mem.u8(addr)
-  return v==0 or v==1 and v or (v==0 and 0 or nil)
- end
  local function direction_from_goalkeepers()
   local mx=mem.s16(config.MY_FIRST+config.OFFSET.world_x)
   local cx=mem.s16(config.CPU_FIRST+config.OFFSET.world_x)
