@@ -113,7 +113,8 @@ local dash_carrier = nil
 local gk_pending = nil
 local defensive_carrier = nil
 local cpu_carrier_continuity=nil
-local cpu_noposs_observer={last_cpu=nil,pending=nil,sequence=0}
+local cpu_noposs_observer={last_cpu=nil,pending=nil,sequence=0,
+    confirmed_start=nil,last_reconfirmed=nil,repeat_count=0}
 local defensive_hold_age = 0
 local defensive_hold_guard=nil
 local defensive_pass_alignment=nil
@@ -121,7 +122,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="cpu-noposs-coupled-motion-20261010-v36"
+local BOT_BUILD_ID="cpu-noposs-dribble-cycle-20261010-v37"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -824,6 +825,19 @@ local function step_bot()
                     and pending.motion_samples>=5
                     and pending.aligned_frames/pending.motion_samples>=0.8
                     and pending.fast_ball_frames==0
+                local same=reason=="SAME_CPU_RECONFIRMED"
+                local previous=obs.last_reconfirmed
+                local confirmed_gap=previous and previous.base==pending.base
+                    and pending.start-previous.frame or nil
+                if same then
+                    obs.repeat_count=(previous and previous.base==pending.base)
+                        and obs.repeat_count+1 or 1
+                    obs.last_reconfirmed={base=pending.base,frame=report.frame,
+                        sequence=pending.sequence}
+                else
+                    obs.last_reconfirmed=nil
+                    obs.repeat_count=0
+                end
                 report:write("CPU_NOPOSS_RECONFIRMATION_END",true,
                     {possession=possession,game_state=gs,my_base=my_base},
                     "OBSERVE_NOPOSS","sequence="..pending.sequence
@@ -840,7 +854,11 @@ local function step_bot()
                     ..";mean_alignment="..tostring(alignment_mean)
                     ..";fast_ball_frames="..pending.fast_ball_frames
                     ..";coupled_motion="..tostring(coupled)
-                    ..";same_player="..tostring(reason=="SAME_CPU_RECONFIRMED")
+                    ..";same_player="..tostring(same)
+                    ..";confirmed_before="..tostring(pending.confirmed_before)
+                    ..";confirmed_gap="..tostring(confirmed_gap)
+                    ..";cycle_repeat="..tostring(obs.repeat_count)
+                    ..";previous_sequence="..tostring(previous and previous.sequence)
                     ..";spatial_continuity="..tostring(
                         reason=="SAME_CPU_RECONFIRMED"
                         and pending.distance_samples>0
@@ -851,7 +869,10 @@ local function step_bot()
         if valid and possession==0 and not obs.pending
             and obs.last_cpu then
             obs.sequence=obs.sequence+1
+            local confirmed_before=obs.confirmed_start
+                and report.frame-obs.confirmed_start or nil
             obs.pending={start=report.frame,base=obs.last_cpu,
+                confirmed_before=confirmed_before,
                 sequence=obs.sequence,distance_sum=0,distance_samples=0,
                 max_distance=0,frames_close=0,separation_events=0,
                 previous_close=true,motion_samples=0,aligned_frames=0,
@@ -860,10 +881,22 @@ local function step_bot()
             report:write("CPU_NOPOSS_RECONFIRMATION_START",true,
                 {possession=possession,game_state=gs,my_base=my_base},
                 "OBSERVE_NOPOSS","sequence="..obs.sequence
-                ..";base="..obs.pending.base..";window="..window)
+                ..";base="..obs.pending.base..";window="..window
+                ..";confirmed_before="..tostring(confirmed_before))
         end
-        if cpu then obs.last_cpu=possession
-        elseif possession~=0 or not valid then obs.last_cpu=nil end
+        if cpu then
+            if obs.last_cpu~=possession or not obs.confirmed_start then
+                obs.confirmed_start=report.frame
+            end
+            obs.last_cpu=possession
+        elseif possession~=0 or not valid then
+            obs.last_cpu=nil
+            obs.confirmed_start=nil
+        end
+        if not valid or my then
+            obs.last_reconfirmed=nil
+            obs.repeat_count=0
+        end
     end
 
     -- RAM possession remains authoritative. Preserve only a short tactical
