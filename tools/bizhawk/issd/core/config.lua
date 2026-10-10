@@ -71,6 +71,13 @@ M.AERIAL_CONTACT_DECISION = {
     cooldown_frames=24,
 }
 
+M.AERIAL_CONTACT_OUTCOME_GUARD = {
+    recovery_delay_frames=2,
+    recovery_max_height=80,
+    recovery_distance=70,
+    max_frames=35,
+}
+
 M.DEFENSIVE_HEADER = {
     goal_radius=330,
     min_height=21,
