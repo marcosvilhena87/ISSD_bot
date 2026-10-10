@@ -1245,7 +1245,22 @@ local function step_bot()
                         return attach_live_state(state,"PASS_ALIGNMENT","MY_CONTROLLED")
                     end
                                         -- No forward dribble or Y dash while holding the defensive line.
-                    local outlet=forward_pass.plan(my_base)
+                    local outlet,outlet_diag=forward_pass.plan(my_base)
+                    -- Report rejected outlet candidates sparingly. This never
+                    -- changes the chosen movement or emergency clearance.
+                    if not outlet and outlet_diag
+                        and defensive_hold_age==1 then
+                        report:write("DEFENSIVE_OUTLET_DIAGNOSTIC",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "OBSERVE_OUTLET",
+                            "reason="..tostring(outlet_diag.reason)
+                            ..";candidates="..outlet_diag.candidate_count
+                            ..";geometry="..outlet_diag.geometry_rejected
+                            ..";receiver_pressure="..outlet_diag.clearance_rejected
+                            ..";lane_blocked="..outlet_diag.lane_rejected
+                            ..";deep_lateral="..outlet_diag.deep_lateral_rejected
+                            ..";valid="..outlet_diag.valid_count)
+                    end
                     local outlet_ready=false
                     if outlet then
                         local waiting=align_defensive_pass(outlet)
