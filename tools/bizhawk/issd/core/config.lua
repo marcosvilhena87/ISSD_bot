@@ -216,6 +216,13 @@ M.DEFENSIVE_CLEARANCE_OUTCOME = {
     max_frames=120,
 }
 
+M.DEFENSIVE_CLEARANCE_SECOND_BALL_RECOVERY = {
+    enabled=true,
+    approach_distance=110,
+    min_cpu_margin=18,
+    log_interval=12,
+}
+
 M.LONG_PASS_AI_ASSIST_EXPERIMENT = {
     enabled=true, -- disable to restore existing manual recovery behavior
     max_frames=75,
