@@ -33,7 +33,7 @@ function M.new(config,mem,players,field_side)
      loose_frames=p and p.loose_frames,
      last_owner=p and p.last_owner}
   end
-  local valid=state.game_state==0 and state.gameplay_active==1
+  local valid=state.game_state==0 -- 0x00BA authoritative for transition observation
   local my=players.valid_my_base(owner)
   local cpu=players.valid_cpu_base(owner)
   if my then x=players.xy(owner) end
@@ -43,7 +43,6 @@ function M.new(config,mem,players,field_side)
   if pending then
    if not valid or dir~=pending.dir then
     local reason=state.game_state~=0 and "GAME_STATE_STOPPAGE"
-      or state.gameplay_active~=1 and "GAMEPLAY_INACTIVE"
       or dir~=pending.dir and "ATTACK_DIRECTION_CHANGED"
       or "INVALID_CONTEXT"
     emit("FAILED",reason,pending);o.pending=nil
