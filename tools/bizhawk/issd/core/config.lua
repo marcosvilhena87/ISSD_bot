@@ -237,7 +237,9 @@ M.LONG_PASS_POSITION_OBSERVER = {
 M.CHARGED_DEFENSIVE_CLEARANCE = {
     urgent_radius=38,
     urgent_frames=3, -- prioritize release before tackle under immediate pressure
-    normal_frames=7, -- experimental, calibrate actual ball displacement
+    normal_frames=7, -- fallback when calibration is disabled
+    calibration_enabled=true,
+    calibration_frames={3,5,7}, -- rotate only non-urgent launches
 }
 
 M.DEEP_DEFENSIVE_LATERAL = {
