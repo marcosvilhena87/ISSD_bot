@@ -57,6 +57,7 @@ local TeamPossession = dofile(DIR .. "../state/team_possession.lua")
 local BallLogicalTeamTransition = dofile(DIR .. "../state/ball_logical_team_transition.lua")
 local PossessionContext = dofile(DIR .. "../state/possession_context.lua")
 local GroundBallInterception = dofile(DIR .. "../tactics/ground_ball_interception.lua")
+local GroundOpportunityObserver = dofile(DIR .. "../state/ground_opportunity_observer.lua")
 local GroundInterceptOutcomeTracker = dofile(DIR .. "../state/ground_intercept_outcome_tracker.lua")
 local MyPossessionLossTracker = dofile(DIR .. "../state/my_possession_loss_tracker.lua")
 local Restart = dofile(DIR .. "../tactics/restart.lua")
@@ -117,6 +118,7 @@ local gk_release_lock = nil
 local gk_release_pending = nil
 local possession_context = PossessionContext.new(config, players)
 local ground_ball_interception = GroundBallInterception.new(config,players,field_boundary)
+local ground_opportunity_observer = GroundOpportunityObserver.new(config,players)
 local ground_intercept_outcome_tracker = GroundInterceptOutcomeTracker.new(config,players)
 local my_possession_loss_tracker = MyPossessionLossTracker.new(config,players)
 local restart = Restart.new(config, players, Geometry, defense)
@@ -143,7 +145,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="gk-rebound-race-20261010-v64"
+local BOT_BUILD_ID="ground-opportunity-observer-20261010-v65"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -1298,6 +1300,29 @@ local function step_bot()
             state.gk_release_origin_age = gk_release_lock and (report.frame-gk_release_lock.start) or nil
             state.team_possession_source = source
             state.possession_class = class or fallback_class
+            local opportunity_events=ground_opportunity_observer.observe(
+                report.frame,gameplay_active.is_active(gameplay_value),
+                gs,possession,bx,by,
+                math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr)),
+                state.possession_class,my_base,state.status)
+            for _,ev in ipairs(opportunity_events) do
+                report:write(ev.kind,true,state,"OBSERVE_GROUND_OPPORTUNITY",
+                    "sequence="..tostring(ev.sequence)
+                    ..";team="..tostring(ev.team)
+                    ..";start="..tostring(ev.start)
+                    ..";age="..tostring(ev.age)
+                    ..";best_base="..tostring(ev.best)
+                    ..";selected_base="..tostring(ev.selected)
+                    ..";best_eta="..tostring(ev.best_eta)
+                    ..";cpu_eta="..tostring(ev.cpu_eta)
+                    ..";eta_advantage="..tostring(ev.margin)
+                    ..";ball_x="..tostring(ev.target_x)
+                    ..";ball_y="..tostring(ev.target_y)
+                    ..";action="..tostring(ev.action)
+                    ..";acted="..tostring(ev.acted)
+                    ..";reason="..tostring(ev.reason)
+                    ..";receiver="..tostring(ev.receiver))
+            end
             state.context_last_team = possession_context.last_team
             state.context_last_owner = possession_context.last_owner
             state.context_frames_without =
