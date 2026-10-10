@@ -145,7 +145,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="critical-shot-continuity-20261010-v66"
+local BOT_BUILD_ID="telemetry-register-refactor-20261010-v67"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -376,6 +376,78 @@ local function make_state(my_base, dx, dy, status, possession, gs)
     }
 end
 
+local function observe_ground_intercept_outcome(possession,gs,my_base,gameplay_value,loss_bx,loss_by)
+    local outcome=ground_intercept_outcome_tracker.update(report.frame,
+        gameplay_active.is_active(gameplay_value),gs,possession,loss_bx,loss_by)
+    if outcome then
+        report:write(outcome.kind,true,
+            {possession=possession,game_state=gs,my_base=my_base,
+             gameplay_active=gameplay_value},
+            "GROUND_INTERCEPT_OUTCOME",
+            "sequence="..tostring(outcome.sequence)
+            ..";team="..tostring(outcome.team)
+            ..";base="..tostring(outcome.base)
+            ..";receiver="..tostring(outcome.receiver)
+            ..";start="..tostring(outcome.start)
+            ..";age="..tostring(outcome.age)
+            ..";start_x="..tostring(outcome.start_x)
+            ..";start_y="..tostring(outcome.start_y)
+            ..";target_x="..tostring(outcome.target_x)
+            ..";target_y="..tostring(outcome.target_y)
+            ..";end_x="..tostring(outcome.end_x)
+            ..";end_y="..tostring(outcome.end_y)
+            ..";reason="..tostring(outcome.reason))
+    end
+end
+
+local function observe_my_possession_loss(possession,gs,my_base,gameplay_value,loss_bx,loss_by)
+    local loss_events=my_possession_loss_tracker.update(report.frame,
+        gameplay_active.is_active(gameplay_value),gs,
+        possession,loss_bx,loss_by)
+    for _,loss_ev in ipairs(loss_events) do
+        report:write(loss_ev.kind,true,
+            {possession=possession,game_state=gs,my_base=my_base,
+             gameplay_active=gameplay_value},
+            "OBSERVE_POSSESSION_LOSS",
+            "sequence="..tostring(loss_ev.sequence)
+            ..";origin="..tostring(loss_ev.origin)
+            ..";receiver="..tostring(loss_ev.receiver)
+            ..";start="..tostring(loss_ev.start)
+            ..";age="..tostring(loss_ev.age)
+            ..";from_x="..tostring(loss_ev.from_x)
+            ..";from_y="..tostring(loss_ev.from_y)
+            ..";end_x="..tostring(loss_ev.end_x)
+            ..";end_y="..tostring(loss_ev.end_y)
+            ..";confirmation_frames="..tostring(loss_ev.confirmation_frames)
+            ..";reason="..tostring(loss_ev.reason))
+    end
+end
+
+local function observe_second_ball_race(possession,gs,my_base,second_ball_lock)
+    local race_bx,race_by=ball.world_xy()
+    local race_sample=gk_rebound_race_tracker.update(report.frame,
+        second_ball_lock and second_ball_lock.sequence or nil,
+        possession,race_bx,race_by)
+    if race_sample then
+        local one,two,cpu=race_sample.my1,race_sample.my2,race_sample.cpu
+        report:write(race_sample.kind,true,
+            {possession=possession,game_state=gs,my_base=my_base,
+             ball_x=race_bx,ball_y=race_by},
+            "OBSERVE_SECOND_BALL_RACE",
+            "sequence="..race_sample.sequence
+            ..";my1_base="..one.base..";my1_distance="..one.distance
+            ..";my1_eta="..one.eta
+            ..";my2_base="..tostring(two and two.base)
+            ..";my2_distance="..tostring(two and two.distance)
+            ..";my2_eta="..tostring(two and two.eta)
+            ..";cpu_base="..cpu.base
+            ..";cpu_distance="..cpu.distance
+            ..";cpu_eta="..cpu.eta
+            ..";eta_gap="..race_sample.eta_gap
+            ..";evidence="..race_sample.note)
+    end
+end
+
 local function step_bot()
     player_switch.tick()
     active_tackle.tick()
@@ -466,51 +538,8 @@ local function step_bot()
     local possession = ball.possession()
     local gs = game_state.read()
     local loss_bx,loss_by=ball.world_xy()
-    do -- restrict temporary telemetry locals to this block
-    local outcome=ground_intercept_outcome_tracker.update(report.frame,
-        gameplay_active.is_active(gameplay_value),gs,possession,loss_bx,loss_by)
-    if outcome then
-        report:write(outcome.kind,true,
-            {possession=possession,game_state=gs,my_base=my_base,
-             gameplay_active=gameplay_value},
-            "GROUND_INTERCEPT_OUTCOME",
-            "sequence="..tostring(outcome.sequence)
-            ..";team="..tostring(outcome.team)
-            ..";base="..tostring(outcome.base)
-            ..";receiver="..tostring(outcome.receiver)
-            ..";start="..tostring(outcome.start)
-            ..";age="..tostring(outcome.age)
-            ..";start_x="..tostring(outcome.start_x)
-            ..";start_y="..tostring(outcome.start_y)
-            ..";target_x="..tostring(outcome.target_x)
-            ..";target_y="..tostring(outcome.target_y)
-            ..";end_x="..tostring(outcome.end_x)
-            ..";end_y="..tostring(outcome.end_y)
-            ..";reason="..tostring(outcome.reason))
-    end
-    end -- ground intercept outcome
-    do -- restrict possession-loss telemetry locals
-    local loss_events=my_possession_loss_tracker.update(report.frame,
-        gameplay_active.is_active(gameplay_value),gs,
-        possession,loss_bx,loss_by)
-    for _,loss_ev in ipairs(loss_events) do
-        report:write(loss_ev.kind,true,
-            {possession=possession,game_state=gs,my_base=my_base,
-             gameplay_active=gameplay_value},
-            "OBSERVE_POSSESSION_LOSS",
-            "sequence="..tostring(loss_ev.sequence)
-            ..";origin="..tostring(loss_ev.origin)
-            ..";receiver="..tostring(loss_ev.receiver)
-            ..";start="..tostring(loss_ev.start)
-            ..";age="..tostring(loss_ev.age)
-            ..";from_x="..tostring(loss_ev.from_x)
-            ..";from_y="..tostring(loss_ev.from_y)
-            ..";end_x="..tostring(loss_ev.end_x)
-            ..";end_y="..tostring(loss_ev.end_y)
-            ..";confirmation_frames="..tostring(loss_ev.confirmation_frames)
-            ..";reason="..tostring(loss_ev.reason))
-    end
-    end -- possession-loss telemetry
+    observe_ground_intercept_outcome(possession,gs,my_base,gameplay_value,loss_bx,loss_by)
+    observe_my_possession_loss(possession,gs,my_base,gameplay_value,loss_bx,loss_by)
     if possession~=my_base or not game_state.is_live(gs) then
         clear_lane_shot_approach.reset()
     end
@@ -825,30 +854,7 @@ local function step_bot()
         second_ball_lock=nil
     end
     second_ball_last_shots_cpu=shots_cpu
-    do -- restrict second-ball race telemetry locals
-    local race_bx,race_by=ball.world_xy()
-    local race_sample=gk_rebound_race_tracker.update(report.frame,
-        second_ball_lock and second_ball_lock.sequence or nil,
-        possession,race_bx,race_by)
-    if race_sample then
-        local one,two,cpu=race_sample.my1,race_sample.my2,race_sample.cpu
-        report:write(race_sample.kind,true,
-            {possession=possession,game_state=gs,my_base=my_base,
-             ball_x=race_bx,ball_y=race_by},
-            "OBSERVE_SECOND_BALL_RACE",
-            "sequence="..race_sample.sequence
-            ..";my1_base="..one.base..";my1_distance="..one.distance
-            ..";my1_eta="..one.eta
-            ..";my2_base="..tostring(two and two.base)
-            ..";my2_distance="..tostring(two and two.distance)
-            ..";my2_eta="..tostring(two and two.eta)
-            ..";cpu_base="..cpu.base
-            ..";cpu_distance="..cpu.distance
-            ..";cpu_eta="..cpu.eta
-            ..";eta_gap="..race_sample.eta_gap
-            ..";evidence="..race_sample.note)
-    end
-    end -- second-ball race telemetry
+    observe_second_ball_race(possession,gs,my_base,second_ball_lock)
     if second_ball_lock then
         if possession==0 then second_ball_lock.saw_unowned=true end
         local reason=nil
