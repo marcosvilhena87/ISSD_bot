@@ -390,7 +390,8 @@ M.GK_DISTRIBUTION = {
     short_press_frames = 1, -- documented short throw: directional B tap
     long_press_frames = 12, -- documented long throw: directional B hold
     kick_press_frames = 2, -- goalkeeper A kick fallback
-    max_attempts = 3, -- bounded alternative inputs if possession persists
+    max_attempts = 3, -- attempts per cycle
+    max_recovery_cycles = 2, -- bounded undirected follow-up before EXHAUSTED
 }
 
 -- Provisional world-unit thresholds; position of GK approximates goalmouth.
