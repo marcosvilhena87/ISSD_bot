@@ -121,7 +121,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="cpu-carrier-noposs-reconfirmation-hotfix-20261010-v34"
+local BOT_BUILD_ID="cpu-noposs-spatial-validation-20261010-v35"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -762,7 +762,8 @@ local function step_bot()
     -- extends the eight-frame tactical carrier continuity.
     do
         local obs=cpu_noposs_observer
-        local window=config.CPU_CARRIER_CONTINUITY.observation_max_frames or 30
+        local window=config.CPU_CARRIER_CONTINUITY.observation_max_frames or 60
+        local close_radius=config.CPU_CARRIER_CONTINUITY.observation_close_radius or 32
         local cpu=players.valid_cpu_base(possession)
             and possession~=config.CPU_FIRST
         local my=players.valid_my_base(possession)
@@ -770,6 +771,21 @@ local function step_bot()
         local pending=obs.pending
         if pending then
             local age=report.frame-pending.start
+            local ox,oy=players.xy(pending.base)
+            local distance=ox and oy and math.sqrt((bx-ox)^2+(by-oy)^2) or nil
+            if possession==0 then
+                if distance then
+                    pending.distance_sum=pending.distance_sum+distance
+                    pending.distance_samples=pending.distance_samples+1
+                    pending.max_distance=math.max(pending.max_distance,distance)
+                    if distance<=close_radius then
+                        pending.frames_close=pending.frames_close+1
+                    elseif pending.previous_close then
+                        pending.separation_events=pending.separation_events+1
+                    end
+                    pending.previous_close=distance<=close_radius
+                end
+            end
             local reason=nil
             local receiver=nil
             if not valid then reason="GAME_STATE_STOPPAGE"
@@ -780,17 +796,24 @@ local function step_bot()
             elseif my then reason="MY_POSSESSION"
             elseif age>window then reason="OBSERVATION_TIMEOUT" end
             if reason then
-                local distance=nil
-                local mx,mypos=players.xy(pending.base)
-                if mx and mypos then
-                    distance=math.sqrt((bx-mx)^2+(by-mypos)^2)
-                end
+                local mean_distance=pending.distance_samples>0
+                    and pending.distance_sum/pending.distance_samples or nil
                 report:write("CPU_NOPOSS_RECONFIRMATION_END",true,
                     {possession=possession,game_state=gs,my_base=my_base},
                     "OBSERVE_NOPOSS","sequence="..pending.sequence
                     ..";base="..pending.base..";receiver="..tostring(receiver)
                     ..";reason="..reason..";noposs="..age
-                    ..";last_cpu_distance="..tostring(distance))
+                    ..";last_cpu_distance="..tostring(distance)
+                    ..";max_distance="..tostring(pending.max_distance)
+                    ..";mean_distance="..tostring(mean_distance)
+                    ..";frames_close="..pending.frames_close
+                    ..";distance_samples="..pending.distance_samples
+                    ..";separation_events="..pending.separation_events
+                    ..";same_player="..tostring(reason=="SAME_CPU_RECONFIRMED")
+                    ..";spatial_continuity="..tostring(
+                        reason=="SAME_CPU_RECONFIRMED"
+                        and pending.distance_samples>0
+                        and pending.max_distance<=close_radius))
                 obs.pending=nil
             end
         end
@@ -798,7 +821,9 @@ local function step_bot()
             and obs.last_cpu then
             obs.sequence=obs.sequence+1
             obs.pending={start=report.frame,base=obs.last_cpu,
-                sequence=obs.sequence}
+                sequence=obs.sequence,distance_sum=0,distance_samples=0,
+                max_distance=0,frames_close=0,separation_events=0,
+                previous_close=true}
             obs.last_cpu=nil -- avoid reopening the same uninterrupted zero-possession spell
             report:write("CPU_NOPOSS_RECONFIRMATION_START",true,
                 {possession=possession,game_state=gs,my_base=my_base},
