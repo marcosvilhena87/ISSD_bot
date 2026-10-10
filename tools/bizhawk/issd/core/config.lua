@@ -563,6 +563,7 @@ M.CPU_CARRIER_CONTINUITY = {
     max_unowned_frames=8,
     observation_max_frames=60, -- passive only; tactical window stays 8
     observation_close_radius=32, -- spatial consistency, not proof of dribbling
+    observation_motion_min_step=1, -- ignore nearly stationary vectors
     max_ball_distance=32,
     max_ball_step=25,
     max_runner_step=20,
