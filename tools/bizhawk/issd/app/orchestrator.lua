@@ -122,7 +122,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="cpu-noposs-dribble-cycle-20261010-v37"
+local BOT_BUILD_ID="cpu-noposs-diagnostic-class-20261010-v38"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -799,8 +799,14 @@ local function step_bot()
                     pending.max_distance=math.max(pending.max_distance,distance)
                     if distance<=close_radius then
                         pending.frames_close=pending.frames_close+1
-                    elseif pending.previous_close then
-                        pending.separation_events=pending.separation_events+1
+                        pending.separation_streak=0
+                    else
+                        if pending.previous_close then
+                            pending.separation_events=pending.separation_events+1
+                        end
+                        pending.separation_streak=pending.separation_streak+1
+                        pending.max_separation_streak=math.max(
+                            pending.max_separation_streak,pending.separation_streak)
                     end
                     pending.previous_close=distance<=close_radius
                 end
@@ -826,6 +832,27 @@ local function step_bot()
                     and pending.aligned_frames/pending.motion_samples>=0.8
                     and pending.fast_ball_frames==0
                 local same=reason=="SAME_CPU_RECONFIRMED"
+                -- Diagnostic only: identity alone cannot prove uninterrupted dribbling.
+                -- Any observed separation prevents CONFIRMED_DRIBBLE.
+                local diagnostic="UNRESOLVED"
+                local aligned_ratio=pending.motion_samples>0
+                    and pending.aligned_frames/pending.motion_samples or nil
+                local motion_ok=pending.motion_samples>=5
+                    and aligned_ratio>=0.8 and pending.fast_ball_frames==0
+                if reason=="OTHER_CPU_CONFIRMED" then
+                    diagnostic="PLAYER_CHANGED"
+                elseif same then
+                    if coupled and pending.separation_events==0
+                        and pending.max_separation_streak==0 then
+                        diagnostic="CONFIRMED_DRIBBLE"
+                    elseif motion_ok and pending.separation_events>0
+                        and pending.max_separation_streak<=3
+                        and pending.previous_close then
+                        diagnostic="POSSIBLE_DRIBBLE"
+                    elseif pending.distance_samples>0 then
+                        diagnostic="SAME_PLAYER_RECOVERY"
+                    end
+                end
                 local previous=obs.last_reconfirmed
                 local confirmed_gap=previous and previous.base==pending.base
                     and pending.start-previous.frame or nil
@@ -854,6 +881,10 @@ local function step_bot()
                     ..";mean_alignment="..tostring(alignment_mean)
                     ..";fast_ball_frames="..pending.fast_ball_frames
                     ..";coupled_motion="..tostring(coupled)
+                    ..";diagnostic="..diagnostic
+                    ..";aligned_ratio="..tostring(aligned_ratio)
+                    ..";max_separation_streak="..pending.max_separation_streak
+                    ..";separation_end_close="..tostring(pending.previous_close)
                     ..";same_player="..tostring(same)
                     ..";confirmed_before="..tostring(pending.confirmed_before)
                     ..";confirmed_gap="..tostring(confirmed_gap)
@@ -875,7 +906,8 @@ local function step_bot()
                 confirmed_before=confirmed_before,
                 sequence=obs.sequence,distance_sum=0,distance_samples=0,
                 max_distance=0,frames_close=0,separation_events=0,
-                previous_close=true,motion_samples=0,aligned_frames=0,
+                previous_close=true,separation_streak=0,max_separation_streak=0,
+                motion_samples=0,aligned_frames=0,
                 alignment_sum=0,fast_ball_frames=0}
             obs.last_cpu=nil -- avoid reopening the same uninterrupted zero-possession spell
             report:write("CPU_NOPOSS_RECONFIRMATION_START",true,
