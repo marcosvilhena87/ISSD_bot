@@ -122,7 +122,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="defensive-diagonal-experimental-20261010-v43"
+local BOT_BUILD_ID="defensive-diagonal-trace-20261010-v44"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -456,6 +456,28 @@ local function step_bot()
         local age=report.frame-p.frame
         local reason=nil
         local kind=nil
+        if p.intent=="SHORT_DIAGONAL" then
+            local bx,by=ball.world_xy()
+            local dx,dy=bx-p.ball_x,by-p.ball_y
+            local movement_distance=math.sqrt(dx*dx+dy*dy)
+            p.max_ball_displacement=math.max(p.max_ball_displacement or 0,movement_distance)
+            if (age==1 or age==3 or age==6 or age==12)
+                or (gs~=0 and p.previous_gs==0) then
+                report:write("DEFENSIVE_DIAGONAL_TRACE",true,
+                    {possession=possession,game_state=gs,my_base=my_base,
+                     gameplay_active=gameplay_value},
+                    "OBSERVE_DIAGONAL_FLIGHT",
+                    "sequence="..p.sequence..";age="..age
+                    ..";start_x="..p.ball_x..";start_y="..p.ball_y
+                    ..";ball_x="..bx..";ball_y="..by
+                    ..";dx="..dx..";dy="..dy
+                    ..";owner="..tostring(possession)
+                    ..";game_state="..tostring(gs)
+                    ..";previous_game_state="..tostring(p.previous_gs)
+                    ..";max_displacement="..tostring(p.max_ball_displacement))
+            end
+            p.previous_gs=gs
+        end
         if gs~=0 or not gameplay_active.is_active(gameplay_value) then
             kind="PASS_UNRESOLVED";reason="STOPPAGE"
         elseif players.valid_cpu_base(possession) then
@@ -477,7 +499,11 @@ local function step_bot()
                 ..";expected_receiver="..tostring(p.receiver)
                 ..";actual_owner="..tostring(possession)
                 ..";age="..age..";reason="..reason
-                ..";direction="..tostring(p.direction))
+                ..";direction="..tostring(p.direction)
+                ..";vertical="..tostring(p.vertical)
+                ..";intent="..tostring(p.intent)
+                ..";max_displacement="..tostring(p.max_ball_displacement)
+                ..";game_state="..tostring(gs))
             defensive_pass_pending=nil
         end
     end
@@ -1342,7 +1368,11 @@ local function step_bot()
                         defensive_pass_pending={
                             sequence=defensive_pass_sequence,
                             frame=report.frame,passer=my_base,
-                            receiver=outlet.receiver,direction=outlet.direction}
+                            receiver=outlet.receiver,direction=outlet.direction,
+                            vertical=outlet.vertical,intent=outlet.intent,
+                            ball_x=select(1,ball.world_xy()),
+                            ball_y=select(2,ball.world_xy()),
+                            previous_gs=gs,max_ball_displacement=0}
                         report:write(outlet.intent=="SHORT_DIAGONAL"
                                 and "DEFENSIVE_DIAGONAL_PASS_SENT"
                                 or "DEFENSIVE_PASS_SENT",true,
@@ -1409,7 +1439,11 @@ local function step_bot()
                         defensive_pass_pending={
                             sequence=defensive_pass_sequence,
                             frame=report.frame,passer=my_base,
-                            receiver=exit.receiver,direction=exit.direction}
+                            receiver=exit.receiver,direction=exit.direction,
+                            intent=exit.intent,vertical=exit.vertical,
+                            ball_x=select(1,ball.world_xy()),
+                            ball_y=select(2,ball.world_xy()),
+                            previous_gs=gs,max_ball_displacement=0}
                         report:write("DEFENSIVE_PASS_SENT",true,
                             {possession=possession,game_state=gs,my_base=my_base},
                             movement.last_command,
@@ -4320,7 +4354,8 @@ while true do
                 ..";lane_clearance="..tostring(state.forward_pass_lane_clearance)
                 ..";score="..tostring(state.forward_pass_score)
                 ..";button="..tostring(state.forward_pass_button)
-                ..";direction="..tostring(state.forward_pass_direction))
+                ..";direction="..tostring(state.forward_pass_direction)
+                ..";vertical="..tostring(state.forward_pass_vertical))
         end
         if state.shot_fired then
             report:write("SHOT_ATTEMPT", true, state,
