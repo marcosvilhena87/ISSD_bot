@@ -145,7 +145,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="telemetry-register-refactor-20261010-v67"
+local BOT_BUILD_ID="transition-register-refactor-20261010-v68"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -446,6 +446,65 @@ local function observe_second_ball_race(possession,gs,my_base,second_ball_lock)
             ..";eta_gap="..race_sample.eta_gap
             ..";evidence="..race_sample.note)
     end
+end
+
+local function observe_field_transitions(state)
+        local transition_events=defensive_midfield_transition.update(state,report.frame)
+        for _,event in ipairs(transition_events) do
+            report:write("DEF_MID_TRANSITION_"..event.kind,true,state,
+                "OBSERVE_TRANSITION",
+                "reason="..tostring(event.reason)
+                ..";sequence="..tostring(event.sequence)
+                ..";age="..tostring(event.age)
+                ..";route="..tostring(event.route)
+                ..";boundary="..tostring(event.boundary)
+                ..";game_state="..tostring(event.game_state)
+                ..";gameplay_active="..tostring(event.gameplay_active)
+                ..";possession="..tostring(event.possession)
+                ..";selected="..tostring(event.selected)
+                ..";status="..tostring(event.status)
+                ..";direction="..tostring(event.direction)
+                ..";zone="..tostring(event.zone)
+                ..";owner_changes="..tostring(event.owner_changes)
+                ..";loose_frames="..tostring(event.loose_frames)
+                ..";source="..tostring(event.source)
+                ..";action_count="..tostring(event.action_count)
+                ..";action_kind="..tostring(event.action_kind)
+                ..";action_age="..tostring(event.action_age)
+                ..";action_owner="..tostring(event.action_owner)
+                ..";action_saw_loose="..tostring(event.action_saw_loose)
+                ..";first_receiver="..tostring(event.first_receiver)
+                ..";receive_age="..tostring(event.receive_age)
+                ..";received_zone="..tostring(event.received_zone)
+                ..";progress_after_receive="..tostring(event.progress_after_receive)
+                ..";max_progress_after_receive="..tostring(event.max_progress_after_receive)
+                ..";reception_kind="..tostring(event.reception_kind)
+                ..";grace_deadline="..tostring(event.grace_deadline)
+                ..";grace_granted="..tostring(event.grace_granted))
+        end
+        for _,event in ipairs(mid_attack_transition.update(state,report.frame)) do
+            report:write("MID_ATTACK_TRANSITION_"..event.kind,true,state,
+                "OBSERVE_TRANSITION",
+                "reason="..tostring(event.reason)
+                ..";sequence="..tostring(event.sequence)
+                ..";age="..tostring(event.age)
+                ..";route="..tostring(event.route)
+                ..";start_progress="..tostring(event.start_progress)
+                ..";max_progress="..tostring(event.max_progress)
+                ..";progress_gain="..tostring(event.progress_gain)
+                ..";net_progress="..tostring(event.net_progress)
+                ..";remaining="..tostring(event.remaining)
+                ..";first_cross_age="..tostring(event.first_cross_age)
+                ..";entries="..tostring(event.entries)
+                ..";stability_resets="..tostring(event.returns)
+                ..";retreats="..tostring(event.retreats)
+                ..";unowned_frames="..tostring(event.unowned_frames)
+                ..";deadline="..tostring(event.deadline)
+                ..";extensions="..tostring(event.extensions)
+                ..";recent_gain="..tostring(event.recent_gain)
+                ..";grace_granted="..tostring(event.grace_granted)
+                ..";grace_frames="..tostring(event.grace_frames))
+        end
 end
 
 local function step_bot()
@@ -4419,62 +4478,7 @@ while true do
                 ..";initial_eta_advantage="..tostring(contest_result.advantage)
                 ..";initial_height="..tostring(contest_result.height))
         end
-        local transition_events=defensive_midfield_transition.update(state,report.frame)
-        for _,event in ipairs(transition_events) do
-            report:write("DEF_MID_TRANSITION_"..event.kind,true,state,
-                "OBSERVE_TRANSITION",
-                "reason="..tostring(event.reason)
-                ..";sequence="..tostring(event.sequence)
-                ..";age="..tostring(event.age)
-                ..";route="..tostring(event.route)
-                ..";boundary="..tostring(event.boundary)
-                ..";game_state="..tostring(event.game_state)
-                ..";gameplay_active="..tostring(event.gameplay_active)
-                ..";possession="..tostring(event.possession)
-                ..";selected="..tostring(event.selected)
-                ..";status="..tostring(event.status)
-                ..";direction="..tostring(event.direction)
-                ..";zone="..tostring(event.zone)
-                ..";owner_changes="..tostring(event.owner_changes)
-                ..";loose_frames="..tostring(event.loose_frames)
-                ..";source="..tostring(event.source)
-                ..";action_count="..tostring(event.action_count)
-                ..";action_kind="..tostring(event.action_kind)
-                ..";action_age="..tostring(event.action_age)
-                ..";action_owner="..tostring(event.action_owner)
-                ..";action_saw_loose="..tostring(event.action_saw_loose)
-                ..";first_receiver="..tostring(event.first_receiver)
-                ..";receive_age="..tostring(event.receive_age)
-                ..";received_zone="..tostring(event.received_zone)
-                ..";progress_after_receive="..tostring(event.progress_after_receive)
-                ..";max_progress_after_receive="..tostring(event.max_progress_after_receive)
-                ..";reception_kind="..tostring(event.reception_kind)
-                ..";grace_deadline="..tostring(event.grace_deadline)
-                ..";grace_granted="..tostring(event.grace_granted))
-        end
-        for _,event in ipairs(mid_attack_transition.update(state,report.frame)) do
-            report:write("MID_ATTACK_TRANSITION_"..event.kind,true,state,
-                "OBSERVE_TRANSITION",
-                "reason="..tostring(event.reason)
-                ..";sequence="..tostring(event.sequence)
-                ..";age="..tostring(event.age)
-                ..";route="..tostring(event.route)
-                ..";start_progress="..tostring(event.start_progress)
-                ..";max_progress="..tostring(event.max_progress)
-                ..";progress_gain="..tostring(event.progress_gain)
-                ..";net_progress="..tostring(event.net_progress)
-                ..";remaining="..tostring(event.remaining)
-                ..";first_cross_age="..tostring(event.first_cross_age)
-                ..";entries="..tostring(event.entries)
-                ..";stability_resets="..tostring(event.returns)
-                ..";retreats="..tostring(event.retreats)
-                ..";unowned_frames="..tostring(event.unowned_frames)
-                ..";deadline="..tostring(event.deadline)
-                ..";extensions="..tostring(event.extensions)
-                ..";recent_gain="..tostring(event.recent_gain)
-                ..";grace_granted="..tostring(event.grace_granted)
-                ..";grace_frames="..tostring(event.grace_frames))
-        end
+        observe_field_transitions(state)
         local clearance=defensive_clearance_outcome.update(state,report.frame)
         if clearance then
             report:write("DEF_CLEAR_OUTCOME_"..clearance.kind,true,state,
