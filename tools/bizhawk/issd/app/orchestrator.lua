@@ -122,7 +122,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="defensive-outlet-geometry-20261010-v40"
+local BOT_BUILD_ID="defensive-outlet-longitudinal-20261010-v41"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -1272,7 +1272,22 @@ local function step_bot()
                             ..";closest_distance="..tostring(outlet_diag.closest_distance)
                             ..";closest_lateral_excess="..tostring(outlet_diag.closest_lateral_excess)
                             ..";closest_cardinal_lane="..tostring(outlet_diag.closest_cardinal_lane)
-                            ..";closest_receiver_clearance="..tostring(outlet_diag.closest_receiver_clearance))
+                            ..";closest_receiver_clearance="..tostring(outlet_diag.closest_receiver_clearance)
+                            ..";behind="..outlet_diag.longitudinal.BEHIND
+                            ..";too_close="..outlet_diag.longitudinal.TOO_CLOSE
+                            ..";in_range="..outlet_diag.longitudinal.IN_RANGE
+                            ..";too_far="..outlet_diag.longitudinal.TOO_FAR
+                            ..";in_range_aligned="..outlet_diag.in_range_aligned
+                            ..";near_short="..outlet_diag.near_short
+                            ..";near_far="..outlet_diag.near_far
+                            ..";near_longitudinal_safe="..outlet_diag.near_longitudinal_safe
+                            ..";near_longitudinal_unsafe="..outlet_diag.near_longitudinal_unsafe
+                            ..";near_longitudinal_receiver="..tostring(outlet_diag.near_longitudinal_receiver)
+                            ..";near_longitudinal_gap="..tostring(outlet_diag.near_longitudinal_gap)
+                            ..";near_longitudinal_forward="..tostring(outlet_diag.near_longitudinal_forward)
+                            ..";near_longitudinal_lateral="..tostring(outlet_diag.near_longitudinal_lateral)
+                            ..";near_longitudinal_clearance="..tostring(outlet_diag.near_longitudinal_clearance)
+                            ..";near_longitudinal_lane="..tostring(outlet_diag.near_longitudinal_lane))
                     end
                     local outlet_ready=false
                     if outlet then
