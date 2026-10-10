@@ -1289,6 +1289,26 @@ local function step_bot()
                             ..";near_longitudinal_clearance="..tostring(outlet_diag.near_longitudinal_clearance)
                             ..";near_longitudinal_lane="..tostring(outlet_diag.near_longitudinal_lane))
                     end
+                    -- Once per defensive possession, report potential short
+                    -- diagonal lanes without attempting an unvalidated input.
+                    if outlet_diag and defensive_hold_age==1
+                        and outlet_diag.diagonal_candidates>0 then
+                        report:write("DEFENSIVE_DIAGONAL_OBSERVATION",true,
+                            {possession=possession,game_state=gs,my_base=my_base},
+                            "OBSERVE_DIAGONAL",
+                            "candidates="..outlet_diag.diagonal_candidates
+                            ..";safe="..outlet_diag.diagonal_safe
+                            ..";unsafe="..outlet_diag.diagonal_unsafe
+                            ..";receiver="..tostring(outlet_diag.diagonal_receiver)
+                            ..";forward="..tostring(outlet_diag.diagonal_forward)
+                            ..";lateral="..tostring(outlet_diag.diagonal_lateral)
+                            ..";distance="..tostring(outlet_diag.diagonal_distance)
+                            ..";lane="..tostring(outlet_diag.diagonal_lane)
+                            ..";receiver_clearance="..tostring(
+                                outlet_diag.diagonal_receiver_clearance)
+                            ..";cardinal_outlet="..tostring(outlet~=nil)
+                            ..";reason="..tostring(outlet_diag.reason))
+                    end
                     local outlet_ready=false
                     if outlet then
                         local waiting=align_defensive_pass(outlet)
