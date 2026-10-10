@@ -34,10 +34,16 @@ function M.new(players, game_state)
                 tostring(state.team_possession_kind),
                 tostring(state.team_possession_source)
             ))
+            local class_color=nil
+            if state.possession_class=="MY_UNOWNED_BALL" then
+                class_color="Blue"
+            elseif state.possession_class=="CPU_UNOWNED_BALL" then
+                class_color="Red"
+            end
             gui.text(8, 92, string.format(
                 "Class: %s",
                 tostring(state.possession_class)
-            ))
+            ), class_color)
             gui.text(8, 106, string.format(
                 "Fallback last=%s owner=%s NoPoss=%d",
                 tostring(state.context_last_team),
