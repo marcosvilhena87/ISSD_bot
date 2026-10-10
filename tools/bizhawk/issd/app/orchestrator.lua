@@ -58,6 +58,7 @@ local BallLogicalTeamTransition = dofile(DIR .. "../state/ball_logical_team_tran
 local PossessionContext = dofile(DIR .. "../state/possession_context.lua")
 local GroundBallInterception = dofile(DIR .. "../tactics/ground_ball_interception.lua")
 local GroundOpportunityObserver = dofile(DIR .. "../state/ground_opportunity_observer.lua")
+local RestartOriginTracker = dofile(DIR .. "../state/restart_origin_tracker.lua")
 local FiveDirectionPassObserver = dofile(DIR .. "../state/five_direction_pass_observer.lua")
 local GroundInterceptOutcomeTracker = dofile(DIR .. "../state/ground_intercept_outcome_tracker.lua")
 local MyPossessionLossTracker = dofile(DIR .. "../state/my_possession_loss_tracker.lua")
@@ -120,6 +121,7 @@ local gk_release_pending = nil
 local possession_context = PossessionContext.new(config, players)
 local ground_ball_interception = GroundBallInterception.new(config,players,field_boundary)
 local ground_opportunity_observer = GroundOpportunityObserver.new(config,players)
+local restart_origin_tracker = RestartOriginTracker.new(config,players)
 local five_direction_pass_observer = FiveDirectionPassObserver.new(config,players,field_side)
 local ground_intercept_outcome_tracker = GroundInterceptOutcomeTracker.new(config,players)
 local my_possession_loss_tracker = MyPossessionLossTracker.new(config,players)
@@ -147,7 +149,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="reporting-register-refactor-20261010-v70"
+local BOT_BUILD_ID="throw-in-origin-observer-20261010-v71"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -600,6 +602,25 @@ local function observe_clearance_and_long_pass(state)
                 ..";gameplay_active="..tostring(event.gameplay_active)
                 ..";game_state="..tostring(event.game_state))
         end
+end
+
+local function observe_throw_in_origin(gs,taker_team,taker,owner,fallback,logical,effective)
+    local events=restart_origin_tracker.update(report.frame,gs,taker_team,taker,
+        owner,fallback,logical,effective)
+    for _,ev in ipairs(events) do
+        report:write(ev.kind,true,
+            {possession=owner,game_state=gs},
+            "OBSERVE_THROW_IN_ORIGIN",
+            "sequence="..tostring(ev.sequence)
+            ..";team="..tostring(ev.team)
+            ..";taker="..tostring(ev.taker)
+            ..";age="..tostring(ev.age)
+            ..";owner="..tostring(ev.owner)
+            ..";fallback="..tostring(ev.fallback)
+            ..";logical="..tostring(ev.logical)
+            ..";effective="..tostring(ev.effective)
+            ..";reason="..tostring(ev.reason))
+    end
 end
 
 local function step_bot()
@@ -1439,6 +1460,7 @@ local function step_bot()
         local team_kind,team_kind_source,team_kind_conflict =
             team_possession.resolve(team_value,possession)
         local effective_unowned_team=team_kind
+        observe_throw_in_origin(gs,nil,nil,possession,fallback_class,team_kind,effective_unowned_team)
         if possession==0 and gk_release_lock then
             effective_unowned_team="CPU"
             team_kind="CPU"
@@ -4143,6 +4165,9 @@ local function step_bot()
 
     if game_state.is_restart(gs) then
         restart.assign(bx, by, my_base)
+        if gs==2 then
+            observe_throw_in_origin(gs,restart.taker_team,restart.taker,possession,nil,nil,nil)
+        end
         if gs ~= 2 or restart.taker_team ~= "MY" then throw_in.reset() end
 
         if gs ~= 1 then goal_kick.reset(); corner_kick.reset() end
