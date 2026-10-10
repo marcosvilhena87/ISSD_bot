@@ -112,6 +112,7 @@ local dash_frames = 0
 local dash_carrier = nil
 local gk_pending = nil
 local defensive_carrier = nil
+local cpu_carrier_continuity=nil
 local defensive_hold_age = 0
 local defensive_hold_guard=nil
 local defensive_pass_alignment=nil
@@ -119,7 +120,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="pre-shot-defensive-cover-20261009-v20"
+local BOT_BUILD_ID="cpu-carrier-continuity-20261010-v21"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -158,7 +159,8 @@ local defensive_dash={remaining=0,cooldown=0,base=nil,start_distance=nil,mode=ni
 local function defensive_dash_step(state)
     local cfg=config.DEFENSIVE_DASH
     local eligible={
-        LIVE_DEFENSE=true, PRE_SHOT_DEFENSIVE_COVER=true, BOX_ATTACKER_PRESSURE=true,
+        LIVE_DEFENSE=true, CPU_CARRIER_CONTINUITY_PRESS=true,
+        PRE_SHOT_DEFENSIVE_COVER=true, BOX_ATTACKER_PRESSURE=true,
         BOX_REBOUND_PRESSURE=true, CPU_DANGER_INTERCEPT=true,
         CPU_GROUND_INTERCEPT=true, CPU_LOW_INTERCEPT=true,
         CPU_AERIAL_INTERCEPT=true, CPU_BALL_INTERCEPT=true,
@@ -753,6 +755,69 @@ local function step_bot()
     end
 
     local bx, by = ball.world_xy()
+
+    -- RAM possession remains authoritative. Preserve only a short tactical
+    -- hypothesis when the same CPU runner stays glued to the loose ball.
+    local continuity_cfg=config.CPU_CARRIER_CONTINUITY
+    if continuity_cfg.enabled then
+        local t=cpu_carrier_continuity
+        local reason=nil
+        if gs~=0 or not gameplay_active.is_active(gameplay_value) then
+            reason="STOPPAGE"
+        elseif players.valid_my_base(possession) then
+            reason="MY_POSSESSION"
+        elseif t and players.valid_cpu_base(possession)
+            and possession~=t.base then
+            reason="DIFFERENT_CPU"
+        elseif t and possession==0 then
+            local cx,cy=players.xy(t.base)
+            local dist=math.sqrt((cx-bx)^2+(cy-by)^2)
+            local age=report.frame-t.last_confirmed
+            local ball_step=math.sqrt((bx-t.ball_x)^2+(by-t.ball_y)^2)
+            local runner_step=math.sqrt((cx-t.x)^2+(cy-t.y)^2)
+            if age>continuity_cfg.max_unowned_frames then
+                reason="TIMEOUT"
+            elseif dist>continuity_cfg.max_ball_distance then
+                reason="SEPARATION"
+            elseif ball_step>continuity_cfg.max_ball_step then
+                reason="BALL_DISPLACEMENT"
+            elseif runner_step>continuity_cfg.max_runner_step then
+                reason="RUNNER_DISPLACEMENT"
+            else
+                if not t.active and age>=1 then
+                    t.active=true
+                    report:write("CPU_CARRIER_CONTINUITY_START",true,
+                        {possession=possession,game_state=gs,my_base=my_base},
+                        "OBSERVE_CARRIER","base="..t.base..";distance="..dist
+                        ..";age="..age)
+                end
+                t.x,t.y=cx,cy
+                t.ball_x,t.ball_y=bx,by
+            end
+        end
+        if t and reason then
+            if t.active then
+                report:write("CPU_CARRIER_CONTINUITY_END",true,
+                    {possession=possession,game_state=gs,my_base=my_base},
+                    "OBSERVE_CARRIER","base="..t.base..";reason="..reason
+                    ..";age="..(report.frame-t.last_confirmed))
+            end
+            cpu_carrier_continuity=nil
+        end
+        if players.valid_cpu_base(possession)
+            and possession~=config.CPU_FIRST then
+            local cx,cy=players.xy(possession)
+            if t and t.active then
+                report:write("CPU_CARRIER_CONTINUITY_END",true,
+                    {possession=possession,game_state=gs,my_base=my_base},
+                    "OBSERVE_CARRIER","base="..t.base
+                    ..";reason=POSSESSION_RECONFIRMED;age="
+                    ..(report.frame-t.last_confirmed))
+            end
+            cpu_carrier_continuity={base=possession,x=cx,y=cy,
+                ball_x=bx,ball_y=by,last_confirmed=report.frame,active=false}
+        end
+    end
 
     -- First third is determined from actual field geometry and attack orientation.
     local function in_defensive_third(base)
@@ -2317,6 +2382,34 @@ local function step_bot()
                         effective_unowned_team=="CPU"
                         and "CPU_UNOWNED_BALL" or "MY_UNOWNED_BALL")
                 end
+            end
+        end
+
+        -- A zero-possession frame can be a dribble stride, not a rebound.
+        -- Keep pressure on the last CPU runner only with close spatial evidence.
+        if possession==0 and cpu_carrier_continuity
+            and cpu_carrier_continuity.active
+            and players.valid_my_base(my_base)
+            and my_base~=config.MY_FIRST then
+            local base=cpu_carrier_continuity.base
+            local cx,cy=players.xy(base)
+            local px,py=players.xy(my_base)
+            local gx,gy=players.xy(config.MY_FIRST)
+            local vx,vy=gx-cx,gy-cy
+            local length=math.sqrt(vx*vx+vy*vy)
+            if length>1 and length<=continuity_cfg.press_goal_radius then
+                local offset=math.min(continuity_cfg.goal_side_offset,length*0.5)
+                local tx=cx+vx/length*offset
+                local ty=cy+vy/length*offset
+                local dx,dy=tx-px,ty-py
+                movement.move_toward(dx,dy)
+                local state=make_state(my_base,dx,dy,
+                    "CPU_CARRIER_CONTINUITY_PRESS",possession,gs)
+                state.live_carrier=base
+                state.live_target_x=tx
+                state.live_target_y=ty
+                return attach_live_state(state,"CPU_CARRIER_CONTINUITY",
+                    "CPU_UNOWNED_BALL")
             end
         end
 
