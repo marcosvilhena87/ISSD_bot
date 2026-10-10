@@ -544,6 +544,16 @@ M.ACTIVE_TACKLE = {
     outcome_frames = 45,
 }
 
+M.PRE_SHOT_DEFENSIVE_COVER = {
+    enabled=true,
+    activation_radius=340,
+    emergency_radius=260,
+    lane_width=30,
+    min_along=6,
+    cover_offset=48,
+    max_fraction=0.60,
+}
+
 M.SHOT_LANE = {
     activation_radius = 340,
     intercept_offset = 48,
