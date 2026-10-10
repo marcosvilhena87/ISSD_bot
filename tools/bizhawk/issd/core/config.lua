@@ -319,6 +319,7 @@ M.ORIENTATION_RESOLVER = {
     margin=120,
     initial_confirm_frames=5,
     change_confirm_frames=90,
+    restart_fast_window_frames=150, -- live frames after state 6
 }
 
 M.POSSESSION_FALLBACK = {
