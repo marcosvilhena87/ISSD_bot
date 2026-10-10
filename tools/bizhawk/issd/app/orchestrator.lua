@@ -58,6 +58,7 @@ local BallLogicalTeamTransition = dofile(DIR .. "../state/ball_logical_team_tran
 local PossessionContext = dofile(DIR .. "../state/possession_context.lua")
 local GroundBallInterception = dofile(DIR .. "../tactics/ground_ball_interception.lua")
 local GroundOpportunityObserver = dofile(DIR .. "../state/ground_opportunity_observer.lua")
+local FiveDirectionPassObserver = dofile(DIR .. "../state/five_direction_pass_observer.lua")
 local GroundInterceptOutcomeTracker = dofile(DIR .. "../state/ground_intercept_outcome_tracker.lua")
 local MyPossessionLossTracker = dofile(DIR .. "../state/my_possession_loss_tracker.lua")
 local Restart = dofile(DIR .. "../tactics/restart.lua")
@@ -119,6 +120,7 @@ local gk_release_pending = nil
 local possession_context = PossessionContext.new(config, players)
 local ground_ball_interception = GroundBallInterception.new(config,players,field_boundary)
 local ground_opportunity_observer = GroundOpportunityObserver.new(config,players)
+local five_direction_pass_observer = FiveDirectionPassObserver.new(config,players,field_side)
 local ground_intercept_outcome_tracker = GroundInterceptOutcomeTracker.new(config,players)
 local my_possession_loss_tracker = MyPossessionLossTracker.new(config,players)
 local restart = Restart.new(config, players, Geometry, defense)
@@ -145,7 +147,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="transition-register-refactor-20261010-v68"
+local BOT_BUILD_ID="five-direction-outlet-observer-20261010-v69"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -505,6 +507,30 @@ local function observe_field_transitions(state)
                 ..";grace_granted="..tostring(event.grace_granted)
                 ..";grace_frames="..tostring(event.grace_frames))
         end
+end
+
+-- Keep passive pass observation outside step_bot to conserve Lua registers.
+local function observe_five_direction_pass(my_base,outlet)
+    local result=five_direction_pass_observer.evaluate(report.frame,my_base,
+        outlet and outlet.receiver or nil)
+    if not result then return end
+    local best=result.best
+    local pieces={"best_sector="..tostring(result.best_sector),
+        "best_base="..tostring(best and best.base),
+        "best_score="..tostring(best and best.score),
+        "best_distance="..tostring(best and best.distance),
+        "best_lane="..tostring(best and best.lane),
+        "best_receiver_clearance="..tostring(best and best.receiver_clearance),
+        "best_progress="..tostring(best and best.progress),
+        "actual_receiver="..tostring(result.actual)}
+    for _,name in ipairs({"FRONT","LEFT","RIGHT","DIAG_LEFT","DIAG_RIGHT"}) do
+        local candidate=result.sectors[name]
+        pieces[#pieces+1]=name.."_count="..tostring(result.counts[name])
+        pieces[#pieces+1]=name.."_base="..tostring(candidate and candidate.base)
+        pieces[#pieces+1]=name.."_score="..tostring(candidate and candidate.score)
+    end
+    report:write(result.kind,true,{my_base=my_base},
+        "OBSERVE_FIVE_DIRECTION_PASS",table.concat(pieces,";"))
 end
 
 local function step_bot()
@@ -1597,6 +1623,7 @@ local function step_bot()
                     end
                                         -- No forward dribble or Y dash while holding the defensive line.
                     local outlet,outlet_diag=forward_pass.plan(my_base)
+                    observe_five_direction_pass(my_base,outlet)
                     -- Report rejected outlet candidates sparingly. This never
                     -- changes the chosen movement or emergency clearance.
                     if not outlet and outlet_diag
