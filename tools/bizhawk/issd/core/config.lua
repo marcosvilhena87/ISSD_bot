@@ -561,6 +561,7 @@ M.ACTIVE_TACKLE = {
 M.CPU_CARRIER_CONTINUITY = {
     enabled=true,
     max_unowned_frames=8,
+    observation_max_frames=30, -- passive only; does not extend tactical intervention
     max_ball_distance=32,
     max_ball_step=25,
     max_runner_step=20,
