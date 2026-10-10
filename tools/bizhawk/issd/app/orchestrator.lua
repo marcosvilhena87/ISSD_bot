@@ -120,7 +120,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="def-clear-second-ball-recovery-20261010-v29"
+local BOT_BUILD_ID="long-pass-ai-behavior-validation-20261010-v30"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -3698,7 +3698,14 @@ while true do
                 ..";neutral_frames="..tostring(event.neutral_frames)
                 ..";neutral_movement="..tostring(event.neutral_movement)
                 ..";direction_frames="..tostring(event.direction_frames)
-                ..";direction_movement="..tostring(event.direction_movement))
+                ..";direction_movement="..tostring(event.direction_movement)
+                ..";intervention_frames="..tostring(event.intervention_frames)
+                ..";intervention_movement="..tostring(event.intervention_movement)
+                ..";closest="..tostring(event.closest)
+                ..";closest_distance="..tostring(event.closest_distance)
+                ..";previous_distance="..tostring(event.previous_distance)
+                ..";selected_distance="..tostring(event.selected_distance)
+                ..";available="..tostring(event.available))
         end
         if defensive_header_pending then
             local pending=defensive_header_pending
