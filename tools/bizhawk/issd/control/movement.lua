@@ -56,6 +56,14 @@ function M.new(config)
         send(pad)
     end
 
+    function obj.press_diagonal_button(horizontal, vertical, button)
+        assert((horizontal=="Right" or horizontal=="Left")
+            and (vertical=="Up" or vertical=="Down"), "invalid diagonal")
+        local pad={[horizontal]=true,[vertical]=true}
+        if button then pad[button]=true end
+        send(pad)
+    end
+
     function obj.press_direction_buttons(direction, buttons)
         local pad = {}
         if direction then pad[direction] = true end
