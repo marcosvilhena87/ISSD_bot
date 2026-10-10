@@ -55,6 +55,7 @@ local PlayerSwitch = dofile(DIR .. "../control/player_switch.lua")
 local TeamPossession = dofile(DIR .. "../state/team_possession.lua")
 local BallLogicalTeamTransition = dofile(DIR .. "../state/ball_logical_team_transition.lua")
 local PossessionContext = dofile(DIR .. "../state/possession_context.lua")
+local GroundBallInterception = dofile(DIR .. "../tactics/ground_ball_interception.lua")
 local MyPossessionLossTracker = dofile(DIR .. "../state/my_possession_loss_tracker.lua")
 local Restart = dofile(DIR .. "../tactics/restart.lua")
 local ThrowIn = dofile(DIR .. "../tactics/throw_in.lua")
@@ -112,6 +113,7 @@ local Last_Player_Ball_Possession_Team = nil
 local gk_release_lock = nil
 local gk_release_pending = nil
 local possession_context = PossessionContext.new(config, players)
+local ground_ball_interception = GroundBallInterception.new(config,players,field_boundary)
 local my_possession_loss_tracker = MyPossessionLossTracker.new(config,players)
 local restart = Restart.new(config, players, Geometry, defense)
 local throw_in = ThrowIn.new(config, players, field_side, mem)
@@ -137,7 +139,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="my-possession-loss-tracker-20261010-v61"
+local BOT_BUILD_ID="ground-ball-interception-20261010-v62"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -3395,6 +3397,26 @@ local function step_bot()
                 state.intercept_player_ball_distance=math.sqrt((bx-px)^2+(by-py)^2)
                 return attach_live_state(state,"BOX_PRESSURE","CPU_UNOWNED_BALL")
             end
+            -- Ground interception: after the goal-bound and box-rebound guards.
+            local ground=ground_ball_interception.plan(report.frame,my_base,
+                "CPU",bx,by,possession_context.ball_dx,
+                possession_context.ball_dy,
+                math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr)))
+            if ground then
+                local px,py=players.xy(my_base)
+                local dx,dy=ground.x-px,ground.y-py
+                movement.move_toward(dx,dy)
+                local state=make_state(my_base,dx,dy,
+                    "GROUND_BALL_CPU_INTERCEPT",possession,gs)
+                state.intercept_target_x=ground.x
+                state.intercept_target_y=ground.y
+                report:write("GROUND_BALL_INTERCEPT_TARGET",true,state,
+                    movement.last_command,"team=CPU;target_x="..ground.x
+                    ..";target_y="..ground.y..";lead="..ground.lead
+                    ..";height="..ground.height..";distance="..ground.distance)
+                return attach_live_state(state,"GROUND_BALL_INTERCEPTION",
+                    "CPU_UNOWNED_BALL")
+            end
             local px, py = players.xy(my_base)
             local target = interception.target(
                 px,
@@ -3542,6 +3564,26 @@ local function step_bot()
                     state.contest_cpu_eta=lock.cpu_eta
                     return attach_live_state(state,"ETA_INTERCEPT_LOCK","MY_UNOWNED_BALL")
                 end
+            end
+            -- Predict a short, stable ground-ball reception after urgent locks.
+            local ground=ground_ball_interception.plan(report.frame,my_base,
+                "MY",bx,by,possession_context.ball_dx,
+                possession_context.ball_dy,
+                math.max(0,-mem.s16(config.AERIAL_CONTACT.height_addr)))
+            if ground then
+                local px,py=players.xy(my_base)
+                local dx,dy=ground.x-px,ground.y-py
+                movement.move_toward(dx,dy)
+                local state=make_state(my_base,dx,dy,
+                    "GROUND_BALL_MY_RECOVERY",possession,gs)
+                state.intercept_target_x=ground.x
+                state.intercept_target_y=ground.y
+                report:write("GROUND_BALL_INTERCEPT_TARGET",true,state,
+                    movement.last_command,"team=MY;target_x="..ground.x
+                    ..";target_y="..ground.y..";lead="..ground.lead
+                    ..";height="..ground.height..";distance="..ground.distance)
+                return attach_live_state(state,"GROUND_BALL_INTERCEPTION",
+                    "MY_UNOWNED_BALL")
             end
             -- Previous-frame stable ETA can unlock a conservative low-ball chase.
             -- Existing goal-box danger override above retains priority.
