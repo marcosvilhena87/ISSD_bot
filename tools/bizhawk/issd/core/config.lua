@@ -310,6 +310,17 @@ M.FORWARD_PASS = {
     weight_lateral = 1.0,
 }
 
+-- Geometry must persist before changing the operational field direction.
+M.ORIENTATION_RESOLVER = {
+    min_field_length=500,
+    max_field_length=4000,
+    min_center=100,
+    min_gk_separation=450,
+    margin=120,
+    initial_confirm_frames=5,
+    change_confirm_frames=90,
+}
+
 M.POSSESSION_FALLBACK = {
     forward_step=48,
     lateral_step=16,
