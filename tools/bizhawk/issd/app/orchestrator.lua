@@ -128,7 +128,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="cpu-aerial-fixed-player-history-20261010-v50"
+local BOT_BUILD_ID="goal-side-tackle-20261010-v51"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -2279,6 +2279,53 @@ local function step_bot()
                 end
             end
 
+            -- Conservative goal-side pressure: stay on carrier-to-GK corridor.
+            -- Never use B while the selected defender is outside shot coverage.
+            local guarded_tackle=config.GOAL_SIDE_TACKLE
+            local goal_lane=primary_lane
+            if guarded_tackle.enabled and goal_lane then
+                local px,py=players.xy(my_base)
+                local cx,cy=players.xy(possession)
+                local gx,gy=players.xy(config.MY_FIRST)
+                local vx,vy=gx-cx,gy-cy
+                local length=math.sqrt(vx*vx+vy*vy)
+                local carrier_distance=math.sqrt((px-cx)^2+(py-cy)^2)
+                local covered=length>1
+                    and goal_lane.lateral<=guarded_tackle.max_lateral
+                    and goal_lane.along>=guarded_tackle.min_along
+                    and goal_lane.along<=length-guarded_tackle.goal_margin
+                if covered and carrier_distance>guarded_tackle.approach_distance
+                    and carrier_distance<=guarded_tackle.max_approach_distance then
+                    local tx=cx+vx/length*guarded_tackle.approach_distance
+                    local ty=cy+vy/length*guarded_tackle.approach_distance
+                    local corrected=field_boundary.correct(px,py,tx,ty)
+                    -- Only move if the target remains within the blocking corridor.
+                    local rx,ry=corrected.x-cx,corrected.y-cy
+                    local target_along=(rx*vx+ry*vy)/length
+                    local target_lateral=math.abs(rx*vy-ry*vx)/length
+                    if target_lateral<=guarded_tackle.max_lateral
+                        and target_along>=guarded_tackle.min_along
+                        and target_along<=length-guarded_tackle.goal_margin then
+                        local dx,dy=corrected.x-px,corrected.y-py
+                        movement.move_toward(dx,dy)
+                        local state=make_state(my_base,dx,dy,
+                            "GOAL_SIDE_TACKLE_APPROACH",possession,gs)
+                        state.shot_lane_lateral=goal_lane.lateral
+                        state.shot_lane_along=goal_lane.along
+                        state.live_target_x=corrected.x
+                        state.live_target_y=corrected.y
+                        report:write("GOAL_SIDE_TACKLE_APPROACH",true,state,
+                            movement.last_command,
+                            "carrier="..possession..";defender="..my_base
+                            ..";distance="..carrier_distance
+                            ..";lateral="..goal_lane.lateral
+                            ..";along="..goal_lane.along)
+                        return attach_live_state(state,"GOAL_SIDE_TACKLE",
+                            "CPU_CONTROLLED")
+                    end
+                end
+            end
+
             -- First priority: prevent an unmarked attacker from receiving and shooting.
             local urgent=live_defense.box_pressure(possession,bx,by,false)
             if urgent then
@@ -2295,7 +2342,33 @@ local function step_bot()
             end
 
             local tackle=active_tackle.plan(my_base,possession,bx,by)
-            if tackle and active_tackle.fire(tackle,movement) then
+            -- For carriers within shooting range, do not sacrifice the shot line.
+            local tackle_safe=true
+            if guarded_tackle.enabled and goal_lane then
+                local cx,cy=players.xy(possession)
+                local gx,gy=players.xy(config.MY_FIRST)
+                local length=math.sqrt((gx-cx)^2+(gy-cy)^2)
+                tackle_safe=goal_lane.lateral<=guarded_tackle.max_lateral
+                    and goal_lane.along>=guarded_tackle.min_along
+                    and goal_lane.along<=length-guarded_tackle.goal_margin
+                if tackle and not tackle_safe and report.frame%30==0 then
+                    report:write("GOAL_SIDE_TACKLE_ABORT",true,
+                        {possession=possession,game_state=gs,my_base=my_base},
+                        "PRESERVE_SHOT_BLOCK",
+                        "carrier="..possession..";defender="..my_base
+                        ..";lateral="..goal_lane.lateral
+                        ..";along="..goal_lane.along)
+                end
+            end
+            if tackle and tackle_safe and active_tackle.fire(tackle,movement) then
+                if goal_lane then
+                    report:write("GOAL_SIDE_TACKLE_ATTEMPT",true,
+                        {possession=possession,game_state=gs,my_base=my_base},
+                        movement.last_command,
+                        "carrier="..possession..";defender="..my_base
+                        ..";lateral="..goal_lane.lateral
+                        ..";along="..goal_lane.along)
+                end
                 local state=make_state(my_base,0,0,"DEFENSE_ACTIVE_TACKLE",possession,gs)
                 state.tackle_fired=true
                 state.tackle_carrier=tackle.carrier
