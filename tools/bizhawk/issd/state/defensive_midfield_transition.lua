@@ -36,6 +36,7 @@ function M.new(config,mem,players,field_side)
      action_age=p and p.action_frame and frame-p.action_frame,
      action_kind=p and p.action_kind,
      action_owner=p and p.action_owner,
+     action_saw_loose=p and p.action_saw_loose,
      first_receiver=p and p.first_receiver,
      receive_age=p and p.receive_frame and frame-p.receive_frame,
      received_zone=p and p.received_zone,
@@ -54,8 +55,12 @@ function M.new(config,mem,players,field_side)
   if pending then
    -- Link the first individually confirmed reception after an action.
    -- The command itself never counts as a successful pass or clearance.
+   if pending.action_frame and owner==0 then
+    pending.action_saw_loose=true
+   end
    if pending.action_frame and not pending.first_receiver
-      and frame>pending.action_frame and my then
+      and frame>pending.action_frame and my
+      and (owner~=pending.action_owner or pending.action_saw_loose) then
     pending.first_receiver=owner
     pending.receive_frame=frame
     pending.receive_progress=x
@@ -105,7 +110,8 @@ function M.new(config,mem,players,field_side)
       owner_changes=0,loose_frames=0,last_owner=owner,
       source=owner==config.MY_FIRST and "GOALKEEPER" or "OUTFIELD",
       action_count=0,action_frame=nil,action_kind=nil,
-      action_owner=nil,first_receiver=nil,receive_frame=nil,
+      action_owner=nil,action_saw_loose=false,
+      first_receiver=nil,receive_frame=nil,
       receive_progress=nil,received_zone=nil,max_progress_after_receive=0}
     emit("START","CONFIRMED_FIRST_THIRD_POSSESSION",o.pending)
    end
@@ -124,6 +130,7 @@ function M.new(config,mem,players,field_side)
    p.action_frame=frame
    p.action_kind=action
    p.action_owner=owner
+   p.action_saw_loose=false
    p.first_receiver=nil
    p.receive_frame=nil
    p.receive_progress=nil
