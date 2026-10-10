@@ -25,7 +25,8 @@ function M.new(config,players)
   local out={}
   local function emit(kind,reason)
    out[#out+1]={kind=kind,reason=reason,sequence=p.sequence,
-    age=frame-p.start,neutral_frames=p.neutral_frames,
+    age=frame-p.start,gameplay_active=s.gameplay_active,
+    game_state=s.game_state,neutral_frames=p.neutral_frames,
     neutral_distance=p.neutral_distance,
     directional_frames=p.directional_frames,
     directional_distance=p.directional_distance,
@@ -34,8 +35,8 @@ function M.new(config,players)
     min_ball_distance=p.min_ball_distance}
   end
   local owner=s.possession
-  if s.game_state~=0 or s.gameplay_active~=1 then
-   emit("END","STOPPAGE")
+  if s.game_state~=0 then
+   emit("END","GAME_STATE_STOPPAGE")
    o.pending=nil
    return out
   end
