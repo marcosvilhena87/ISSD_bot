@@ -3,11 +3,15 @@ local M={}
 function M.new(config,players,field_side)
  local c=config.DEFENSIVE_CLEARANCE_OUTCOME
  local o={pending=nil,sequence=0}
- function o.start(frame,x,y,carrier,frames,dir)
+ function o.start(frame,x,y,carrier,frames,dir,variant)
+  local old=o.pending
+  local superseded=old and {sequence=old.sequence,age=frame-old.frame,
+    frames=old.frames,variant=old.variant} or nil
   o.sequence=o.sequence+1
   o.pending={frame=frame,x=x,y=y,carrier=carrier,frames=frames,
-    dir=dir,sequence=o.sequence, inactive_frames=0, first_receiver=nil}
-  return o.pending.sequence
+    dir=dir,sequence=o.sequence,variant=variant,
+    inactive_frames=0, first_receiver=nil}
+  return o.pending.sequence,superseded
  end
  function o.update(state,frame)
   local p=o.pending
@@ -33,7 +37,7 @@ function M.new(config,players,field_side)
    o.pending=nil
    return {kind=kind,reason=reason,sequence=p.sequence,age=age,
     progress=progress,start_x=p.x,end_x=state.ball_x,
-    frames=p.frames,owner=state.possession,
+    frames=p.frames,variant=p.variant,owner=state.possession,
     receiver=kind=="RECEIVED" and state.possession or nil,
     receiver_x=kind=="RECEIVED" and players.xy(state.possession) or nil,
     inactive_frames=p.inactive_frames,game_state=state.game_state,
