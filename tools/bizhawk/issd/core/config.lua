@@ -544,6 +544,16 @@ M.ACTIVE_TACKLE = {
     outcome_frames = 45,
 }
 
+M.CPU_CARRIER_CONTINUITY = {
+    enabled=true,
+    max_unowned_frames=8,
+    max_ball_distance=32,
+    max_ball_step=25,
+    max_runner_step=20,
+    press_goal_radius=340,
+    goal_side_offset=35,
+}
+
 M.PRE_SHOT_DEFENSIVE_COVER = {
     enabled=true,
     activation_radius=340,
