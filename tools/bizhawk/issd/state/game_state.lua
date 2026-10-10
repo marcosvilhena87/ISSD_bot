@@ -14,7 +14,7 @@ function M.new(config, mem)
         if value == 3 then return "FOUL_RESTART_SEQUENCE" end
         if value == 4 then return "OFFSIDE_SEQUENCE" end
         if value == 5 then return "POST_GOAL" end
-        if value == 6 then return "HALF_TIME" end
+        if value == 6 then return "PERIOD_TIME_UP" end
         return "UNKNOWN"
     end
 
