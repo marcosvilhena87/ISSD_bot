@@ -122,7 +122,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="defensive-outlet-diagnostics-20261010-v39"
+local BOT_BUILD_ID="defensive-outlet-geometry-20261010-v40"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -1259,7 +1259,20 @@ local function step_bot()
                             ..";receiver_pressure="..outlet_diag.clearance_rejected
                             ..";lane_blocked="..outlet_diag.lane_rejected
                             ..";deep_lateral="..outlet_diag.deep_lateral_rejected
-                            ..";valid="..outlet_diag.valid_count)
+                            ..";valid="..outlet_diag.valid_count
+                            ..";rejected_forward="..outlet_diag.rejected_forward
+                            ..";rejected_distance="..outlet_diag.rejected_distance
+                            ..";rejected_lateral="..outlet_diag.rejected_lateral
+                            ..";near_lateral="..outlet_diag.near_lateral
+                            ..";mid_lateral="..outlet_diag.mid_lateral
+                            ..";far_lateral="..outlet_diag.far_lateral
+                            ..";closest_receiver="..tostring(outlet_diag.closest_receiver)
+                            ..";closest_forward="..tostring(outlet_diag.closest_forward)
+                            ..";closest_lateral="..tostring(outlet_diag.closest_lateral)
+                            ..";closest_distance="..tostring(outlet_diag.closest_distance)
+                            ..";closest_lateral_excess="..tostring(outlet_diag.closest_lateral_excess)
+                            ..";closest_cardinal_lane="..tostring(outlet_diag.closest_cardinal_lane)
+                            ..";closest_receiver_clearance="..tostring(outlet_diag.closest_receiver_clearance))
                     end
                     local outlet_ready=false
                     if outlet then
