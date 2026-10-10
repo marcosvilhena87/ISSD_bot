@@ -799,6 +799,7 @@ local function step_bot()
             obs.sequence=obs.sequence+1
             obs.pending={start=report.frame,base=obs.last_cpu,
                 sequence=obs.sequence}
+            obs.last_cpu=nil -- avoid reopening the same uninterrupted zero-possession spell
             report:write("CPU_NOPOSS_RECONFIRMATION_START",true,
                 {possession=possession,game_state=gs,my_base=my_base},
                 "OBSERVE_NOPOSS","sequence="..obs.sequence
