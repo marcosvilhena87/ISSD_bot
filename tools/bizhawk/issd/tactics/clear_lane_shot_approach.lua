@@ -3,11 +3,14 @@
 local M={}
 function M.new(config,players,field_side)
  local c=config.CLEAR_LANE_SHOT_APPROACH
- local o={run=nil,done_carrier=nil}
+ local o={run=nil,done_carrier=nil,last_evaluation=nil}
+ function o.evaluation() return o.last_evaluation end
  function o.reset() o.run=nil;o.done_carrier=nil end
  local function risk(carrier,gx,gy,px,py)
   local nearest=math.huge
   local blocked=false
+  local nearest_ahead=math.huge
+  local nearest_behind=math.huge
   local vx,vy=gx-px,gy-py
   local d=math.sqrt(vx*vx+vy*vy)
   players.each_cpu(function(base)
@@ -15,14 +18,17 @@ function M.new(config,players,field_side)
     local ex,ey=players.xy(base)
     local dd=math.sqrt((ex-px)^2+(ey-py)^2)
     if dd<nearest then nearest=dd end
-    local along=((ex-px)*vx+(ey-py)*vy)/(d*d)
+    local longitudinal=((ex-px)*vx+(ey-py)*vy)/d
+    if longitudinal>=0 then nearest_ahead=math.min(nearest_ahead,dd)
+    else nearest_behind=math.min(nearest_behind,dd) end
+    local along=longitudinal/d
     local lateral=math.abs((ex-px)*vy-(ey-py)*vx)/d
     if along>0 and along<1 and lateral<c.lane_width then
      blocked=true
     end
    end
   end)
-  return blocked,nearest
+  return blocked,nearest,nearest_ahead,nearest_behind
  end
  function o.update(frame,carrier,shot)
   if not c.enabled or not players.valid_my_base(carrier) or
@@ -32,10 +38,18 @@ function M.new(config,players,field_side)
   local px,py=players.xy(carrier)
   local gx,gy=players.xy(config.CPU_FIRST)
   local dir=field_side.attack_direction()
-  if dir==0 then return nil end
+  if dir==0 then
+   o.last_evaluation={frame=frame,carrier=carrier,reason="INVALID_DIRECTION"}
+   return nil
+  end
   local forward=(gx-px)*dir
   local distance=math.sqrt((gx-px)^2+(gy-py)^2)
-  local blocked,nearest=risk(carrier,gx,gy,px,py)
+  local blocked,nearest,ahead,behind=risk(carrier,gx,gy,px,py)
+  local function evaluate(reason)
+   o.last_evaluation={frame=frame,carrier=carrier,reason=reason,blocked=blocked,
+     nearest=nearest,nearest_ahead=ahead,nearest_behind=behind,
+     distance=distance,forward=forward,shot_ready=shot~=nil}
+  end
   local r=o.run
   if r then
    local reason=nil
@@ -47,18 +61,25 @@ function M.new(config,players,field_side)
    elseif (px-r.start_x)*r.dir>=c.max_advance then reason="ADVANCE_LIMIT"
    elseif dir~=r.dir then reason="DIRECTION_CHANGED" end
    if reason then
+    evaluate(reason)
     o.run=nil;o.done_carrier=carrier
     return {kind="END",reason=reason,distance=distance,nearest=nearest,
         gain=(px-r.start_x)*r.dir,carrier=carrier}
    end
+   evaluate("APPROACH_ACTIVE")
    return {kind="MOVE",direction=dir==1 and "Right" or "Left",
        distance=distance,nearest=nearest,carrier=carrier,
        age=frame-r.start,gain=(px-r.start_x)*dir}
   end
-  if o.done_carrier==carrier or not shot or blocked
-      or nearest<c.min_defender_clearance
-      or distance<=c.target_distance+c.start_margin
-      or forward<=c.min_forward+c.start_margin then return nil end
+  local reason="READY"
+  if o.done_carrier==carrier then reason="ALREADY_ATTEMPTED"
+  elseif not shot then reason="NO_VALID_SHOT"
+  elseif blocked then reason="LANE_BLOCKED"
+  elseif nearest<c.min_defender_clearance then reason="DEFENDER_CLOSE"
+  elseif distance<=c.target_distance+c.start_margin then reason="ALREADY_CLOSE"
+  elseif forward<=c.min_forward+c.start_margin then reason="GOAL_TOO_CLOSE" end
+  evaluate(reason)
+  if reason~="READY" then return nil end
   o.run={carrier=carrier,start=frame,start_x=px,start_y=py,dir=dir}
   return {kind="MOVE",direction=dir==1 and "Right" or "Left",
       distance=distance,nearest=nearest,carrier=carrier,age=0,gain=0,start=true}
