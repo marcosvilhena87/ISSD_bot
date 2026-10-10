@@ -121,7 +121,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="cpu-noposs-spatial-validation-20261010-v35"
+local BOT_BUILD_ID="cpu-noposs-coupled-motion-20261010-v36"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -774,7 +774,25 @@ local function step_bot()
             local ox,oy=players.xy(pending.base)
             local distance=ox and oy and math.sqrt((bx-ox)^2+(by-oy)^2) or nil
             if possession==0 then
+                if distance and pending.last_ball_x then
+                    local ball_dx,ball_dy=bx-pending.last_ball_x,by-pending.last_ball_y
+                    local runner_dx,runner_dy=ox-pending.last_runner_x,oy-pending.last_runner_y
+                    local ball_step=math.sqrt(ball_dx^2+ball_dy^2)
+                    local runner_step=math.sqrt(runner_dx^2+runner_dy^2)
+                    local min_step=config.CPU_CARRIER_CONTINUITY.observation_motion_min_step or 1
+                    if ball_step>=min_step and runner_step>=min_step then
+                        local alignment=(ball_dx*runner_dx+ball_dy*runner_dy)/(ball_step*runner_step)
+                        pending.motion_samples=pending.motion_samples+1
+                        pending.alignment_sum=pending.alignment_sum+alignment
+                        if alignment>=0.7 then pending.aligned_frames=pending.aligned_frames+1 end
+                        if ball_step>(config.CPU_CARRIER_CONTINUITY.max_ball_step or 25) then
+                            pending.fast_ball_frames=pending.fast_ball_frames+1
+                        end
+                    end
+                end
                 if distance then
+                    pending.last_ball_x,pending.last_ball_y=bx,by
+                    pending.last_runner_x,pending.last_runner_y=ox,oy
                     pending.distance_sum=pending.distance_sum+distance
                     pending.distance_samples=pending.distance_samples+1
                     pending.max_distance=math.max(pending.max_distance,distance)
@@ -798,6 +816,14 @@ local function step_bot()
             if reason then
                 local mean_distance=pending.distance_samples>0
                     and pending.distance_sum/pending.distance_samples or nil
+                local alignment_mean=pending.motion_samples>0
+                    and pending.alignment_sum/pending.motion_samples or nil
+                local coupled=reason=="SAME_CPU_RECONFIRMED"
+                    and pending.distance_samples>0
+                    and pending.max_distance<=close_radius
+                    and pending.motion_samples>=5
+                    and pending.aligned_frames/pending.motion_samples>=0.8
+                    and pending.fast_ball_frames==0
                 report:write("CPU_NOPOSS_RECONFIRMATION_END",true,
                     {possession=possession,game_state=gs,my_base=my_base},
                     "OBSERVE_NOPOSS","sequence="..pending.sequence
@@ -809,6 +835,11 @@ local function step_bot()
                     ..";frames_close="..pending.frames_close
                     ..";distance_samples="..pending.distance_samples
                     ..";separation_events="..pending.separation_events
+                    ..";motion_samples="..pending.motion_samples
+                    ..";aligned_frames="..pending.aligned_frames
+                    ..";mean_alignment="..tostring(alignment_mean)
+                    ..";fast_ball_frames="..pending.fast_ball_frames
+                    ..";coupled_motion="..tostring(coupled)
                     ..";same_player="..tostring(reason=="SAME_CPU_RECONFIRMED")
                     ..";spatial_continuity="..tostring(
                         reason=="SAME_CPU_RECONFIRMED"
@@ -823,7 +854,8 @@ local function step_bot()
             obs.pending={start=report.frame,base=obs.last_cpu,
                 sequence=obs.sequence,distance_sum=0,distance_samples=0,
                 max_distance=0,frames_close=0,separation_events=0,
-                previous_close=true}
+                previous_close=true,motion_samples=0,aligned_frames=0,
+                alignment_sum=0,fast_ball_frames=0}
             obs.last_cpu=nil -- avoid reopening the same uninterrupted zero-possession spell
             report:write("CPU_NOPOSS_RECONFIRMATION_START",true,
                 {possession=possession,game_state=gs,my_base=my_base},
