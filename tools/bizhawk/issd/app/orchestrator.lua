@@ -145,7 +145,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="ground-opportunity-observer-20261010-v65"
+local BOT_BUILD_ID="critical-shot-continuity-20261010-v66"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -170,6 +170,7 @@ local final_third_cooldown_until=0
 local last_flight_discrepancy=false
 local flight_interception_pending=nil
 local danger_lock=nil
+local critical_shot_lock=nil
 local header_last_frame=-99999
 local defensive_header_pending=nil
 local header_last_height=nil
@@ -445,6 +446,7 @@ local function step_bot()
         -- An interception lock belongs to a specific control context.
         contest_intercept_lock=nil
         danger_lock=nil
+        critical_shot_lock=nil
     end
     local switch_event = player_switch.take_event()
     if switch_event then
@@ -3156,6 +3158,34 @@ local function step_bot()
             local critical=interception.danger_target(bx,by,
                 possession_context.ball_dx,possession_context.ball_dy,
                 possession_context.ball_speed,gx,gy,field_side.goal_direction())
+            -- Hold an observed goal-bound trajectory through short velocity
+            -- classification gaps; never assume a goalkeeper save or rebound.
+            if critical then
+                critical_shot_lock={target_x=critical.x,target_y=critical.y,
+                    first=report.frame,last=report.frame,bx=bx,by=by,
+                    frames_to_goal=critical.frames_to_goal}
+            elseif critical_shot_lock then
+                local lock=critical_shot_lock
+                local goal_dir=field_side.goal_direction()
+                local advance=(bx-lock.bx)*goal_dir
+                local lateral=math.abs(by-lock.by)
+                local gx_distance=(bx-gx)*goal_dir
+                local age=report.frame-lock.last
+                if age>5 or report.frame-lock.first>22
+                    or advance< -2 or lateral>22 or gx_distance>=0 then
+                    report:write("GOAL_BOUND_LOCK_END",true,
+                        {possession=possession,game_state=gs,my_base=my_base},
+                        "OBSERVE_CRITICAL_SHOT",
+                        "reason=TRAJECTORY_OR_TIMEOUT;age="..(report.frame-lock.first))
+                    critical_shot_lock=nil
+                else
+                    -- Retain the previously validated point only while the
+                    -- ball's physical progression remains compatible.
+                    critical={x=lock.target_x,y=lock.target_y,
+                        frames_to_goal=lock.frames_to_goal}
+                    lock.bx=bx;lock.by=by
+                end
+            end
             if critical then
                 local px,py=players.xy(my_base)
                 if players.valid_my_base(my_base) and my_base~=config.MY_FIRST then
@@ -3181,6 +3211,8 @@ local function step_bot()
                 end
             end
         end
+
+        if possession~=0 or gs~=0 then critical_shot_lock=nil end
 
         -- A zero-possession frame can be a dribble stride, not a rebound.
         -- Keep pressure on the last CPU runner only with close spatial evidence.
@@ -4100,6 +4132,7 @@ while true do
         if state.game_state~=0 or players.valid_my_base(state.possession)
             or players.valid_cpu_base(state.possession) then
             danger_lock=nil
+            critical_shot_lock=nil
         end
         if flight_interception_pending then
             local outcome=nil
