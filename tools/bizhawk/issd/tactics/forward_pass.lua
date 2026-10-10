@@ -51,7 +51,13 @@ function M.new(config,players,field_side,mem)
     function obj.plan(carrier, prefer_central)
         local diag={candidate_count=0,geometry_rejected=0,
             clearance_rejected=0,lane_rejected=0,
-            deep_lateral_rejected=0,valid_count=0,reason="NONE"}
+            deep_lateral_rejected=0,valid_count=0,reason="NONE",
+            rejected_forward=0,rejected_distance=0,
+            rejected_lateral=0,near_lateral=0,mid_lateral=0,
+            far_lateral=0,closest_lateral_excess=nil,
+            closest_receiver=nil,closest_forward=nil,
+            closest_lateral=nil,closest_distance=nil,
+            closest_cardinal_lane=nil,closest_receiver_clearance=nil}
         if obj.cooldown>0 then diag.reason="COOLDOWN";return nil,diag end
         if not players.valid_my_base(carrier)
             or carrier==config.MY_FIRST then
@@ -99,6 +105,45 @@ function M.new(config,players,field_side,mem)
                 end
                 if not suitable or zone_for(rx,dir)==nil then
                     diag.geometry_rejected=diag.geometry_rejected+1
+                    if zone<3 then
+                        if forward<c.min_forward or forward>c.max_forward then
+                            diag.rejected_forward=diag.rejected_forward+1
+                        end
+                        if d>c.max_distance then
+                            diag.rejected_distance=diag.rejected_distance+1
+                        end
+                        if lateral>c.max_lateral and forward>=c.min_forward
+                            and forward<=c.max_forward and d<=c.max_distance then
+                            diag.rejected_lateral=diag.rejected_lateral+1
+                            local excess=lateral-c.max_lateral
+                            if excess<=24 then diag.near_lateral=diag.near_lateral+1
+                            elseif excess<=56 then diag.mid_lateral=diag.mid_lateral+1
+                            else diag.far_lateral=diag.far_lateral+1 end
+                            if not diag.closest_lateral_excess
+                                or excess<diag.closest_lateral_excess then
+                                diag.closest_lateral_excess=excess
+                                diag.closest_receiver=base
+                                diag.closest_forward=forward
+                                diag.closest_lateral=lateral
+                                diag.closest_distance=d
+                                -- A Right/Left+B pass follows y=py, not the
+                                -- diagonal towards the rejected receiver.
+                                local lane=99999
+                                local receiver_clearance=99999
+                                players.each_cpu(function(cpu)
+                                    local ex,ey=players.xy(cpu)
+                                    receiver_clearance=math.min(
+                                        receiver_clearance,distance(rx,ry,ex,ey))
+                                    local along=(ex-px)*dir
+                                    if along>=0 and along<=forward then
+                                        lane=math.min(lane,math.abs(ey-py))
+                                    end
+                                end)
+                                diag.closest_cardinal_lane=lane
+                                diag.closest_receiver_clearance=receiver_clearance
+                            end
+                        end
+                    end
                 else
                     local receiver_clearance=99999
                     local corridor=99999
