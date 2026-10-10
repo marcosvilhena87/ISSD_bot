@@ -82,6 +82,7 @@ function M.new(config,players,field_side,mem)
         local zone=zone_for(px,dir)
         if not zone then diag.reason="INVALID_ZONE";return nil,diag end
         local best=nil
+        local best_diagonal=nil
         players.each_my(function(base)
             if base~=carrier and base~=config.MY_FIRST then
                 diag.candidate_count=diag.candidate_count+1
@@ -115,7 +116,32 @@ function M.new(config,players,field_side,mem)
                     end)
                     local safe=receiver_space>=c.min_receiver_clearance
                         and lane>=c.min_lane_clearance
-                    if safe then diag.diagonal_safe=diag.diagonal_safe+1
+                    if safe then
+                        diag.diagonal_safe=diag.diagonal_safe+1
+                        -- Conservative experiment: require a true diagonal
+                        -- rather than an almost horizontal/vertical pass.
+                        local ratio=lateral/forward
+                        if ratio>=0.60 and ratio<=1.55
+                            and receiver_space>=c.min_receiver_clearance+18
+                            and lane>=c.min_lane_clearance+15
+                            and zone_for(rx,dir)~=nil
+                            and not prefer_central then
+                            local candidate={
+                                receiver=base,carrier=carrier,zone=zone,
+                                distance=d,forward=forward,lateral=lateral,
+                                receiver_clearance=receiver_space,
+                                lane_clearance=lane,
+                                direction=dir==1 and "Right" or "Left",
+                                vertical=vertical<0 and "Up" or "Down",
+                                button=c.button,intent="SHORT_DIAGONAL",
+                                score=math.min(receiver_space,180)*c.weight_clearance
+                                    +math.min(lane,180)*c.weight_lane
+                                    +forward*c.weight_progress-d*0.12}
+                            if not best_diagonal
+                                or candidate.score>best_diagonal.score then
+                                best_diagonal=candidate
+                            end
+                        end
                     else diag.diagonal_unsafe=diag.diagonal_unsafe+1 end
                     if not diag.diagonal_receiver or
                         (safe and diag.diagonal_receiver_clearance<c.min_receiver_clearance)
@@ -295,6 +321,8 @@ function M.new(config,players,field_side,mem)
                 end
             end
         end)
+        -- Preserve existing cardinal priority and fallback behavior.
+        if not best and best_diagonal then best=best_diagonal end
         if best then diag.reason="OUTLET_AVAILABLE"
         elseif diag.candidate_count==0 then diag.reason="NO_TEAMMATE"
         elseif diag.geometry_rejected==diag.candidate_count then
@@ -304,7 +332,11 @@ function M.new(config,players,field_side,mem)
     end
     function obj.fire(plan,movement)
         if not plan or obj.cooldown>0 then return false end
-        movement.press_direction_button(plan.direction,plan.button)
+        if plan.intent=="SHORT_DIAGONAL" then
+            movement.press_diagonal_button(plan.direction,plan.vertical,plan.button)
+        else
+            movement.press_direction_button(plan.direction,plan.button)
+        end
         obj.cooldown=c.cooldown_frames
         obj.last_carrier=plan.carrier
         return true
