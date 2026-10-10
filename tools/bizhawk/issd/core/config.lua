@@ -188,6 +188,7 @@ M.ATTACK = {
 M.DEFENSIVE_MIDFIELD_TRANSITION = {
     stable_frames=12,
     max_frames=240,
+    stability_grace_frames=18, -- one bounded extension after midfield entry
 }
 
 M.DEFENSIVE_PASS_OUTCOME = {
