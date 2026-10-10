@@ -590,6 +590,16 @@ M.SHOT_LANE = {
     telemetry_frames = 15,
 }
 
+-- Conservative pressing along the carrier-to-goal blocking corridor.
+M.GOAL_SIDE_TACKLE = {
+    enabled=true,
+    max_lateral=22,
+    min_along=9,
+    goal_margin=20,
+    approach_distance=25,
+    max_approach_distance=105,
+}
+
 M.GOAL_SIDE = {
     offset = 65, -- from carrier toward Brazilian GK
     max_fraction = 0.65,
