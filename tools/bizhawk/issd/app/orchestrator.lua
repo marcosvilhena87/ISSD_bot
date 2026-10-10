@@ -3812,7 +3812,10 @@ while true do
                 ..";receive_age="..tostring(event.receive_age)
                 ..";received_zone="..tostring(event.received_zone)
                 ..";progress_after_receive="..tostring(event.progress_after_receive)
-                ..";max_progress_after_receive="..tostring(event.max_progress_after_receive))
+                ..";max_progress_after_receive="..tostring(event.max_progress_after_receive)
+                ..";reception_kind="..tostring(event.reception_kind)
+                ..";grace_deadline="..tostring(event.grace_deadline)
+                ..";grace_granted="..tostring(event.grace_granted))
         end
         for _,event in ipairs(mid_attack_transition.update(state,report.frame)) do
             report:write("MID_ATTACK_TRANSITION_"..event.kind,true,state,
