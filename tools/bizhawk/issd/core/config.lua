@@ -258,6 +258,19 @@ M.DEEP_DEFENSIVE_LATERAL = {
     min_cpu_arrival_margin=42, -- distance to actual straight B lane landing
 }
 
+-- Passive five-direction pass candidates for defensive outlets.
+M.FIVE_DIRECTION_PASS_OBSERVER = {
+    sample_frames=30,
+    min_distance=25,
+    max_distance=320,
+    min_forward=18,
+    max_backward=15,
+    front_ratio=0.55,
+    safe_lane=48,
+    safe_receiver=70,
+    good_progress=130,
+}
+
 M.DEFENSIVE_EXIT = {
     lateral_min=65, lateral_max=190, max_horizontal=30,
     max_pass_distance=210, receiver_clearance=80,
