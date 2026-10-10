@@ -113,6 +113,7 @@ local dash_carrier = nil
 local gk_pending = nil
 local defensive_carrier = nil
 local cpu_carrier_continuity=nil
+local cpu_noposs_observer={last_cpu=nil,pending=nil,sequence=0}
 local defensive_hold_age = 0
 local defensive_hold_guard=nil
 local defensive_pass_alignment=nil
@@ -120,7 +121,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="cpu-runner-noposs-continuity-20261010-v32"
+local BOT_BUILD_ID="cpu-carrier-noposs-reconfirmation-20261010-v33"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -756,6 +757,56 @@ local function step_bot()
     end
 
     local bx, by = ball.world_xy()
+
+    -- Independent, passive NoPoss reconfirmation: never drives controls or
+    -- extends the eight-frame tactical carrier continuity.
+    do
+        local obs=cpu_noposs_observer
+        local window=config.CPU_CARRIER_CONTINUITY.observation_max_frames or 30
+        local cpu=players.valid_cpu_base(possession)
+            and possession~=config.CPU_FIRST
+        local my=players.valid_my_base(possession)
+        local valid=gs==0
+        local pending=obs.pending
+        if pending then
+            local age=report.frame-pending.start
+            local reason=nil
+            local receiver=nil
+            if not valid then reason="GAME_STATE_STOPPAGE"
+            elseif cpu then
+                receiver=possession
+                reason=receiver==pending.base
+                    and "SAME_CPU_RECONFIRMED" or "OTHER_CPU_CONFIRMED"
+            elseif my then reason="MY_POSSESSION"
+            elseif age>window then reason="OBSERVATION_TIMEOUT" end
+            if reason then
+                local distance=nil
+                local mx,mypos=players.xy(pending.base)
+                if mx and mypos then
+                    distance=math.sqrt((bx-mx)^2+(by-mypos)^2)
+                end
+                report:write("CPU_NOPOSS_RECONFIRMATION_END",true,
+                    {possession=possession,game_state=gs,my_base=my_base},
+                    "OBSERVE_NOPOSS","sequence="..pending.sequence
+                    ..";base="..pending.base..";receiver="..tostring(receiver)
+                    ..";reason="..reason..";noposs="..age
+                    ..";last_cpu_distance="..tostring(distance))
+                obs.pending=nil
+            end
+        end
+        if valid and possession==0 and not obs.pending
+            and obs.last_cpu then
+            obs.sequence=obs.sequence+1
+            obs.pending={start=report.frame,base=obs.last_cpu,
+                sequence=obs.sequence}
+            report:write("CPU_NOPOSS_RECONFIRMATION_START",true,
+                {possession=possession,game_state=gs,my_base=my_base},
+                "OBSERVE_NOPOSS","sequence="..obs.sequence
+                ..";base="..obs.last_cpu..";window="..window)
+        end
+        if cpu then obs.last_cpu=possession
+        elseif possession~=0 or not valid then obs.last_cpu=nil end
+    end
 
     -- RAM possession remains authoritative. Preserve only a short tactical
     -- hypothesis when the same CPU runner stays glued to the loose ball.
