@@ -62,6 +62,7 @@ local mem = Memory.new(config)
 local players = Players.new(config, mem)
 local ball = Ball.new(config, mem)
 local aerial_contact = AerialContact.new(config, mem, players)
+local aerial_contact_unified = AerialContact.new(config, mem, players)
 local aerial_defensive_contact = AerialDefensiveContact.new(config, players)
 local gk_rebound_recovery = GKReboundRecovery.new(config, players)
 local flight_context = BallFlightContext.new(config, mem, players)
@@ -128,7 +129,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="goal-side-tackle-20261010-v51"
+local BOT_BUILD_ID="unified-aerial-contact-20261010-v52"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -496,6 +497,33 @@ local function step_bot()
              gameplay_active=gameplay_value},
             "OBSERVE_CPU_AERIAL",detail)
     end
+    -- Independent physical-reversal detector. CPU-only and near-player-only:
+    -- a reversal is not proof of a header or intentional CPU contact.
+    local physical_aerial=aerial_contact_unified.update(
+        gameplay_active.is_active(gameplay_value),gs,possession)
+    if physical_aerial and physical_aerial.nearest_team=="CPU"
+       and physical_aerial.plausible_near_player then
+        aerial_events[#aerial_events+1]={
+            kind="CPU_AERIAL_PHYSICAL_CANDIDATE",
+            nearest=physical_aerial.nearest_base,
+            distance=physical_aerial.nearest_distance,
+            height=physical_aerial.height,
+            ball_x=physical_aerial.x,ball_y=physical_aerial.y,
+            before_vx=physical_aerial.before_vx,
+            after_vx=physical_aerial.after_vx,
+            before_vy=physical_aerial.before_vy,
+            after_vy=physical_aerial.after_vy,
+            before_vz=physical_aerial.before_vz,
+            after_vz=physical_aerial.after_vz}
+        report:write("CPU_AERIAL_PHYSICAL_CANDIDATE",true,
+            {possession=possession,game_state=gs,my_base=my_base},
+            "OBSERVE_CPU_AERIAL_UNIFIED",
+            "nearest="..tostring(physical_aerial.nearest_base)
+            ..";distance="..tostring(physical_aerial.nearest_distance)
+            ..";height="..tostring(physical_aerial.height)
+            ..";x="..tostring(physical_aerial.x)
+            ..";y="..tostring(physical_aerial.y))
+    end
     -- Correlate candidate ball contacts with subsequent CPU shot/goal counters.
     -- Temporal linkage never implies a confirmed jump or header.
     local episode_events=cpu_aerial_episode_tracker.update(report.frame,
@@ -505,7 +533,8 @@ local function step_bot()
         local detail="sequence="..tostring(ev.sequence)
         for _,key in ipairs({"reason","contact_frame","age","player",
             "distance","height","velocity_change","ball_x","ball_y",
-            "shot_frame","shot_age","goal_frame","goal_age"}) do
+            "shot_frame","shot_age","goal_frame","goal_age",
+            "source","merged_sources"}) do
             detail=detail..";"..key.."="..tostring(ev[key])
         end
         report:write(ev.kind,true,
