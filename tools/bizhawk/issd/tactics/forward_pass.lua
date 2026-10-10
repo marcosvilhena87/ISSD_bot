@@ -57,7 +57,13 @@ function M.new(config,players,field_side,mem)
             far_lateral=0,closest_lateral_excess=nil,
             closest_receiver=nil,closest_forward=nil,
             closest_lateral=nil,closest_distance=nil,
-            closest_cardinal_lane=nil,closest_receiver_clearance=nil}
+            closest_cardinal_lane=nil,closest_receiver_clearance=nil,
+            longitudinal={BEHIND=0,TOO_CLOSE=0,IN_RANGE=0,TOO_FAR=0},
+            in_range_aligned=0,near_short=0,near_far=0,
+            near_longitudinal_safe=0,near_longitudinal_unsafe=0,
+            near_longitudinal_receiver=nil,near_longitudinal_gap=nil,
+            near_longitudinal_forward=nil,near_longitudinal_lateral=nil,
+            near_longitudinal_clearance=nil,near_longitudinal_lane=nil}
         if obj.cooldown>0 then diag.reason="COOLDOWN";return nil,diag end
         if not players.valid_my_base(carrier)
             or carrier==config.MY_FIRST then
@@ -80,6 +86,55 @@ function M.new(config,players,field_side,mem)
                 local vertical=ry-py
                 local lateral=math.abs(vertical)
                 local d=distance(px,py,rx,ry)
+                if zone<3 then
+                    local category=forward<0 and "BEHIND"
+                        or forward<c.min_forward and "TOO_CLOSE"
+                        or forward>c.max_forward and "TOO_FAR" or "IN_RANGE"
+                    diag.longitudinal[category]=diag.longitudinal[category]+1
+                    if category=="IN_RANGE" and lateral<=c.max_lateral
+                       and d<=c.max_distance then
+                        diag.in_range_aligned=diag.in_range_aligned+1
+                    end
+                    -- Counterfactual only: a short movement along X might
+                    -- put the receiver into range. Never authorize a pass.
+                    local gap=category=="TOO_CLOSE" and c.min_forward-forward
+                        or category=="TOO_FAR" and forward-c.max_forward or nil
+                    if gap and gap<=40 and forward>=0
+                       and lateral<=c.max_lateral then
+                        if category=="TOO_CLOSE" then
+                            diag.near_short=diag.near_short+1
+                        else diag.near_far=diag.near_far+1 end
+                        local lane=99999
+                        local rc=99999
+                        local target_x=category=="TOO_CLOSE"
+                            and px-dir*gap or px+dir*gap
+                        players.each_cpu(function(cpu)
+                            local ex,ey=players.xy(cpu)
+                            rc=math.min(rc,distance(rx,ry,ex,ey))
+                            local along=(ex-target_x)*dir
+                            local span=(rx-target_x)*dir
+                            if along>=0 and along<=span then
+                                lane=math.min(lane,math.abs(ey-ry))
+                            end
+                        end)
+                        local safe=rc>=c.min_receiver_clearance
+                            and lane>=c.min_lane_clearance
+                        if safe then
+                            diag.near_longitudinal_safe=diag.near_longitudinal_safe+1
+                        else
+                            diag.near_longitudinal_unsafe=diag.near_longitudinal_unsafe+1
+                        end
+                        if not diag.near_longitudinal_gap
+                            or gap<diag.near_longitudinal_gap then
+                            diag.near_longitudinal_receiver=base
+                            diag.near_longitudinal_gap=gap
+                            diag.near_longitudinal_forward=forward
+                            diag.near_longitudinal_lateral=lateral
+                            diag.near_longitudinal_clearance=rc
+                            diag.near_longitudinal_lane=lane
+                        end
+                    end
+                end
                 local suitable=false
                 local direction=nil
                 local intent=nil
