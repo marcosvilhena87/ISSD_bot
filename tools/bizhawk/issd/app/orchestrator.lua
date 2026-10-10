@@ -56,6 +56,7 @@ local TeamPossession = dofile(DIR .. "../state/team_possession.lua")
 local BallLogicalTeamTransition = dofile(DIR .. "../state/ball_logical_team_transition.lua")
 local PossessionContext = dofile(DIR .. "../state/possession_context.lua")
 local GroundBallInterception = dofile(DIR .. "../tactics/ground_ball_interception.lua")
+local GroundInterceptOutcomeTracker = dofile(DIR .. "../state/ground_intercept_outcome_tracker.lua")
 local MyPossessionLossTracker = dofile(DIR .. "../state/my_possession_loss_tracker.lua")
 local Restart = dofile(DIR .. "../tactics/restart.lua")
 local ThrowIn = dofile(DIR .. "../tactics/throw_in.lua")
@@ -114,6 +115,7 @@ local gk_release_lock = nil
 local gk_release_pending = nil
 local possession_context = PossessionContext.new(config, players)
 local ground_ball_interception = GroundBallInterception.new(config,players,field_boundary)
+local ground_intercept_outcome_tracker = GroundInterceptOutcomeTracker.new(config,players)
 local my_possession_loss_tracker = MyPossessionLossTracker.new(config,players)
 local restart = Restart.new(config, players, Geometry, defense)
 local throw_in = ThrowIn.new(config, players, field_side, mem)
@@ -139,7 +141,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="ground-ball-interception-20261010-v62"
+local BOT_BUILD_ID="ground-intercept-outcomes-20261010-v63"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -458,6 +460,27 @@ local function step_bot()
     local possession = ball.possession()
     local gs = game_state.read()
     local loss_bx,loss_by=ball.world_xy()
+    local outcome=ground_intercept_outcome_tracker.update(report.frame,
+        gameplay_active.is_active(gameplay_value),gs,possession,loss_bx,loss_by)
+    if outcome then
+        report:write(outcome.kind,true,
+            {possession=possession,game_state=gs,my_base=my_base,
+             gameplay_active=gameplay_value},
+            "GROUND_INTERCEPT_OUTCOME",
+            "sequence="..tostring(outcome.sequence)
+            ..";team="..tostring(outcome.team)
+            ..";base="..tostring(outcome.base)
+            ..";receiver="..tostring(outcome.receiver)
+            ..";start="..tostring(outcome.start)
+            ..";age="..tostring(outcome.age)
+            ..";start_x="..tostring(outcome.start_x)
+            ..";start_y="..tostring(outcome.start_y)
+            ..";target_x="..tostring(outcome.target_x)
+            ..";target_y="..tostring(outcome.target_y)
+            ..";end_x="..tostring(outcome.end_x)
+            ..";end_y="..tostring(outcome.end_y)
+            ..";reason="..tostring(outcome.reason))
+    end
     local loss_events=my_possession_loss_tracker.update(report.frame,
         gameplay_active.is_active(gameplay_value),gs,
         possession,loss_bx,loss_by)
@@ -3410,6 +3433,16 @@ local function step_bot()
                     "GROUND_BALL_CPU_INTERCEPT",possession,gs)
                 state.intercept_target_x=ground.x
                 state.intercept_target_y=ground.y
+                local started=ground_intercept_outcome_tracker.command(
+                    report.frame,ground.team,my_base,bx,by,ground.x,ground.y)
+                state.ground_intercept_sequence=
+                    ground_intercept_outcome_tracker.active_sequence()
+                if started then
+                    report:write(started.kind,true,state,movement.last_command,
+                        "sequence="..started.sequence..";team="..started.team
+                        ..";base="..started.base..";target_x="..started.target_x
+                        ..";target_y="..started.target_y)
+                end
                 report:write("GROUND_BALL_INTERCEPT_TARGET",true,state,
                     movement.last_command,"team=CPU;target_x="..ground.x
                     ..";target_y="..ground.y..";lead="..ground.lead
@@ -3578,6 +3611,16 @@ local function step_bot()
                     "GROUND_BALL_MY_RECOVERY",possession,gs)
                 state.intercept_target_x=ground.x
                 state.intercept_target_y=ground.y
+                local started=ground_intercept_outcome_tracker.command(
+                    report.frame,ground.team,my_base,bx,by,ground.x,ground.y)
+                state.ground_intercept_sequence=
+                    ground_intercept_outcome_tracker.active_sequence()
+                if started then
+                    report:write(started.kind,true,state,movement.last_command,
+                        "sequence="..started.sequence..";team="..started.team
+                        ..";base="..started.base..";target_x="..started.target_x
+                        ..";target_y="..started.target_y)
+                end
                 report:write("GROUND_BALL_INTERCEPT_TARGET",true,state,
                     movement.last_command,"team=MY;target_x="..ground.x
                     ..";target_y="..ground.y..";lead="..ground.lead
