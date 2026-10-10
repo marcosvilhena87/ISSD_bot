@@ -19,9 +19,9 @@ M.ADDR = {
     field_width = 0x12A4,
     center_field_x = 0x12F2,
     center_field_y = 0x12D8,
-    -- Legacy/unstable: 0x056E changes with player state (e.g. GK possession).
-    -- Do not use for orientation decisions.
-    my_side = 0x056E,
+    -- Observed WRAM side flag (0/1); validated against CPU_Side.
+    -- Previous 0x056E was unstable and is no longer used.
+    my_side = 0x096E,
 
     -- Validated operational source for field orientation.
     cpu_side = 0x106E,
