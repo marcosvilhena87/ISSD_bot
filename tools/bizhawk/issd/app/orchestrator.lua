@@ -120,9 +120,10 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="def-clear-game-state-continuity-20261010-v27"
+local BOT_BUILD_ID="def-clear-charge-calibration-20261010-v28"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
+local clearance_calibration_index=0
 local rebound_lock_base=nil
 local rebound_lock_frames=0
 local latest_contest=nil
@@ -959,9 +960,18 @@ local function step_bot()
                         else
                             movement.press_direction_button(ch.direction,nil)
                             local cbx,cby=ball.world_xy()
-                            local sequence=defensive_clearance_outcome.start(
+                            local sequence,superseded=defensive_clearance_outcome.start(
                                 report.frame,cbx,cby,ch.carrier,ch.frames,
-                                field_side.attack_direction())
+                                field_side.attack_direction(),ch.variant)
+                            if superseded then
+                                report:write("DEF_CLEAR_OUTCOME_UNRESOLVED",true,
+                                    {possession=possession,game_state=gs,my_base=my_base},
+                                    "OBSERVE_CLEARANCE",
+                                    "reason=SUPERSEDED_BY_NEW_LAUNCH;sequence="
+                                    ..superseded.sequence..";age="..superseded.age
+                                    ..";charge_frames="..superseded.frames
+                                    ..";variant="..tostring(superseded.variant))
+                            end
                             long_pass_position_observer.start(report.frame,ch.carrier)
                             long_pass_receiver_selection.start(report.frame,cbx,cby,sequence,ch.carrier)
                             if config.LONG_PASS_AI_ASSIST_EXPERIMENT.enabled then
@@ -976,7 +986,8 @@ local function step_bot()
                                 movement.last_command,
                                 "frames="..ch.frames..";direction="..ch.direction
                                 ..";threat="..tostring(ch.threat)
-                                ..";clearance_sequence="..sequence)
+                                ..";clearance_sequence="..sequence
+                                ..";variant="..tostring(ch.variant))
                             defensive_clear_charge=nil
                             local state=make_state(my_base,0,0,
                                 "DEF_CLEAR_RELEASE",possession,gs)
@@ -1194,11 +1205,19 @@ local function step_bot()
                         local charging=exit.button=="A"
                             and (exit.direction=="Left" or exit.direction=="Right")
                         if charging then
-                            local frames=exit.threat and exit.threat<=charge_cfg.urgent_radius
-                                and charge_cfg.urgent_frames or charge_cfg.normal_frames
+                            local urgent=exit.threat and exit.threat<=charge_cfg.urgent_radius
+                            local frames=urgent and charge_cfg.urgent_frames or charge_cfg.normal_frames
+                            local variant=urgent and "URGENT_FIXED" or "NORMAL_FIXED"
+                            if not urgent and charge_cfg.calibration_enabled then
+                                clearance_calibration_index=clearance_calibration_index+1
+                                local variants=charge_cfg.calibration_frames
+                                local slot=(clearance_calibration_index-1)%#variants+1
+                                frames=variants[slot]
+                                variant="CALIBRATION_"..tostring(frames)
+                            end
                             defensive_clear_charge={carrier=my_base,
                                 direction=exit.direction,frames=1,target_frames=frames,
-                                threat=exit.threat}
+                                threat=exit.threat,variant=variant}
                         end
                         movement.press_direction_button(exit.direction,exit.button)
                         if charging then
@@ -1207,7 +1226,8 @@ local function step_bot()
                                 movement.last_command,
                                 "target_frames="..defensive_clear_charge.target_frames
                                 ..";direction="..exit.direction
-                                ..";threat="..tostring(exit.threat))
+                                ..";threat="..tostring(exit.threat)
+                                ..";variant="..defensive_clear_charge.variant)
                         end
                         local cbx,cby=ball.world_xy()
                         defensive_escape_pending={carrier=my_base,start=report.frame,
@@ -3594,6 +3614,7 @@ while true do
                 ..";progress="..tostring(clearance.progress)
                 ..";start_x="..tostring(clearance.start_x)
                 ..";end_x="..tostring(clearance.end_x)
+                ..";variant="..tostring(clearance.variant)
                 ..";charge_frames="..clearance.frames
                 ..";owner="..tostring(clearance.owner)
                 ..";receiver="..tostring(clearance.receiver)
