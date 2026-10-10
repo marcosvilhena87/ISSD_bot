@@ -28,6 +28,7 @@ local Movement = dofile(DIR .. "../control/movement.lua")
 local Geometry = dofile(DIR .. "../core/geometry.lua")
 local Defense = dofile(DIR .. "../tactics/defense.lua")
 local LiveDefense = dofile(DIR .. "../tactics/live_defense.lua")
+local GlobalGoalSidePress = dofile(DIR .. "../tactics/global_goal_side_press.lua")
 local ActiveTackle = dofile(DIR .. "../tactics/active_tackle.lua")
 local LiveAttack = dofile(DIR .. "../tactics/live_attack.lua")
 local FieldBoundary = dofile(DIR .. "../tactics/field_boundary.lua")
@@ -83,6 +84,7 @@ local long_pass_receiver_selection = LongPassReceiverSelection.new(config,player
 local movement = Movement.new(config)
 local defense = Defense.new(config, players, Geometry, field_side)
 local live_defense = LiveDefense.new(config, players, field_side)
+local global_goal_side_press = GlobalGoalSidePress.new(config,players)
 local active_tackle = ActiveTackle.new(config, players)
 local live_attack = LiveAttack.new(config, players, field_side)
 local field_boundary = FieldBoundary.new(config, mem)
@@ -129,7 +131,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="unified-aerial-contact-20261010-v52"
+local BOT_BUILD_ID="global-goal-side-press-20261010-v53"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -2219,6 +2221,59 @@ local function step_bot()
                     "PLAYER_POSSESSION",
                     "CPU_CONTROLLED"
                 )
+            end
+
+            -- Outside the danger zone: win the goal side first, then close down.
+            -- Keeper position is only a proxy for goal center. No R switches.
+            local global_plan=global_goal_side_press.plan(my_base,possession)
+            if global_plan then
+                local px,py=players.xy(my_base)
+                local guarded=field_boundary.correct(px,py,
+                    global_plan.target_x,global_plan.target_y)
+                local dx,dy=guarded.x-px,guarded.y-py
+                local command_status="GLOBAL_GOAL_SIDE_"..global_plan.phase
+                local fired=false
+                if global_plan.phase=="PRESS" then
+                    local attempt=active_tackle.plan(my_base,possession,bx,by)
+                    if attempt and global_plan.along>=
+                        config.GLOBAL_GOAL_SIDE_PRESS.min_along
+                        and global_plan.lateral<=
+                        (global_plan.sector=="MIDFIELD"
+                         and config.GLOBAL_GOAL_SIDE_PRESS.midfield_width
+                         or config.GLOBAL_GOAL_SIDE_PRESS.attack_width) then
+                        fired=active_tackle.fire(attempt,movement)
+                        if fired then
+                            command_status="GLOBAL_GOAL_SIDE_TACKLE"
+                        end
+                    end
+                end
+                if not fired then
+                    if global_plan.hold then movement.stop()
+                    else movement.move_toward(dx,dy) end
+                end
+                local state=make_state(my_base,dx,dy,command_status,possession,gs)
+                state.live_carrier=possession
+                state.live_target_x=guarded.x
+                state.live_target_y=guarded.y
+                state.tackle_fired=fired
+                if fired then
+                    state.tackle_carrier=possession
+                    state.tackle_defender=my_base
+                    state.tackle_distance=global_plan.distance
+                end
+                report:write(fired and "GLOBAL_GOAL_SIDE_PRESS_TACKLE"
+                        or global_plan.phase=="PRESS"
+                        and "GLOBAL_GOAL_SIDE_PRESS_DISTANCE"
+                        or "GLOBAL_GOAL_SIDE_INTERPOSE_GAIN",
+                    true,state,movement.last_command,
+                    "carrier="..possession..";defender="..my_base
+                    ..";sector="..global_plan.sector
+                    ..";phase="..global_plan.phase
+                    ..";lateral="..global_plan.lateral
+                    ..";along="..global_plan.along
+                    ..";distance="..global_plan.distance)
+                return attach_live_state(state,"GLOBAL_GOAL_SIDE_PRESS",
+                    "CPU_CONTROLLED")
             end
 
             -- Before the shot: cover a completely exposed carrier-to-goal
