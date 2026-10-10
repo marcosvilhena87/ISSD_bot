@@ -18,24 +18,35 @@ function M.new(config,mem,players,field_side)
  end
  function o.update(state,frame)
   local events={}
+  local owner=state.possession
+  local dir=field_side.attack_direction()
+  local x=nil
+  local z=nil
   local function emit(kind,reason,p)
    events[#events+1]={kind=kind,reason=reason,
      sequence=p and p.sequence,age=p and frame-p.start,
-     route=p and p.route,boundary=p and p.boundary}
+     route=p and p.route,boundary=p and p.boundary,
+     game_state=state.game_state,gameplay_active=state.gameplay_active,
+     possession=owner,selected=state.my_base,status=state.status,
+     direction=dir,zone=z,first_middle=p and p.first_middle,
+     owner_changes=p and p.owner_changes,
+     loose_frames=p and p.loose_frames,
+     last_owner=p and p.last_owner}
   end
-  local dir=field_side.attack_direction()
   local valid=state.game_state==0 and state.gameplay_active==1
-  local owner=state.possession
   local my=players.valid_my_base(owner)
   local cpu=players.valid_cpu_base(owner)
-  local x=nil
   if my then x=players.xy(owner) end
-  local z,boundary=x and zone(x,dir) or nil,nil
+  local boundary=nil
   if x then z,boundary=zone(x,dir) end
   local pending=o.pending
   if pending then
    if not valid or dir~=pending.dir then
-    emit("FAILED","STOPPAGE_OR_SIDE_CHANGE",pending);o.pending=nil
+    local reason=state.game_state~=0 and "GAME_STATE_STOPPAGE"
+      or state.gameplay_active~=1 and "GAMEPLAY_INACTIVE"
+      or dir~=pending.dir and "ATTACK_DIRECTION_CHANGED"
+      or "INVALID_CONTEXT"
+    emit("FAILED",reason,pending);o.pending=nil
    elseif cpu then
     emit("FAILED","CPU_TURNOVER",pending);o.pending=nil
    elseif frame-pending.start>=c.max_frames then
@@ -52,12 +63,20 @@ function M.new(config,mem,players,field_side)
     pending.first_middle=nil
    end
   end
+  if o.pending then
+   if owner==0 then o.pending.loose_frames=o.pending.loose_frames+1 end
+   if owner~=o.pending.last_owner then
+    o.pending.owner_changes=o.pending.owner_changes+1
+    o.pending.last_owner=owner
+   end
+  end
   if valid and my and z==1 and not o.pending then
    -- Avoid repeatedly reopening a transition with the same stalled owner.
    if o.last_owner~=owner then
     o.sequence=o.sequence+1
     o.pending={start=frame,sequence=o.sequence,dir=dir,
-      boundary=boundary,route="CARRY",first_middle=nil}
+      boundary=boundary,route="CARRY",first_middle=nil,
+      owner_changes=0,loose_frames=0,last_owner=owner}
     emit("START","CONFIRMED_FIRST_THIRD_POSSESSION",o.pending)
    end
   end
