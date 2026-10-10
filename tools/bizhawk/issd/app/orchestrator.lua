@@ -36,6 +36,7 @@ local ForwardPass = dofile(DIR .. "../tactics/forward_pass.lua")
 local DefensiveExit = dofile(DIR .. "../tactics/defensive_exit.lua")
 local DefensiveMidfieldTransition = dofile(DIR .. "../state/defensive_midfield_transition.lua")
 local CPUPassObserver = dofile(DIR .. "../state/cpu_pass_observer.lua")
+local CPUAerialActionObserver = dofile(DIR .. "../state/cpu_aerial_action_observer.lua")
 local MidAttackTransition = dofile(DIR .. "../state/mid_attack_transition.lua")
 local DefensiveClearanceOutcome = dofile(DIR .. "../state/defensive_clearance_outcome.lua")
 local LongPassPositionObserver = dofile(DIR .. "../state/long_pass_position_observer.lua")
@@ -71,6 +72,7 @@ local gameplay_active = GameplayActive.new(config, mem)
 local field_side = FieldSide.new(config, mem)
 local defensive_midfield_transition = DefensiveMidfieldTransition.new(config,mem,players,field_side)
 local cpu_pass_observer = CPUPassObserver.new(config,players,field_side)
+local cpu_aerial_observer = CPUAerialActionObserver.new(config,mem,players)
 local mid_attack_transition = MidAttackTransition.new(config,mem,players,field_side)
 local defensive_clearance_outcome = DefensiveClearanceOutcome.new(config,players,field_side)
 local long_pass_position_observer = LongPassPositionObserver.new(config,players)
@@ -124,7 +126,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="cpu-pass-observer-20261010-v45"
+local BOT_BUILD_ID="cpu-aerial-observer-20261010-v46"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local clearance_calibration_index=0
@@ -469,6 +471,21 @@ local function step_bot()
             {possession=possession,game_state=gs,my_base=my_base,
              gameplay_active=gameplay_value},
             "OBSERVE_CPU_PASS",detail)
+    end
+    -- CPU aerial proximity and trajectory are observation-only; not jump proof.
+    local aerial_events=cpu_aerial_observer.update(report.frame,
+        gameplay_active.is_active(gameplay_value),gs,possession)
+    for _,ev in ipairs(aerial_events) do
+        local detail="sequence="..tostring(ev.sequence)
+        for _,key in ipairs({"reason","age","nearest","distance",
+            "ball_x","ball_y","height","owner","dx","dy",
+            "min_distance","max_height","trajectory_changes"}) do
+            detail=detail..";"..key.."="..tostring(ev[key])
+        end
+        report:write(ev.kind,true,
+            {possession=possession,game_state=gs,my_base=my_base,
+             gameplay_active=gameplay_value},
+            "OBSERVE_CPU_AERIAL",detail)
     end
     -- Observe actual individual ownership on every frame, independent of
     -- the control selection, logical team flag, and the pass command.
