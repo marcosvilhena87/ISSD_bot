@@ -120,7 +120,7 @@ local defensive_pass_pending=nil
 local defensive_pass_sequence=0
 local defensive_alignment_blocks={}
 local bot_build_logged=false
-local BOT_BUILD_ID="cpu-carrier-continuity-20261010-v21"
+local BOT_BUILD_ID="gk-hand-distribution-recovery-20261010-v22"
 local defensive_escape_pending=nil
 local defensive_clear_charge=nil
 local rebound_lock_base=nil
@@ -1683,7 +1683,11 @@ local function step_bot()
                     local action,phase=gk_distribution.next_action(plan)
                     local fired=action~=nil
                     if fired then
-                        movement.press_direction_button(action.direction,action.button)
+                        if action.direction then
+                            movement.press_direction_button(action.direction,action.button)
+                        else
+                            movement.press_button(action.button)
+                        end
                         gk_distribution.mark_fired(action,phase)
                         if phase~="HOLD" then
                         report:write("GK_DISTRIBUTION_ATTEMPT",true,
@@ -1710,6 +1714,7 @@ local function step_bot()
                     state.gk_dist_phase=phase
                     state.gk_dist_press_remaining=gk_distribution.press_remaining
                     state.gk_dist_attempts = gk_distribution.attempts
+                    state.gk_dist_recovery_cycles=gk_distribution.recovery_cycles
                     state.gk_dist_held_frames = gk_distribution.held_frames
                     state.gk_dist_lane_clearance = plan.lane_clearance
                     state.gk_dist_decision_reason = plan.decision_reason
