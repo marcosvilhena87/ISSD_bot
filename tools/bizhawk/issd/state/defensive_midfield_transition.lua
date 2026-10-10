@@ -31,7 +31,18 @@ function M.new(config,mem,players,field_side)
      direction=dir,zone=z,first_middle=p and p.first_middle,
      owner_changes=p and p.owner_changes,
      loose_frames=p and p.loose_frames,
-     last_owner=p and p.last_owner}
+     last_owner=p and p.last_owner,
+     action_count=p and p.action_count,
+     action_age=p and p.action_frame and frame-p.action_frame,
+     action_kind=p and p.action_kind,
+     action_owner=p and p.action_owner,
+     first_receiver=p and p.first_receiver,
+     receive_age=p and p.receive_frame and frame-p.receive_frame,
+     received_zone=p and p.received_zone,
+     progress_after_receive=p and p.receive_progress and x
+       and (x-p.receive_progress)*dir or nil,
+     max_progress_after_receive=p and p.max_progress_after_receive,
+     source=p and p.source}
   end
   local valid=state.game_state==0 -- 0x00BA authoritative for transition observation
   local my=players.valid_my_base(owner)
@@ -41,6 +52,22 @@ function M.new(config,mem,players,field_side)
   if x then z,boundary=zone(x,dir) end
   local pending=o.pending
   if pending then
+   -- Link the first individually confirmed reception after an action.
+   -- The command itself never counts as a successful pass or clearance.
+   if pending.action_frame and not pending.first_receiver
+      and frame>pending.action_frame and my then
+    pending.first_receiver=owner
+    pending.receive_frame=frame
+    pending.receive_progress=x
+    pending.received_zone=z
+    pending.max_progress_after_receive=0
+    emit("RECEIVED","MY_INDIVIDUAL_RECEPTION",pending)
+   end
+   if pending.receive_progress and my and x then
+    pending.max_progress_after_receive=math.max(
+      pending.max_progress_after_receive or 0,
+      (x-pending.receive_progress)*dir)
+   end
    if not valid or dir~=pending.dir then
     local reason=state.game_state~=0 and "GAME_STATE_STOPPAGE"
       or dir~=pending.dir and "ATTACK_DIRECTION_CHANGED"
@@ -75,17 +102,35 @@ function M.new(config,mem,players,field_side)
     o.sequence=o.sequence+1
     o.pending={start=frame,sequence=o.sequence,dir=dir,
       boundary=boundary,route="CARRY",first_middle=nil,
-      owner_changes=0,loose_frames=0,last_owner=owner}
+      owner_changes=0,loose_frames=0,last_owner=owner,
+      source=owner==config.MY_FIRST and "GOALKEEPER" or "OUTFIELD",
+      action_count=0,action_frame=nil,action_kind=nil,
+      action_owner=nil,first_receiver=nil,receive_frame=nil,
+      receive_progress=nil,received_zone=nil,max_progress_after_receive=0}
     emit("START","CONFIRMED_FIRST_THIRD_POSSESSION",o.pending)
    end
   end
-  if o.pending and state.forward_pass_fired then
-   o.pending.route="PASS"
-   emit("PASS","PASS_COMMANDED_NOT_CONFIRMED",o.pending)
-  end
-  if o.pending and state.defensive_clear_fired then
-   o.pending.route="CLEAR"
-   emit("CLEAR","CLEARANCE_NOT_CONFIRMED",o.pending)
+  local action=nil
+  if state.forward_pass_fired then action="PASS"
+  elseif state.defensive_clear_fired then action="CLEAR" end
+  if o.pending and action then
+   local p=o.pending
+   -- A new kick supersedes the preceding reception window.
+   if p.action_frame and not p.first_receiver then
+    emit("UNRESOLVED","ACTION_SUPERSEDED",p)
+   end
+   p.route=action
+   p.action_count=p.action_count+1
+   p.action_frame=frame
+   p.action_kind=action
+   p.action_owner=owner
+   p.first_receiver=nil
+   p.receive_frame=nil
+   p.receive_progress=nil
+   p.received_zone=nil
+   p.max_progress_after_receive=0
+   emit(action,action=="PASS" and "PASS_COMMANDED_NOT_CONFIRMED"
+     or "CLEARANCE_NOT_CONFIRMED",p)
   end
   o.last_owner=owner
   return events
