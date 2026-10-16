@@ -1,10 +1,10 @@
-# ISSD_bot — Radar v0.2.0
+# ISSD_bot — Radar v0.3.0
 
 Projeto iniciado do zero para International Superstar Soccer Deluxe (SNES), usando BizHawk e Lua.
 
 ## Radar somente leitura
 
-A versão v0.2.0 lê **22 atletas e a bola**, renderiza marcadores em campo esquemático e gera `issd_radar_entities.csv` (uma linha por entidade a cada 10 frames). Não envia inputs nem altera a WRAM.
+A versão v0.3.0 lê **22 atletas e a bola**, renderiza marcadores em campo esquemático e gera `issd_radar_entities.csv` (uma linha por entidade a cada 10 frames). Não envia inputs nem altera a WRAM.
 
 ### Estrutura encontrada na WRAM
 
@@ -37,3 +37,9 @@ Outros campos: `0x0086` Stadium_ID (i16), `0x12A2` comprimento (u16), `0x12A4` l
 ## Próximo teste
 
 Capturar lances com bola no centro, cantos e laterais em diferentes estádios. Verificar a relação entre `raw_x/y`, `field_length/width` e `inside_bounds`, ajustando origem e escala quando necessário.
+
+## Mini-radar v0.3.0
+
+O overlay agora ocupa apenas **104 × 60 pixels lógicos**, em `FX=8, FY=36` (antes 220 × 120). Para alterar o posicionamento, edite `FX, FY, FW, FH` no começo de `lua/radar.lua`. Dependendo da resolução/configuração do BizHawk, talvez seja necessário ajustar esses valores.
+
+Defina `SHOW_OVERLAY = false` para gravar as mesmas 23 entidades no CSV **sem desenhar nada sobre a partida**. A calibração da origem e da escala continua provisória. A v0.3.0 ainda não exibe números dos jogadores nem calcula proximidade com a bola.
