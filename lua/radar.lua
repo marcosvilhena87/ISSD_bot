@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.3.0 | BizHawk SNES | somente leitura
+-- ISSD_bot Radar v0.4.0 | BizHawk SNES | somente leitura
 -- 22 jogadores + bola; leituras i16 little-endian na WRAM.
 local DOMAIN = "WRAM"
 local BASE_BALL = 0x042A
@@ -14,10 +14,11 @@ local ADDR_WIDTH = 0x12A4
 local ORIGIN_X, ORIGIN_Y = 0, 0
 local SCALE_X, SCALE_Y = 1, 1
 local SAMPLE_EVERY = 10
--- Compacto: coordenadas do canvas do BizHawk, nao da captura ampliada.
--- Mude os quatro valores abaixo para reposicionar o mini-radar.
-local FX, FY, FW, FH = 8, 36, 104, 60
-local SHOW_OVERLAY = true  -- false: somente CSV, sem cobrir a partida
+-- Sobreposicao transparente alinhada manualmente ao radar nativo.
+-- Valores em pixels LOGICOS do BizHawk (captura pode estar ampliada).
+local FX, FY, FW, FH = 88, 161, 79, 54
+local OFFSET_X, OFFSET_Y = 0, 0  -- deslocamentos finais em pixels
+local SHOW_OVERLAY = true         -- false: somente CSV
 local CSV_NAME = "issd_radar_entities.csv"
 
 local function s16(addr)
@@ -38,10 +39,9 @@ local function render_entity(x, y, length, width, color, label)
     local nx, ny = normalized(x, y, length, width)
     local inside = nx and ny and nx >= 0 and nx <= 1 and ny >= 0 and ny <= 1
     if inside then
-        local px = math.floor(FX + nx * FW + 0.5)
-        local py = math.floor(FY + ny * FH + 0.5)
-        if SHOW_OVERLAY then gui.drawBox(px - 1, py - 1, px + 1, py + 1, color, color) end
-        if SHOW_OVERLAY and label then gui.drawText(px + 2, py - 5, label, color) end
+        local px = math.floor(FX + nx * FW + OFFSET_X + 0.5)
+        local py = math.floor(FY + ny * FH + OFFSET_Y + 0.5)
+        if SHOW_OVERLAY then gui.drawPixel(px, py, color) end
     end
     return nx, ny, inside and 1 or 0
 end
@@ -61,11 +61,6 @@ while true do
     local stadium = s16(ADDR_STADIUM)
     local length, width = u16(ADDR_LENGTH), u16(ADDR_WIDTH)
     local ball_x, ball_y = read_xy(BASE_BALL)
-    if SHOW_OVERLAY then
-        gui.drawBox(FX, FY, FX + FW, FY + FH, "white", 0x50000000)
-        gui.drawLine(FX + FW / 2, FY, FX + FW / 2, FY + FH, "white")
-        gui.drawText(FX, FY - 12, string.format("Radar 0.3 | %d", stadium), "white")
-    end
     local sample = frames % SAMPLE_EVERY == 0
 
     local function observe(entity, number, x, y, color, label)
@@ -84,9 +79,6 @@ while true do
     end
     observe("ball", 0, ball_x, ball_y, "yellow", "B")
 
-    if SHOW_OVERLAY and (length == 0 or width == 0) then
-        gui.drawText(FX, FY + FH + 16, "Dimensoes zeradas: aguarde partida", "orange")
-    end
     if sample then csv:flush() end
     frames = frames + 1
     emu.frameadvance()
