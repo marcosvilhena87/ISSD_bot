@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.7.0 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.8.0 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -16,6 +16,13 @@ local SHOW_ENTITIES = true
 local SHOW_NUMBERS = false -- numeros ao lado de cada jogador (polui o radar)
 local SHOW_BALL = true
 local SHOW_OVERLAY = true   -- false: somente CSV; sem cantos nem entidades
+-- Limites observados da bola nos quatro escanteios, POR estadio.
+-- Sao hipoteses empiricas, NAO validacao contra pixels nativos.
+local USE_EMPIRICAL_BOUNDS = true
+local STADIUM_CALIBRATION = {
+    [0] = {min_x=4, max_x=1788, min_y=4, max_y=572, validated=false},
+    [1] = {min_x=4, max_x=1852, min_y=4, max_y=636, validated=false},
+}
 local SAMPLE_EVERY = 10
 -- Foco: "ball"/0, "my"/1..11 ou "cpu"/1..11.
 local TARGET_TEAM, TARGET_NUMBER = "ball", 0
@@ -55,16 +62,37 @@ local function s16(address) return memory.read_s16_le(address, DOMAIN) end
 local function u16(address) return memory.read_u16_le(address, DOMAIN) end
 local function xy(address) return s16(address), s16(address + XY_DELTA) end
 local function rounded(value) return math.floor(value + 0.5) end
-local function transform(x, y, length, width)
-    if length <= 0 or width <= 0 then return nil, nil, nil, nil, 0 end
-    local nx = (x - ORIGIN_X) * SCALE_X / length
-    local ny = (y - ORIGIN_Y) * SCALE_Y / width
+local function project(nx, ny)
+    if nx == nil or ny == nil then return nil, nil, 0 end
     if INVERT_X then nx = 1 - nx end
     if INVERT_Y then ny = 1 - ny end
     local px = rounded(FX + nx * FW + OFFSET_X)
     local py = rounded(FY + ny * FH + OFFSET_Y)
     local inside = nx >= 0 and nx <= 1 and ny >= 0 and ny <= 1
-    return nx, ny, px, py, inside and 1 or 0
+    return px, py, inside and 1 or 0
+end
+local function transform(x, y, length, width, stadium)
+    local b = STADIUM_CALIBRATION[stadium]
+    local raw_nx, raw_ny, emp_nx, emp_ny
+    if length > 0 and width > 0 then
+        raw_nx = (x - ORIGIN_X) * SCALE_X / length
+        raw_ny = (y - ORIGIN_Y) * SCALE_Y / width
+    end
+    if b and b.max_x > b.min_x and b.max_y > b.min_y then
+        emp_nx = (x - b.min_x) / (b.max_x - b.min_x)
+        emp_ny = (y - b.min_y) / (b.max_y - b.min_y)
+    end
+    local raw_px, raw_py = project(raw_nx, raw_ny)
+    local emp_px, emp_py = project(emp_nx, emp_ny)
+    local use_emp = USE_EMPIRICAL_BOUNDS and emp_nx ~= nil and length > 0 and width > 0
+    local model = use_emp and "empirical" or "field_dimensions"
+    local nx, ny = use_emp and emp_nx or raw_nx, use_emp and emp_ny or raw_ny
+    local px, py, inside = project(nx, ny)
+    return nx, ny, px, py, inside, model,
+        raw_nx, raw_ny, raw_px, raw_py, emp_nx, emp_ny, emp_px, emp_py,
+        (raw_px and emp_px) and (emp_px - raw_px) or nil,
+        (raw_py and emp_py) and (emp_py - raw_py) or nil,
+        b
 end
 local function corner(x, y)
     -- 3 pixels em formato de cruz; os pontos-guia sao independentes
@@ -84,7 +112,7 @@ local function target_cross(px, py)
 end
 local csv, err = io.open(CSV_NAME, "w")
 if not csv then error("Falha ao criar CSV: " .. tostring(err)) end
-csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance,calibration_status\n")
+csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance,calibration_status,projection_model,raw_norm_x,raw_norm_y,raw_pixel_x,raw_pixel_y,empirical_norm_x,empirical_norm_y,empirical_pixel_x,empirical_pixel_y,delta_pixel_x,delta_pixel_y,empirical_min_x,empirical_max_x,empirical_min_y,empirical_max_y,empirical_validated\n")
 local function number(value)
     if value == nil then return "" end
     return string.format("%.6f", value)
@@ -102,7 +130,7 @@ while true do
         corner(FX + FW, FY + FH)
     end
     local function observe(entity, index, x, y, color)
-        local nx, ny, px, py, inside = transform(x, y, length, width)
+        local nx, ny, px, py, inside, model, raw_nx, raw_ny, raw_px, raw_py, emp_nx, emp_ny, emp_px, emp_py, delta_x, delta_y, bounds = transform(x, y, length, width, stadium)
         local is_target = entity == TARGET_TEAM and index == TARGET_NUMBER
         if SHOW_OVERLAY and px and py and inside == 1 then
             local enabled = (entity == "ball" and SHOW_BALL)
@@ -142,7 +170,13 @@ while true do
                 is_target and 1 or 0,
                 ref and ref.x or "",
                 ref and ref.y or "",
-                number(ex), number(ey), number(distance), status
+                number(ex), number(ey), number(distance), status,
+                model, number(raw_nx), number(raw_ny), raw_px or "", raw_py or "",
+                number(emp_nx), number(emp_ny), emp_px or "", emp_py or "",
+                number(delta_x), number(delta_y),
+                bounds and bounds.min_x or "", bounds and bounds.max_x or "",
+                bounds and bounds.min_y or "", bounds and bounds.max_y or "",
+                bounds and (bounds.validated and 1 or 0) or ""
             }, ",") .. "\n")
         end
     end
