@@ -119,7 +119,7 @@ while true do
                 is_target and (REFERENCE_X or "") or "",
                 is_target and (REFERENCE_Y or "") or "",
                 number(ex), number(ey), number(distance)
-            }, ",") .. "\\n")
+            }, ",") .. "\n")
         end
     end
     for i = 0, 10 do
