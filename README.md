@@ -1,70 +1,62 @@
-# ISSD_bot — Radar v0.7.0
+# ISSD_bot — Radar v0.8.0
 
-Radar em **Lua/BizHawk** para International Superstar Soccer Deluxe (SNES), somente leitura da WRAM.
+Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
-## Novidade: referencias sincronizadas por frame
+## Novidade: calibração por estádio (Stadium_ID 0–7)
 
-A v0.7.0 nao aplica mais a mesma coordenada nativa a todos os frames. Cada referencia manual identifica **frame + equipe + numero + pixel nativo X/Y**. Erro so e calculado quando o frame emulado e a entidade coincidem com o registro.
+A WRAM `0x0086` (i16) contém `Stadium_ID`. O script lê esse valor a cada frame e escolhe os limites observados **somente para o estádio correspondente**. Não transfere os limites para os demais estádios.
 
-No topo de `lua/radar.lua`:
+| Estádio | Dimensões observadas na WRAM | Escanteios: min_x | max_x | min_y | max_y | Situação |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| 0 | 1792 × 576 | 4 | 1788 | 4 | 572 | Observado; ainda não validado contra pixels nativos |
+| 1 | 1856 × 640 | 4 | 1852 | 4 | 636 | Observado; ainda não validado contra pixels nativos |
+| 2–7 | Lidas dinamicamente | — | — | — | — | Sem calibração empírica |
+
+Esses limites representam **posições repetidas da bola em quatro escanteios**, não limites comprovados de todos os objetos do campo. Jogadores ou bola fora desses limites permanecem no CSV mesmo quando não são desenhados.
+
+## Configuração principal
 
 ```lua
-local TARGET_TEAM, TARGET_NUMBER = "ball", 0
-local REFERENCES = {
-    -- EXEMPLOS FICTICIOS; substitua por medidas reais!
-    -- {frame=123456, entity="ball", number=0, x=130, y=188},
-    -- {frame=123900, entity="my", number=1, x=90, y=188},
-    -- {frame=124200, entity="cpu", number=1, x=166, y=188}
+local USE_EMPIRICAL_BOUNDS = true
+local STADIUM_CALIBRATION = {
+    [0] = {min_x=4, max_x=1788, min_y=4, max_y=572, validated=false},
+    [1] = {min_x=4, max_x=1852, min_y=4, max_y=636, validated=false},
 }
 ```
 
-Por padrao a tabela esta vazia. O modo de destaque segue `TARGET_TEAM/TARGET_NUMBER`, `FOCUS_ONLY`, `SHOW_TARGET_CROSS`; ele e independente das referencias registradas para calculo de erro.
+- `USE_EMPIRICAL_BOUNDS=true`: usa modelo empírico quando existe e as dimensões da WRAM são válidas.
+- `USE_EMPIRICAL_BOUNDS=false`: usa sempre a normalização original baseada em `field_length` e `field_width`.
+- Sem perfil para o `Stadium_ID`, o modo volta automaticamente a `field_dimensions`; nunca copia os limites de outro estádio.
+- `validated=false` indica que faltam correspondências **medidas no mesmo frame** com o radar nativo. A mudança de modelo não comprova melhora visual.
+- `ORIGIN_X/Y` e `SCALE_X/Y` afetam somente a projeção original; no modelo empírico a origem é `min_x/y` e a escala é derivada de `max-min`. `INVERT_X/Y` e `OFFSET_X/Y` continuam aplicados aos dois modelos.
+- Os quatro cantos magenta e o modo de destaque da v0.7.0 são preservados.
 
-## Procedimento experimental
+## Colunas adicionais no CSV
 
-1. Abra o jogo no BizHawk, entre na partida, escolha o alvo e execute o script.
-2. Pause em um frame conhecido (`emu.framecount()` pode ser conferido no CSV); salve um **savestate** para reproduzir o mesmo instante e fotografe o radar nativo.
-3. Identifique manualmente a coordenada nativa em **pixels logicos** do BizHawk. Nao confunda pixel logico com pixel da imagem ampliada.
-4. Inclua `{frame=..., entity="...", number=..., x=..., y=...}` na tabela `REFERENCES`.
-5. Retorne ao **mesmo savestate** e reinicie o script; reproduza ate o frame anotado para obter a linha `MATCHED`.
-6. Repita para varias regioes do campo, com goleiros e bola, e outros estadios. Se o frame exato nao for reproduzido, o script **nao inventa erros**.
+O arquivo `issd_radar_calibration.csv` mantém as colunas anteriores e acrescenta:
 
-Observacao: savestates, reinicios de emulacao, ROMs ou partidas diferentes podem reutilizar numeros de frame. A associacao por frame e valida **apenas na mesma sequencia reproduzida**. O script nao identifica automaticamente a sequencia, ROM ou savestate.
+- `projection_model`: `empirical` ou `field_dimensions`, indicando o modelo efetivamente exibido;
+- `raw_norm_x/y`, `raw_pixel_x/y`: projeção original;
+- `empirical_norm_x/y`, `empirical_pixel_x/y`: projeção pelos limites dos escanteios, quando disponível;
+- `delta_pixel_x/y`: **empírico menos original**, em pixels lógicos (não é erro contra o radar nativo);
+- `empirical_min_x/max_x/min_y/max_y` e `empirical_validated`: parâmetros e estado do perfil aplicado ao estádio.
 
-## Status no CSV
+As colunas antigas `norm_x/y`, `pixel_x/y` e `inside_bounds` continuam descrevendo o **modelo ativo**. `error_x/y/distance` continuam exigindo referências manuais sincronizadas (tabela `REFERENCES`); não confundir delta entre modelos com erro real.
 
-`issd_radar_calibration.csv` tem uma linha por entidade amostrada; registra coordenadas da WRAM, dimensoes, coordenadas normalizadas, pixels projetados, parametros, referencias manuais e erros X/Y/distancia.
+## Instruções
 
-- `MATCHED`: frame/entidade correspondem a uma referencia, dimensoes validas e coordenadas projetadas dentro dos limites. Erro em pixels = projetado - referencia.
-- `NO_REFERENCE`: nenhuma referencia manual corresponde a este frame/entidade; erros vazios.
-- `INVALID_DIMENSIONS`: comprimento/largura zerados; sem calculo.
-- `OUTSIDE_BOUNDS`: referencia presente mas projecao fora dos limites normalizados; nao calcula distancia.
+1. Abra partida no BizHawk e execute `lua/radar.lua` via **Tools → Lua Console**.
+2. Confira as quatro cruzes magenta sobre os cantos do radar nativo. O retângulo inicial continua `FX=88, FY=161, FW=79, FH=54` em pixels lógicos.
+3. Para comparar as projeções, capture o mesmo savestate com `USE_EMPIRICAL_BOUNDS=true` e depois `false`.
+4. Analise `issd_radar_calibration.csv` em ambos os testes. Salve uma cópia antes de reiniciar: o CSV é sobrescrito.
+5. Se tiver posições nativas anotadas por frame, informe-as em `REFERENCES` como descrito no código; apenas essas linhas permitem calcular `MATCHED`.
 
-O script amostra a cada 10 iteracoes e **forca uma amostra nos frames presentes em REFERENCES**. Sao 23 linhas por amostra (22 jogadores e bola). O CSV e sobrescrito ao reiniciar; guarde o arquivo antes de uma nova sessao.
+## WRAM (i16 little-endian nas posições)
 
-## Ajustes visuais
+- Bola: X `0x042A`, Y `0x042C`.
+- Meu time: X `0x052A + i*0x100`, Y = X+2, para i=0…10.
+- CPU: X `0x102A + i*0x100`, Y = X+2, para i=0…10.
+- Estádio: `0x0086` (i16).
+- Comprimento/largura: `0x12A2` / `0x12A4` (u16).
 
-```lua
-local FX, FY, FW, FH = 88, 161, 79, 54
-local SHOW_CORNERS = true
-local ORIGIN_X, ORIGIN_Y = 0, 0
-local SCALE_X, SCALE_Y = 1, 1
-local INVERT_X, INVERT_Y = false, false
-local OFFSET_X, OFFSET_Y = 0, 0
-local TARGET_TEAM, TARGET_NUMBER = "ball", 0
-local FOCUS_ONLY = true
-local SHOW_TARGET_CROSS = true
-```
-
-Os quatro cantos magenta definem o enquadramento. A mira branca e os pontos desenhados so representam a posicao **projetada**, nao deteccao automatica do radar nativo.
-
-## Mapeamento de memoria
-
-Leitura signed 16-bit little-endian com Y em X+2:
-
-- Bola: `0x042A`.
-- Meu time: `0x052A+i*0x100`, i = 0...10.
-- CPU: `0x102A+i*0x100`, i = 0...10.
-- Estadio: `0x0086` (i16); comprimento: `0x12A2` (u16); largura: `0x12A4` (u16).
-
-**Limites:** nem as dimensoes da WRAM nem a proximidade visual dos pontos validam automaticamente a escala/origem. A v0.7.0 calcula erros de referencias manuais, mas ainda nao estima a calibracao ideal automaticamente.
+Não altera a memória nem envia inputs. O código foi publicado, mas ainda requer execução no BizHawk para validar esta versão.
