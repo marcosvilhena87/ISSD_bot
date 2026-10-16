@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.5.0 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.6.0 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -17,7 +17,23 @@ local SHOW_NUMBERS = false -- numeros ao lado de cada jogador (polui o radar)
 local SHOW_BALL = true
 local SHOW_OVERLAY = true   -- false: somente CSV; sem cantos nem entidades
 local SAMPLE_EVERY = 10
+-- Foco: "ball"/0, "my"/1..11 ou "cpu"/1..11.
+local TARGET_TEAM, TARGET_NUMBER = "ball", 0
+local FOCUS_ONLY = true   -- ocultar outros marcadores, mas manter CSV completo
+local SHOW_TARGET_CROSS = true
+-- Referencia manual: pixel LOGICO do radar nativo observado no MESMO frame.
+-- Use nil ate identificar a coordenada; nenhum alvo e detectado automaticamente.
+local REFERENCE_X, REFERENCE_Y = nil, nil
 local CSV_NAME = "issd_radar_calibration.csv"
+local function valid_target()
+    return (TARGET_TEAM == "ball" and TARGET_NUMBER == 0)
+        or ((TARGET_TEAM == "my" or TARGET_TEAM == "cpu")
+            and TARGET_NUMBER >= 1 and TARGET_NUMBER <= 11)
+end
+if not valid_target() then error("TARGET_TEAM/TARGET_NUMBER invalido") end
+if (REFERENCE_X == nil) ~= (REFERENCE_Y == nil) then
+    error("Defina ambas as coordenadas REFERENCE_X/Y ou ambas nil")
+end
 
 local function s16(address) return memory.read_s16_le(address, DOMAIN) end
 local function u16(address) return memory.read_u16_le(address, DOMAIN) end
@@ -43,9 +59,16 @@ local function corner(x, y)
     gui.drawPixel(x, y - 1, "magenta")
     gui.drawPixel(x, y + 1, "magenta")
 end
+local function target_cross(px, py)
+    -- Pequena mira somente no alvo; opcional para evitar cobrir radar nativo.
+    gui.drawPixel(px - 2, py, "white")
+    gui.drawPixel(px + 2, py, "white")
+    gui.drawPixel(px, py - 2, "white")
+    gui.drawPixel(px, py + 2, "white")
+end
 local csv, err = io.open(CSV_NAME, "w")
 if not csv then error("Falha ao criar CSV: " .. tostring(err)) end
-csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y\n")
+csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance\n")
 local function number(value)
     if value == nil then return "" end
     return string.format("%.6f", value)
@@ -64,24 +87,39 @@ while true do
     end
     local function observe(entity, index, x, y, color)
         local nx, ny, px, py, inside = transform(x, y, length, width)
+        local is_target = entity == TARGET_TEAM and index == TARGET_NUMBER
         if SHOW_OVERLAY and px and py and inside == 1 then
-            if entity == "ball" then
-                if SHOW_BALL then gui.drawPixel(px, py, color) end
-            elseif SHOW_ENTITIES then
+            local enabled = (entity == "ball" and SHOW_BALL)
+                or (entity ~= "ball" and SHOW_ENTITIES)
+            if enabled and (not FOCUS_ONLY or is_target) then
                 gui.drawPixel(px, py, color)
-                if SHOW_NUMBERS then
-                    gui.drawText(px + 2, py - 4, tostring(index), color)
-                end
+            end
+            if is_target and SHOW_TARGET_CROSS then
+                target_cross(px, py)
+            elseif enabled and SHOW_NUMBERS and entity ~= "ball"
+                and not FOCUS_ONLY then
+                gui.drawText(px + 2, py - 4, tostring(index), color)
             end
         end
         if sample then
+            local has_reference = is_target and REFERENCE_X ~= nil
+                and px ~= nil and py ~= nil
+            local ex, ey, distance = nil, nil, nil
+            if has_reference then
+                ex, ey = px - REFERENCE_X, py - REFERENCE_Y
+                distance = math.sqrt(ex * ex + ey * ey)
+            end
             csv:write(table.concat({
                 frame, stadium, entity, index, x, y, length, width,
                 number(nx), number(ny), px or "", py or "", inside,
                 FX, FY, FW, FH, OFFSET_X, OFFSET_Y,
                 ORIGIN_X, ORIGIN_Y, SCALE_X, SCALE_Y,
-                INVERT_X and 1 or 0, INVERT_Y and 1 or 0
-            }, ",") .. "\n")
+                INVERT_X and 1 or 0, INVERT_Y and 1 or 0,
+                is_target and 1 or 0,
+                is_target and (REFERENCE_X or "") or "",
+                is_target and (REFERENCE_Y or "") or "",
+                number(ex), number(ey), number(distance)
+            }, ",") .. "\\n")
         end
     end
     for i = 0, 10 do
