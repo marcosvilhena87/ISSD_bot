@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.5.0
+# ISSD_bot — Radar v0.6.0
 
 Radar de calibração em **Lua / BizHawk** para International Superstar Soccer Deluxe (SNES). Somente leitura: nenhum botão é pressionado e nenhuma posição de memória é alterada.
 
@@ -42,3 +42,26 @@ Todas as coordenadas X/Y são **i16 little-endian** (Y em X+2). Bola: `0x042A`; 
 ### Atenção
 
 As dimensões da WRAM não comprovam, por si só, os limites da coordenada. **As quatro cruzes validam apenas o retângulo visual**; não confirmam a transformação espacial. Para medir erro real em pixels, é necessário obter posições correspondentes do radar nativo em várias capturas. Ainda não há detecção automática de alvos ou ajuste automático.
+
+## Calibração individual v0.6.0
+
+Esta versão permite manter os quatro cantos magenta e destacar **uma entidade** (bola ou jogador) sem apagar seu monitoramento CSV completo.
+
+```lua
+local TARGET_TEAM, TARGET_NUMBER = "ball", 0 -- bola
+-- local TARGET_TEAM, TARGET_NUMBER = "my", 1  -- goleiro meu
+-- local TARGET_TEAM, TARGET_NUMBER = "cpu", 11
+local FOCUS_ONLY = true
+local SHOW_TARGET_CROSS = true
+local REFERENCE_X, REFERENCE_Y = nil, nil
+```
+
+- `FOCUS_ONLY=true`: exibe apenas a entidade selecionada mais os quatro cantos magenta; **o CSV continua contendo os 22 jogadores e a bola**.
+- A mira branca de quatro pixels em torno da entidade indica a posição que o Lua **calculou**; ela não identifica o ponto nativo automaticamente.
+- Para medir o erro, pause um frame em que você consiga identificar inequivocamente o ponto nativo do alvo, anote suas coordenadas **em pixels lógicos do BizHawk** e informe `REFERENCE_X` e `REFERENCE_Y`. Reinicie o script no **mesmo frame/savestate**, evitando comparar posições de instantes distintos.
+- Na linha do alvo (`is_target=1`), o CSV traz `pixel_x/y`, `reference_x/y`, `error_x/y` e `error_distance` em pixels. Erro = projeção − referência e distância = raiz quadrada da soma dos erros quadráticos. Sem referência, os campos de erro ficam vazios.
+- As referências definidas são estáticas; **não representam rastreamento do ponto nativo**. Só interprete o erro para o frame ao qual a medição manual pertence. As linhas de frames posteriores com a mesma referência são apenas hipóteses e não constituem erros válidos sem nova anotação.
+- `REFERENCE_X/Y` devem ser ambos números ou ambos `nil`. Os limites do retângulo continuam configurados em `FX, FY, FW, FH`.
+- Se desejar sobrepor todos novamente, defina `FOCUS_ONLY=false`. `SHOW_OVERLAY=false` desliga toda a visualização, mas continua exportando CSV.
+
+**Ainda não há calibração automática** nem validação em execução real no BizHawk.
