@@ -1,45 +1,44 @@
-# ISSD_bot — Radar v0.4.0
+# ISSD_bot — Radar v0.5.0
 
-Projeto iniciado do zero para *International Superstar Soccer Deluxe* (SNES), BizHawk/Lua.
+Radar de calibração em **Lua / BizHawk** para International Superstar Soccer Deluxe (SNES). Somente leitura: nenhum botão é pressionado e nenhuma posição de memória é alterada.
 
-## Objetivo
+## O que há nesta versão
 
-Sobrepor **somente marcadores transparentes** ao radar nativo do ISSD, coletando 22 jogadores e bola. O script não altera a memória nem envia comandos ao jogo.
+- 22 jogadores: **ciano** (meu time) e **vermelho** (CPU); bola **amarela**.
+- **Quatro cruzes magenta nos cantos do retângulo**, sem fundo ou bordas, para alinhar o quadro ao radar nativo.
+- `FX, FY, FW, FH` controlam somente a posição e dimensões de referência do retângulo.
+- `OFFSET_X/Y` deslocam **apenas jogadores e bola**, não os cantos de referência.
+- `ORIGIN_X/Y`, `SCALE_X/Y` e `INVERT_X/Y` controlam a normalização, ainda não calibrada empiricamente.
+- `SHOW_NUMBERS` identifica o índice mapeado de cada jogador para diagnóstico; desativado por padrão.
+- CSV inclui coordenadas WRAM, coordenadas normalizadas, pixels projetados e parâmetros de calibração. Entidades fora do retângulo são **registradas**, mas não desenhadas.
 
-## Executar
+## Usar
 
-1. Abra uma partida no BizHawk.
-2. Em **Tools → Lua Console**, execute `lua/radar.lua`.
-3. Compare os pixels: ciano = minha equipe; vermelho = CPU; amarelo = bola.
-4. Se necessário, altere `OFFSET_X`/`OFFSET_Y` e reinicie o script.
-5. Examine `issd_radar_entities.csv`: amostra a cada 10 frames, 23 linhas por amostra. O arquivo é sobrescrito a cada execução.
+1. Abra uma partida no BizHawk e execute `lua/radar.lua` no **Tools → Lua Console**.
+2. **Etapa 1 (quadro):** alinhe as cruzes magenta aos 4 cantos do radar nativo, ajustando `FX, FY, FW, FH`. As cruzes são desenhadas no perímetro e podem ultrapassar um pixel.
+3. **Etapa 2 (pontos):** compare bola e jogadores com o radar original. Se o desvio for uniforme, tente `OFFSET_X/Y`; se crescer com a distância, ajuste escala; se estiver espelhado, teste `INVERT_X/Y`. Use `ORIGIN_X/Y` caso a origem da WRAM não corresponda à origem do radar.
+4. Reinicie o script após cada ajuste e compare novas capturas. Habilite `SHOW_NUMBERS` apenas para investigar correspondências.
+5. Examine `issd_radar_calibration.csv`, salvo no diretório de trabalho do BizHawk. Cada amostra tem **23 linhas**, coletadas a cada 10 frames. Uma nova execução sobrescreve o arquivo.
 
-## Configuração visual (pixels lógicos)
+Configuração padrão (pixels lógicos do BizHawk):
 
 ```lua
 local FX, FY, FW, FH = 88, 161, 79, 54
+local SHOW_CORNERS = true
+local ORIGIN_X, ORIGIN_Y = 0, 0
+local SCALE_X, SCALE_Y = 1, 1
+local INVERT_X, INVERT_Y = false, false
 local OFFSET_X, OFFSET_Y = 0, 0
+local SHOW_ENTITIES = true
+local SHOW_NUMBERS = false
+local SHOW_BALL = true
 local SHOW_OVERLAY = true
 ```
 
-- O ponto final é calculado por `FX + normalized_x * FW + OFFSET_X`, e analogamente para Y. Coordenadas normalizadas fora de [0,1] não são desenhadas, mas continuam no CSV.
-- `SHOW_OVERLAY = false` deixa o script somente em modo de coleta.
-- Nenhuma borda, fundo, linha ou texto é desenhado no radar. Cada entidade visível usa `gui.drawPixel`.
-- Os deslocamentos são em pixels **lógicos** do BizHawk, não em pixels da imagem ampliada. Ajustar o overlay por capturas visuais exige considerar a escala.
-- A imagem do jogo não demonstra, por si só, que origem e escala das coordenadas já estejam calibradas.
+### Endereços WRAM
 
-## Endereços WRAM
+Todas as coordenadas X/Y são **i16 little-endian** (Y em X+2). Bola: `0x042A`; meu time: `0x052A+i*0x100`; CPU: `0x102A+i*0x100`, com i=0…10. `Stadium_ID` em `0x0086` (i16); `field_length` em `0x12A2`, `field_width` em `0x12A4` (u16).
 
-Todas as posições são `i16` little-endian, com X no endereço base e Y em `base + 2`:
+### Atenção
 
-| Entidade | X | Y |
-| --- | --- | --- |
-| Bola | `0x042A` | `0x042C` |
-| Meu time, goleiro até camisa 11 | `0x052A + (i * 0x100)` | `0x052C + (i * 0x100)` |
-| CPU, goleiro até camisa 11 | `0x102A + (i * 0x100)` | `0x102C + (i * 0x100)` |
-
-Para as duas equipes, `i` varia de 0 a 10. Estádio em `0x0086` (i16). Comprimento e largura em `0x12A2` e `0x12A4` (u16).
-
-## Calibração pendente
-
-`ORIGIN_X/Y = 0` e `SCALE_X/Y = 1` são hipóteses iniciais. A presença dos marcadores sobre o radar nativo **não comprova** alinhamento exato. Testar bola e jogadores em diferentes posições e estádios, verificar os erros em X e Y e distinguir deslocamento, inversão e escala. O próximo marco é aferir a projeção com amostras reproduzíveis.
+As dimensões da WRAM não comprovam, por si só, os limites da coordenada. **As quatro cruzes validam apenas o retângulo visual**; não confirmam a transformação espacial. Para medir erro real em pixels, é necessário obter posições correspondentes do radar nativo em várias capturas. Ainda não há detecção automática de alvos ou ajuste automático.
