@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.6.0 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.7.0 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -21,9 +21,12 @@ local SAMPLE_EVERY = 10
 local TARGET_TEAM, TARGET_NUMBER = "ball", 0
 local FOCUS_ONLY = true   -- ocultar outros marcadores, mas manter CSV completo
 local SHOW_TARGET_CROSS = true
--- Referencia manual: pixel LOGICO do radar nativo observado no MESMO frame.
--- Use nil ate identificar a coordenada; nenhum alvo e detectado automaticamente.
-local REFERENCE_X, REFERENCE_Y = nil, nil
+-- Referencias MANUAIS sincronizadas: um registro por frame/alvo.
+-- Substitua pelos frames exatos de savestates e pixels logicos observados.
+-- Ex.: {frame=123456, entity="my", number=1, x=90, y=188}
+local REFERENCES = {
+}
+-- Cada frame listado no REFERENCES e exportado mesmo fora do SAMPLE_EVERY.
 local CSV_NAME = "issd_radar_calibration.csv"
 local function valid_target()
     return (TARGET_TEAM == "ball" and TARGET_NUMBER == 0)
@@ -31,8 +34,21 @@ local function valid_target()
             and TARGET_NUMBER >= 1 and TARGET_NUMBER <= 11)
 end
 if not valid_target() then error("TARGET_TEAM/TARGET_NUMBER invalido") end
-if (REFERENCE_X == nil) ~= (REFERENCE_Y == nil) then
-    error("Defina ambas as coordenadas REFERENCE_X/Y ou ambas nil")
+local reference_by_frame = {}
+for i, ref in ipairs(REFERENCES) do
+    assert(type(ref.frame) == "number" and ref.frame >= 0 and ref.frame % 1 == 0,
+        "REFERENCES[" .. i .. "]: frame invalido")
+    assert((ref.entity == "ball" and ref.number == 0) or
+        ((ref.entity == "my" or ref.entity == "cpu") and
+         type(ref.number) == "number" and ref.number >= 1 and
+         ref.number <= 11 and ref.number % 1 == 0), "REFERENCES: entidade invalida")
+    assert(type(ref.x) == "number" and type(ref.y) == "number",
+        "REFERENCES: coordenadas invalidas")
+    local key = ref.entity .. ":" .. ref.number
+    reference_by_frame[ref.frame] = reference_by_frame[ref.frame] or {}
+    assert(reference_by_frame[ref.frame][key] == nil,
+        "REFERENCES: duplicidade frame/entidade: " .. ref.frame .. "/" .. key)
+    reference_by_frame[ref.frame][key] = ref
 end
 
 local function s16(address) return memory.read_s16_le(address, DOMAIN) end
@@ -68,7 +84,7 @@ local function target_cross(px, py)
 end
 local csv, err = io.open(CSV_NAME, "w")
 if not csv then error("Falha ao criar CSV: " .. tostring(err)) end
-csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance\n")
+csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance,calibration_status\n")
 local function number(value)
     if value == nil then return "" end
     return string.format("%.6f", value)
@@ -78,7 +94,7 @@ while true do
     local frame = emu.framecount()
     local stadium = s16(STADIUM)
     local length, width = u16(FIELD_LENGTH), u16(FIELD_WIDTH)
-    local sample = count % SAMPLE_EVERY == 0
+    local sample = count % SAMPLE_EVERY == 0 or reference_by_frame[frame] ~= nil
     if SHOW_OVERLAY and SHOW_CORNERS then
         corner(FX, FY)
         corner(FX + FW, FY)
@@ -102,12 +118,20 @@ while true do
             end
         end
         if sample then
-            local has_reference = is_target and REFERENCE_X ~= nil
-                and px ~= nil and py ~= nil
+            local key = entity .. ":" .. index
+            local ref = reference_by_frame[frame] and reference_by_frame[frame][key]
+            local status = "NO_REFERENCE"
             local ex, ey, distance = nil, nil, nil
-            if has_reference then
-                ex, ey = px - REFERENCE_X, py - REFERENCE_Y
-                distance = math.sqrt(ex * ex + ey * ey)
+            if length <= 0 or width <= 0 then
+                status = "INVALID_DIMENSIONS"
+            elseif ref then
+                if inside == 1 and px ~= nil and py ~= nil then
+                    ex, ey = px - ref.x, py - ref.y
+                    distance = math.sqrt(ex * ex + ey * ey)
+                    status = "MATCHED"
+                else
+                    status = "OUTSIDE_BOUNDS"
+                end
             end
             csv:write(table.concat({
                 frame, stadium, entity, index, x, y, length, width,
@@ -116,9 +140,9 @@ while true do
                 ORIGIN_X, ORIGIN_Y, SCALE_X, SCALE_Y,
                 INVERT_X and 1 or 0, INVERT_Y and 1 or 0,
                 is_target and 1 or 0,
-                is_target and (REFERENCE_X or "") or "",
-                is_target and (REFERENCE_Y or "") or "",
-                number(ex), number(ey), number(distance)
+                ref and ref.x or "",
+                ref and ref.y or "",
+                number(ex), number(ey), number(distance), status
             }, ",") .. "\n")
         end
     end
