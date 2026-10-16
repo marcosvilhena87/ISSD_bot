@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.2.0 | BizHawk SNES | somente leitura
+-- ISSD_bot Radar v0.3.0 | BizHawk SNES | somente leitura
 -- 22 jogadores + bola; leituras i16 little-endian na WRAM.
 local DOMAIN = "WRAM"
 local BASE_BALL = 0x042A
@@ -14,7 +14,10 @@ local ADDR_WIDTH = 0x12A4
 local ORIGIN_X, ORIGIN_Y = 0, 0
 local SCALE_X, SCALE_Y = 1, 1
 local SAMPLE_EVERY = 10
-local FX, FY, FW, FH = 12, 32, 220, 120
+-- Compacto: coordenadas do canvas do BizHawk, nao da captura ampliada.
+-- Mude os quatro valores abaixo para reposicionar o mini-radar.
+local FX, FY, FW, FH = 8, 36, 104, 60
+local SHOW_OVERLAY = true  -- false: somente CSV, sem cobrir a partida
 local CSV_NAME = "issd_radar_entities.csv"
 
 local function s16(addr)
@@ -37,8 +40,8 @@ local function render_entity(x, y, length, width, color, label)
     if inside then
         local px = math.floor(FX + nx * FW + 0.5)
         local py = math.floor(FY + ny * FH + 0.5)
-        gui.drawBox(px - 2, py - 2, px + 2, py + 2, color, color)
-        if label then gui.drawText(px + 3, py - 5, label, color) end
+        if SHOW_OVERLAY then gui.drawBox(px - 1, py - 1, px + 1, py + 1, color, color) end
+        if SHOW_OVERLAY and label then gui.drawText(px + 2, py - 5, label, color) end
     end
     return nx, ny, inside and 1 or 0
 end
@@ -58,9 +61,11 @@ while true do
     local stadium = s16(ADDR_STADIUM)
     local length, width = u16(ADDR_LENGTH), u16(ADDR_WIDTH)
     local ball_x, ball_y = read_xy(BASE_BALL)
-    gui.drawBox(FX, FY, FX + FW, FY + FH, "white", 0x50000000)
-    gui.drawLine(FX + FW / 2, FY, FX + FW / 2, FY + FH, "white")
-    gui.drawText(FX, 10, string.format("ISSD RADAR 0.2 | Estadio %d", stadium), "white")
+    if SHOW_OVERLAY then
+        gui.drawBox(FX, FY, FX + FW, FY + FH, "white", 0x50000000)
+        gui.drawLine(FX + FW / 2, FY, FX + FW / 2, FY + FH, "white")
+        gui.drawText(FX, FY - 12, string.format("Radar 0.3 | %d", stadium), "white")
+    end
     local sample = frames % SAMPLE_EVERY == 0
 
     local function observe(entity, number, x, y, color, label)
@@ -78,8 +83,8 @@ while true do
         observe("cpu", i + 1, x, y, "red", nil)
     end
     observe("ball", 0, ball_x, ball_y, "yellow", "B")
-    gui.drawText(FX, FY + FH + 4, "Azul: meu time | Vermelho: CPU | Amarelo: bola", "white")
-    if length == 0 or width == 0 then
+
+    if SHOW_OVERLAY and (length == 0 or width == 0) then
         gui.drawText(FX, FY + FH + 16, "Dimensoes zeradas: aguarde partida", "orange")
     end
     if sample then csv:flush() end
