@@ -1,68 +1,88 @@
--- ISSD_bot Radar v0.1.0 - BizHawk / SNES / somente leitura
--- Usa memory.read_* no dominio WRAM. Nao envia comandos ao jogo.
+-- ISSD_bot Radar v0.2.0 | BizHawk SNES | somente leitura
+-- 22 jogadores + bola; leituras i16 little-endian na WRAM.
 local DOMAIN = "WRAM"
-local ADDR = {
-    ball_x = 0x042A, ball_y = 0x042C, stadium = 0x0086,
-    field_length = 0x12A2, field_width = 0x12A4
-}
-local ORIGIN_X, ORIGIN_Y = 0, 0 -- calibrar com observacoes
-local SCALE_X, SCALE_Y = 1, 1   -- calibrar com observacoes
-local SAMPLE_EVERY = 10
-local FIELD_X, FIELD_Y, FIELD_W, FIELD_H = 12, 30, 220, 118
-local output_path = "issd_radar_ball.csv"
+local BASE_BALL = 0x042A
+local BASE_MY = 0x052A
+local BASE_CPU = 0x102A
+local STRIDE = 0x0100
+local X_Y_OFFSET = 2
+local ADDR_STADIUM = 0x0086
+local ADDR_LENGTH = 0x12A2
+local ADDR_WIDTH = 0x12A4
 
-local function u16(addr)
-    return memory.read_u16_le(addr, DOMAIN)
-end
+-- Valores de calibracao: origem e escala devem ser confirmados em partida.
+local ORIGIN_X, ORIGIN_Y = 0, 0
+local SCALE_X, SCALE_Y = 1, 1
+local SAMPLE_EVERY = 10
+local FX, FY, FW, FH = 12, 32, 220, 120
+local CSV_NAME = "issd_radar_entities.csv"
+
 local function s16(addr)
     return memory.read_s16_le(addr, DOMAIN)
 end
-local function clamp(value, lo, hi)
-    return math.max(lo, math.min(hi, value))
+local function u16(addr)
+    return memory.read_u16_le(addr, DOMAIN)
 end
-local function projection(x, y, length, width)
+local function read_xy(addr)
+    return s16(addr), s16(addr + X_Y_OFFSET)
+end
+local function normalized(x, y, length, width)
     if length <= 0 or width <= 0 then return nil, nil end
-    local nx = (x - ORIGIN_X) * SCALE_X / length
-    local ny = (y - ORIGIN_Y) * SCALE_Y / width
-    if nx ~= nx or ny ~= ny then return nil, nil end
-    return FIELD_X + nx * FIELD_W, FIELD_Y + ny * FIELD_H
+    return (x - ORIGIN_X) * SCALE_X / length,
+           (y - ORIGIN_Y) * SCALE_Y / width
 end
-
-local csv, err = io.open(output_path, "w")
-if not csv then error("Nao foi possivel criar o CSV: " .. tostring(err)) end
-csv:write("frame,stadium_id,ball_x,ball_y,field_length,field_width,normalized_x,normalized_y,inside_bounds\n")
+local function render_entity(x, y, length, width, color, label)
+    local nx, ny = normalized(x, y, length, width)
+    local inside = nx and ny and nx >= 0 and nx <= 1 and ny >= 0 and ny <= 1
+    if inside then
+        local px = math.floor(FX + nx * FW + 0.5)
+        local py = math.floor(FY + ny * FH + 0.5)
+        gui.drawBox(px - 2, py - 2, px + 2, py + 2, color, color)
+        if label then gui.drawText(px + 3, py - 5, label, color) end
+    end
+    return nx, ny, inside and 1 or 0
+end
+local csv, err = io.open(CSV_NAME, "w")
+if not csv then error("Nao foi possivel abrir CSV: " .. tostring(err)) end
+csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,inside_bounds\n")
 csv:flush()
-
-local frame_count = 0
+local function write_entity(frame, stadium, entity, number, x, y, length, width, nx, ny, inside)
+    csv:write(string.format("%d,%d,%s,%d,%d,%d,%d,%d,%s,%s,%d\n",
+        frame, stadium, entity, number, x, y, length, width,
+        nx and string.format("%.6f", nx) or "",
+        ny and string.format("%.6f", ny) or "", inside))
+end
+local frames = 0
 while true do
-    local x, y = u16(ADDR.ball_x), u16(ADDR.ball_y)
-    local stadium = s16(ADDR.stadium)
-    local length, width = u16(ADDR.field_length), u16(ADDR.field_width)
-    local px, py = projection(x, y, length, width)
-    local nx = length > 0 and (x - ORIGIN_X) * SCALE_X / length or nil
-    local ny = width > 0 and (y - ORIGIN_Y) * SCALE_Y / width or nil
-    local inside = nx and ny and nx >= 0 and nx <= 1 and ny >= 0 and ny <= 1 or false
+    local frame = emu.framecount()
+    local stadium = s16(ADDR_STADIUM)
+    local length, width = u16(ADDR_LENGTH), u16(ADDR_WIDTH)
+    local ball_x, ball_y = read_xy(BASE_BALL)
+    gui.drawBox(FX, FY, FX + FW, FY + FH, "white", 0x50000000)
+    gui.drawLine(FX + FW / 2, FY, FX + FW / 2, FY + FH, "white")
+    gui.drawText(FX, 10, string.format("ISSD RADAR 0.2 | Estadio %d", stadium), "white")
+    local sample = frames % SAMPLE_EVERY == 0
 
-    gui.drawBox(FIELD_X, FIELD_Y, FIELD_X + FIELD_W, FIELD_Y + FIELD_H, "white", 0x50000000)
-    gui.drawLine(FIELD_X + FIELD_W / 2, FIELD_Y, FIELD_X + FIELD_W / 2, FIELD_Y + FIELD_H, "white")
-    gui.drawText(FIELD_X, 10, string.format("RADAR v0.1 | estadio=%d | bola=(%d,%d)", stadium, x, y), "white")
-    if px and py then
-        if inside then
-            gui.drawBox(px - 3, py - 3, px + 3, py + 3, "yellow", "yellow")
-        else
-            gui.drawText(FIELD_X, FIELD_Y + FIELD_H + 3, "Bola fora da area normalizada: calibrar", "orange")
+    local function observe(entity, number, x, y, color, label)
+        local nx, ny, inside = render_entity(x, y, length, width, color, label)
+        if sample then
+            write_entity(frame, stadium, entity, number, x, y, length, width, nx, ny, inside)
         end
-    else
-        gui.drawText(FIELD_X, FIELD_Y + FIELD_H + 3, "Dimensoes indisponiveis na WRAM", "red")
     end
-    if frame_count % SAMPLE_EVERY == 0 then
-        csv:write(string.format("%d,%d,%d,%d,%d,%d,%s,%s,%d\n",
-            emu.framecount(), stadium, x, y, length, width,
-            nx and string.format("%.6f", nx) or "",
-            ny and string.format("%.6f", ny) or "",
-            inside and 1 or 0))
-        csv:flush()
+    for i = 0, 10 do
+        local x, y = read_xy(BASE_MY + i * STRIDE)
+        observe("my", i + 1, x, y, "cyan", nil)
     end
-    frame_count = frame_count + 1
+    for i = 0, 10 do
+        local x, y = read_xy(BASE_CPU + i * STRIDE)
+        observe("cpu", i + 1, x, y, "red", nil)
+    end
+    observe("ball", 0, ball_x, ball_y, "yellow", "B")
+    gui.drawText(FX, FY + FH + 4, "Azul: meu time | Vermelho: CPU | Amarelo: bola", "white")
+    if length == 0 or width == 0 then
+        gui.drawText(FX, FY + FH + 16, "Dimensoes zeradas: aguarde partida", "orange")
+    end
+    if sample then csv:flush() end
+    frames = frames + 1
     emu.frameadvance()
 end
