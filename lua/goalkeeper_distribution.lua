@@ -38,6 +38,7 @@ function M.plan(s)
    local vector=Direction.direction(s.ball,p)
    options[#options+1]={id=p.id,direction=vector and vector.direction,
       command=vector and vector.command,dx=vector and vector.dx,dy=vector and vector.dy,
+      input_sequence=vector and Direction.input_sequence(vector.direction,1,false),
       distance=distance(s.ball,p),
       keeper_distance=distance(keeper,p),clearance=clearance,
       blocker_id=blocker,status="UNCALIBRATED"}
