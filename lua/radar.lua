@@ -22,6 +22,7 @@ local USE_EMPIRICAL_BOUNDS = true
 local STADIUM_CALIBRATION = {
     [0] = {min_x=4, max_x=1788, min_y=4, max_y=572, validated=false},
     [1] = {min_x=4, max_x=1852, min_y=4, max_y=636, validated=false},
+    [2] = {min_x=4, max_x=1980, min_y=4, max_y=700, validated=false},
 }
 local SAMPLE_EVERY = 10
 -- Foco: "ball"/0, "my"/1..11 ou "cpu"/1..11.
