@@ -44,6 +44,23 @@ class StadiumGeometryTests(unittest.TestCase):
                 )
                 self.assertFalse(self.profiles[stadium][4])
 
+    def test_geometry_integrity_contract(self):
+        self.assertIn('local function geometry_status(stadium, length, width)', self.source)
+        for status in ("VALID", "ZERO_DIMENSIONS", "DIMENSION_MISMATCH", "UNKNOWN_STADIUM"):
+            self.assertIn('"'+status+'"', self.source)
+        self.assertIn('local valid_geometry = integrity == "VALID"', self.source)
+        self.assertIn('transform(x, y, length, width, stadium, valid_geometry)', self.source)
+        self.assertIn('if not geometry_valid then', self.source)
+        self.assertIn('SHOW_OVERLAY and valid_geometry', self.source)
+        self.assertIn('geometry_status,geometry_valid,expected_field_length,expected_field_width', self.source)
+
+    def test_expected_dimensions_derived_from_profiles(self):
+        for stadium, (length, width) in EXPECTED_DIMENSIONS.items():
+            bounds = self.profiles[stadium]
+            with self.subTest(stadium=stadium):
+                self.assertEqual((bounds[1]-bounds[0]+8, bounds[3]-bounds[2]+8),
+                                 (length, width))
+
     def test_model_selector_and_csv_fields(self):
         self.assertIn('PROJECTION_MODEL == "geometric"', self.source)
         self.assertIn('PROJECTION_MODEL == "empirical"', self.source)
