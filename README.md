@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.10.0
+# ISSD_bot — Radar v0.11.0
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -122,3 +122,24 @@ python -m unittest discover -s tests -v
 Os testes estáticos verificam oito perfis, dimensões esperadas e presença dos bloqueios no código-fonte. Não substituem um teste dinâmico de execução no BizHawk, que continua pendente.
 
 **Compatibilidade:** as colunas antigas permanecem na mesma ordem e as quatro colunas novas são acrescentadas no final. Em estados suspeitos o radar não reutiliza dimensões do frame anterior nem tenta adivinhar o estádio.
+
+## Contexto de partida — v0.11.0
+
+O radar lê agora `Game_State` em `0x00BA` (u16 LE) e `Gameplay_Active` em `0x0006` (u8) a cada frame. Os rótulos do primeiro campo são derivados de `tools/bizhawk/issd/state/game_state.lua` do [ISSD_bot.v0](https://github.com/marcosvilhena87/ISSD_bot.v0/blob/main/tools/bizhawk/issd/state/game_state.lua).
+
+| Game_State | game_state_kind | Interpretação do projeto anterior |
+| --- | --- | --- |
+| 0 | `LIVE` | Jogo corrido |
+| 1 | `ENDLINE_RESTART` | Escanteio/tiro de meta |
+| 2 | `THROW_IN` | Lateral |
+| 3 | `FOUL_RESTART_SEQUENCE` | Sequência de falta |
+| 4 | `OFFSIDE_SEQUENCE` | Sequência de impedimento |
+| 5 | `POST_GOAL` | Após gol |
+| 6 | `PERIOD_TIME_UP` | Fim de período |
+| Outros | `UNKNOWN` | Não mapeado |
+
+A combinação observada **`Game_State=6` e comprimento ou largura igual a zero** recebe `geometry_status=PERIOD_ENDED`; dimensões zeradas em outros estados recebem `ZERO_DIMENSIONS_UNEXPECTED`. `DIMENSION_MISMATCH`, `UNKNOWN_STADIUM` e `VALID` continuam disponíveis. **Todos os estados geométricos diferentes de `VALID` bloqueiam o desenho e as coordenadas projetadas.** O critério geométrico permanece independente de `Gameplay_Active`: este campo é registrado para análise, sem supor que todo replay ou pausa implica dimensões inválidas.
+
+Três novas colunas foram adicionadas **ao final** do CSV, sem reorganizar as existentes: `game_state`, `game_state_kind` e `gameplay_active`. Assim, a classificação por estádio pode ser analisada por contexto, inclusive transições e final de período. A identificação de `PERIOD_TIME_UP` vem do código anterior; a correlação com dimensões zeradas foi observada experimentalmente, mas o comportamento de todos os estados ainda requer novas capturas.
+
+Execute os testes estáticos com `python -m unittest discover -s tests -v` e valide a leitura dinâmica no BizHawk com um CSV que inclua passagem de tempo encerrado para uma nova partida/período. A versão segue somente leitura, sem automatizar inputs.
