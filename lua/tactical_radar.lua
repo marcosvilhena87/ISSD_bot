@@ -26,7 +26,7 @@ function M.plan(s,decision,stadium,length,width)
  if not carrier then return nil,"carrier_missing" end
  local ax,ay=pos(carrier,length,width)
  if not ax then return nil,"carrier_outside" end
- local result={carrier={x=ax,y=ay},links={},players={},ball=nil}
+ local result={carrier={x=ax,y=ay},links={},rejected=nil,support_move=nil,players={},ball=nil}
  local bx,by=pos(s.ball,length,width)
  if bx then result.ball={x=bx,y=by} end
  for _,p in ipairs(s.my_players) do
@@ -47,6 +47,18 @@ function M.plan(s,decision,stadium,length,width)
           id=p.id,priority=i} end
     end
  end
+ if d.diagnostics then
+    local rejected=d.diagnostics.best_rejected
+    if rejected and by_id[rejected.id] then
+       local rx,ry=pos(by_id[rejected.id],length,width)
+       if rx then result.rejected={x1=ax,y1=ay,x2=rx,y2=ry,id=rejected.id} end
+    end
+    local move=d.diagnostics.support_move
+    if move then
+       local sx,sy=pos(move,length,width)
+       if sx then result.support_move={x=sx,y=sy,id=move.id} end
+    end
+ end
  return result
 end
 function M.draw(plan,gui_api)
@@ -59,6 +71,14 @@ function M.draw(plan,gui_api)
    local color=link.priority==1 and "lime" or "gray"
    if gui_api.drawLine then gui_api.drawLine(link.x1,link.y1,link.x2,link.y2,color) end
    if gui_api.drawText then gui_api.drawText(link.x2+2,link.y2-6,tostring(link.id),color) end
+ end
+ if plan.rejected and gui_api.drawLine then
+   local r=plan.rejected
+   gui_api.drawLine(r.x1,r.y1,r.x2,r.y2,"orange")
+ end
+ if plan.support_move and gui_api.drawBox then
+   local m=plan.support_move
+   gui_api.drawBox(m.x-2,m.y-2,m.x+2,m.y+2,"magenta")
  end
  if gui_api.drawBox then gui_api.drawBox(plan.carrier.x-2,plan.carrier.y-2,
        plan.carrier.x+2,plan.carrier.y+2,"white") end
