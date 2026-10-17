@@ -389,3 +389,14 @@ O `main.lua` gera automaticamente `issd_tactical_report.csv` no diretorio de tra
 Colunas: `frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y`. Campos nao conhecidos permanecem vazios. `pressers` usa formato `id:ROLE;id:ROLE`; `target_id` e apenas uma recomendacao, nao prova de passe executado. `epoch` aumenta sempre que o contador de frames retrocede (savestate/reset); permite separar trechos da mesma sessao. `raw_owner` corresponde a WRAM `0x00A6`, `raw_team` a `0x104C`. `logical_team` nao e posse confirmada: `0x00A6=0` ainda pode significar passe em voo ou bola solta.
 
 Testes locais: `lua tests/test_tactical_telemetry.lua` (interpretador Lua requerido). O teste no BizHawk ainda precisa ser realizado; o script nao executa comandos `joypad`. Caso o CSV nao possa ser criado, o console apresenta `[ISSD] ERRO CSV` e o planejador permanece executando.
+
+
+## Tiki-taka assistido pelo radar (experimental)
+
+O `main.lua` agora usa `lua/tactical_radar.lua` para projetar recomendações de passe na mesma área usada pelo radar original (`FX=88, FY=161, FW=79, FH=54`). **Execute apenas `main.lua`** para esse modo; `radar.lua` continua sendo uma ferramenta de calibração independente e rodar os dois ao mesmo tempo pode sobrepor desenhos.
+
+Legenda: jogador MY em vermelho, CPU em ciano, bola amarela, portador com contorno branco, melhor linha de passe verde e até duas alternativas cinza; número ao lado do receptor. As linhas são **sugestões**, não comandos enviados ao controle. Os passes continuam limitados pela checagem de distância e de corredor livre existente no `tiki_taka.lua`.
+
+A projeção usa os perfis empíricos dos oito estádios cadastrados em `radar.lua`, sem modificar a calibração. Desenho tático bloqueado quando `Stadium_ID` é desconhecido, dimensões divergem, não há portador confirmado ou posse é incerta. Perfis observados não constituem prova de alinhamento visual com o radar nativo: valide os marcadores no BizHawk. O `main.lua` continua produzindo `issd_tactical_report.csv`, e o controle automático de passes permanece desativado.
+
+Teste de lógica isolada: `lua tests/test_tactical_radar.lua` (a execução local requer Lua; a validação visual exige BizHawk).
