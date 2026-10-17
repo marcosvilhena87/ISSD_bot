@@ -385,7 +385,7 @@ while true do
     -- Independente de profile VALID, Game_State ou Gameplay_Active.
     local center_x, center_y = u16(CENTER_FIELD_X), u16(CENTER_FIELD_Y)
     local bx, by = xy(BASE_BALL)
-    local all_addresses_zero = bx == 0 and by == 0 and stadium == 0
+    local all_addresses_zero = bx == 0 and by == 0
         and length == 0 and width == 0 and center_x == 0 and center_y == 0
     local field_loaded = length > 8 and width > 8
         and center_x > 0 and center_x < length
