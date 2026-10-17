@@ -14,7 +14,7 @@ function M.direction(a,b)
  local v=dy>0 and "Down" or "Up"
  local direction=horizontal and h or vertical and v or (v.."+"..h)
  return {direction=direction,command=direction.."+B",
-   dx=dx,dy=dy,angle=math.deg(math.atan2 and math.atan2(dy,dx) or math.atan(dy,dx)),
+   dx=dx,dy=dy,
    status="UNVERIFIED"}
 end
 return M
