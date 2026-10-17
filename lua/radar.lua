@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.15.6 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.15.7 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -384,6 +384,9 @@ while true do
     -- Centros devem estar dentro das dimensoes carregadas.
     -- Independente de profile VALID, Game_State ou Gameplay_Active.
     local center_x, center_y = u16(CENTER_FIELD_X), u16(CENTER_FIELD_Y)
+    local bx, by = xy(BASE_BALL)
+    local all_addresses_zero = bx == 0 and by == 0 and stadium == 0
+        and length == 0 and width == 0 and center_x == 0 and center_y == 0
     local field_loaded = length > 8 and width > 8
         and center_x > 0 and center_x < length
         and center_y > 0 and center_y < width
@@ -391,6 +394,7 @@ while true do
     local corners_geometry_known = stadium ~= 8 and (valid_geometry
         or (variant_profile ~= nil and variant_profile.geometry_observed == true))
     local corners_visible = SHOW_OVERLAY and SHOW_CORNERS
+        and not all_addresses_zero
         and stadium ~= 8
         and (not AUTO_HIDE_CORNERS or (field_loaded and corners_geometry_known))
     if corners_visible then
@@ -408,7 +412,7 @@ while true do
         end
         local variant_px, variant_py = project(variant_nx, variant_ny)
         local is_target = entity == TARGET_TEAM and index == TARGET_NUMBER
-        if SHOW_OVERLAY and valid_geometry and px and py and inside == 1 then
+        if SHOW_OVERLAY and not all_addresses_zero and valid_geometry and px and py and inside == 1 then
             local enabled = (entity == "ball" and SHOW_BALL)
                 or (entity ~= "ball" and SHOW_ENTITIES)
             if enabled and (not FOCUS_ONLY or is_target) then
@@ -480,7 +484,6 @@ while true do
         local x, y = xy(BASE_CPU + i * STRIDE)
         observe("cpu", i + 1, x, y, CPU_COLOR)
     end
-    local bx, by = xy(BASE_BALL)
     observe("ball", 0, bx, by, BALL_COLOR)
     if sample then csv:flush() end
     count = count + 1
