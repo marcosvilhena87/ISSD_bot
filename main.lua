@@ -1,6 +1,14 @@
 -- ISSD_bot tactical coordinator: tiki-taka + gegenpressing.
 -- Safe by default: no unvalidated possession inference or joypad writes.
-package.path = "./lua/?.lua;lua/?.lua;" .. package.path
+-- Resolve modules relative to THIS script rather than BizHawk's working directory.
+local source = debug.getinfo(1, "S").source
+local script_dir = source:sub(1,1) == "@" and
+    source:sub(2):match("^(.*[/\\])") or nil
+if script_dir then
+    package.path = script_dir .. "lua/?.lua;" .. package.path
+else
+    package.path = "./lua/?.lua;lua/?.lua;" .. package.path
+end
 local TikiTaka = require("tiki_taka")
 local Gegenpressing = require("gegenpressing")
 local Possession = require("possession")
@@ -75,13 +83,21 @@ function M.run(provider, config)
     local bot=M.new(config)
     if provider ~= nil then assert(type(provider)=="function","provider must be a function") end
     local previous_mode
+    local last_error
     while true do
         local frame=emu.framecount()
         local s
-        if provider then
-            s=provider(frame)
-        elseif type(memory)=="table" then
-            s=Possession.bizhawk()
+        local ok, result = pcall(function()
+            if provider then return provider(frame) end
+            if type(memory)=="table" then return Possession.bizhawk() end
+            return nil
+        end)
+        if ok then
+            s=result
+            last_error=nil
+        elseif result~=last_error then
+            print("[ISSD] Falha na leitura do estado: "..tostring(result))
+            last_error=result
         end
         local decision
         if type(s)=="table" then
