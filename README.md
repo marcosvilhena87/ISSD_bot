@@ -448,3 +448,8 @@ O algoritmo de tiki-taka agora guarda os **três jogadores de linha mais próxim
 O radar marca os três companheiros próximos com um pequeno contorno branco e destaca em laranja o bloqueador do melhor candidato rejeitado. A calibração do radar continua experimental. Os critérios de aceitação do passe e a prioridade progressiva/lateral/recuo **não foram alterados**.
 
 O CSV v1.13.2 utiliza o **esquema 5, com 58 colunas**: acrescenta `near1_id`, `near1_carrier_distance`, `near1_ball_distance`, `near1_reason`, `near1_blocker_id` e equivalentes para `near2` e `near3`. Os diagnósticos ficam vazios quando não há posse confirmada ou avaliação disponível. Teste: `lua tests/test_nearest_passes.lua`. A execução real no BizHawk ainda precisa ser validada.
+
+
+## Correção visual: limpeza das sugestões após perda da posse
+
+O `main.lua` executa `gui.clearGraphics()` quando disponível antes de desenhar os indicadores de cada frame, inclusive quando a posse é da CPU ou não há dono confirmado. Assim, linhas de passes e sugestões anteriores não ficam presas na tela. As marcações táticas só são redesenhadas com `active=true`, `possession=my`, `ownership_source=PLAYER_BALL_POSSESSION` e `carrier_id` validado. Atenção: `gui.clearGraphics()` pode limpar desenhos de outros scripts Lua que compartilhem a mesma camada gráfica; recomenda-se executar o `main.lua` isoladamente. A telemetria permanece independente.
