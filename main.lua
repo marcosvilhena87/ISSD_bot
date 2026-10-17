@@ -19,6 +19,7 @@ else
     package.path = "./lua/?.lua;lua/?.lua;" .. package.path
 end
 local SequentialTiki = require("sequential_tiki_taka")
+local GoalkeeperDistribution = require("goalkeeper_distribution")
 local Gegenpressing = require("gegenpressing")
 local Possession = require("possession")
 local Telemetry = require("tactical_telemetry")
