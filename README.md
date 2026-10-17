@@ -518,3 +518,12 @@ Versao de telemetria `1.15.3`, esquema 8, 101 colunas. Teste: `lua tests/test_go
 No relatório de 15:53:48, B foi observado no frame 6390 com a bola em (21,347), e a posse do ID 2 surgiu no frame 6490, com bola em (540,88). O ID 2 não era um dos três candidatos registrados; a posição dele antes do passe é desconhecida. O destino observado não deve ser confundido com sua posição pré-passe.
 
 O perfil experimental somente recomenda o ID 2 se: bola perto de (21,347), tolerância 25 por eixo; vetor atual até o ID 2 próximo de (+519,-259), tolerância 60 por eixo; direção nominal Up+Right; e distância mínima adversária ao segmento >=200. Se ID 2 não estiver entre GK1-GK3, será incluído como quarta opção. Os perfis ID 4 e ID 5 permanecem. Limitação: o CSV e o radar apresentam apenas GK1-GK3, mesmo se ID 2 for um quarto candidato; a seleção aparece em target_id. Tolerâncias não são estatisticamente validadas. Não aciona controles. Versão 1.15.4, schema 8, 101 colunas.
+
+
+## v1.15.5 — Calibracao temporal direcional
+
+A v1.15.4 continua sendo a versao dos perfis GK-ID2; esta evolucao usa v1.15.5. Agora sao observadas a ultima direcao isolada, a ultima diagonal e a direcao predominante (numero de frames observados desde o acionamento anterior de B). Tambem e contado o intervalo de frames entre a ultima direcao pressionada e B, quando ela foi solta. O ID recomendado e capturado na borda de B; ao identificar novo portador, o sistema registra MATCH ou MISMATCH, ou UNCONFIRMED quando nao ha recomendacao. Sao associacoes temporais, nao prova causal de passe.
+
+Telemetria versao 1.15.5, schema 9, 107 colunas: pass_last_single, pass_last_diagonal, pass_dominant, pass_release_delay, pass_recommended, pass_outcome. As 101 colunas anteriores permanecem. A comparacao e por evento, nunca por quantidade de frames. Sem recepcao identificada ate o timeout, registra UNCONFIRMED. Nenhum controle e pressionado automaticamente.
+
+Testes: lua tests/test_pass_input_observer.lua; lua tests/test_tactical_telemetry.lua.
