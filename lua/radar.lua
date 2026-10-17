@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.15.4 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.15.5 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -17,6 +17,7 @@ local INVERT_X, INVERT_Y = false, false
 local OFFSET_X, OFFSET_Y = 0, 0  -- apenas entidades; pixels logicos
 local SHOW_ENTITIES = true
 local SHOW_NUMBERS = false -- numeros ao lado de cada jogador (polui o radar)
+local MY_COLOR, CPU_COLOR, BALL_COLOR = "red", "cyan", "yellow"
 local SHOW_BALL = true
 local SHOW_OVERLAY = true   -- false: somente CSV; sem cantos nem entidades
 -- Limites observados da bola nos quatro escanteios, POR estadio.
@@ -473,14 +474,14 @@ while true do
     end
     for i = 0, 10 do
         local x, y = xy(BASE_MY + i * STRIDE)
-        observe("my", i + 1, x, y, "cyan")
+        observe("my", i + 1, x, y, MY_COLOR)
     end
     for i = 0, 10 do
         local x, y = xy(BASE_CPU + i * STRIDE)
-        observe("cpu", i + 1, x, y, "red")
+        observe("cpu", i + 1, x, y, CPU_COLOR)
     end
     local bx, by = xy(BASE_BALL)
-    observe("ball", 0, bx, by, "yellow")
+    observe("ball", 0, bx, by, BALL_COLOR)
     if sample then csv:flush() end
     count = count + 1
     emu.frameadvance()
