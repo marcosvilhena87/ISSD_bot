@@ -4,7 +4,9 @@ local M={}
 local Support=require("tiki_taka_support")
 local DEFAULT={max_pass_distance=320,min_pass_distance=35,opponent_clearance=65,
     progress_weight=0.35,open_weight=2.0,distance_weight=0.18,
-    repeat_penalty=45,pass_cooldown=8,support_radius=420}
+    repeat_penalty=45,pass_cooldown=8,support_radius=420,
+    progressive_threshold=20,lateral_threshold=20,progressive_bonus=65,
+    lateral_bonus=20,backward_bonus=0}
 local function finite(x) return type(x)=="number" and x==x and x~=math.huge and x~=-math.huge end
 local function valid(p) return type(p)=="table" and finite(p.x) and finite(p.y) end
 local function dist(a,b)
@@ -72,7 +74,11 @@ function M.new(config)
                     end
                 end
                 local progression=(p.x-carrier.x)*ux+(p.y-carrier.y)*uy
-                local score=math.min(clearance,180)*cfg.open_weight+
+                local pass_type=progression>cfg.progressive_threshold and "PROGRESSIVE"
+                    or progression< -cfg.lateral_threshold and "BACKWARD" or "LATERAL"
+                local priority=pass_type=="PROGRESSIVE" and cfg.progressive_bonus
+                    or pass_type=="LATERAL" and cfg.lateral_bonus or cfg.backward_bonus
+                local score=priority+math.min(clearance,180)*cfg.open_weight+
                     progression*cfg.progress_weight-d*cfg.distance_weight
                 if last_target==p.id then score=score-cfg.repeat_penalty end
                 local reason="SAFE"
@@ -80,7 +86,7 @@ function M.new(config)
                 elseif d>cfg.max_pass_distance then reason="TOO_FAR"
                 elseif clearance<cfg.opponent_clearance then reason="BLOCKED" end
                 local item={id=p.id,distance=d,clearance=clearance,
-                    progression=progression,score=score,reason=reason}
+                    progression=progression,score=score,reason=reason,pass_type=pass_type}
                 evaluations[#evaluations+1]=item
                 if reason=="SAFE" then candidates[#candidates+1]=item end
             end
@@ -113,7 +119,8 @@ function M.new(config)
             return {mode="HOLD",reason="no_safe_pass",candidates={},support=support,diagnostics=diagnostics}
         end
         return {mode="PASS",target_id=candidates[1].id,
-            reason="safe_short_pass",candidates=candidates,support=support,diagnostics=diagnostics}
+            reason="safe_short_pass",pass_type=candidates[1].pass_type,
+            candidates=candidates,support=support,diagnostics=diagnostics}
     end
     -- Call only after the controller has verified an actual pass initiation.
     local function confirm_pass(target_id,frame)
