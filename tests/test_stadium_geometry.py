@@ -126,6 +126,12 @@ class StadiumGeometryTests(unittest.TestCase):
         self.assertNotIn('CORNER_VISIBILITY_MODE', self.source)
         self.assertNotIn('radar_likely_visible', self.source)
 
+    def test_pre_match_coin_toss_guard(self):
+        self.assertIn('if stadium == 8 then return "PRE_MATCH_COIN_TOSS", nil, nil end', self.source)
+        self.assertIn('and stadium ~= 8', self.source)
+        self.assertIn('local valid_geometry = integrity == "VALID"', self.source)
+        self.assertEqual(set(self.profiles), set(range(8)))
+
     def test_expected_dimensions_derived_from_profiles(self):
         for stadium, (length, width) in EXPECTED_DIMENSIONS.items():
             bounds = self.profiles[stadium]
