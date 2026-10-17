@@ -44,7 +44,7 @@ function M.plan(s,decision,stadium,length,width)
        local target=by_id[option.id]
        local x,y=pos(target,length,width)
        if x and i<=3 then
-          result.gk_options[#result.gk_options+1]={x=x,y=y,id=option.id,rank=i}
+          result.gk_options[#result.gk_options+1]={x=x,y=y,id=option.id,rank=i,command=option.command}
        end
     end
  end
@@ -93,7 +93,7 @@ function M.draw(plan,gui_api)
  if plan.ball then gui_api.drawPixel(plan.ball.x,plan.ball.y,"yellow") end
  for _,g in ipairs(plan.gk_options or {}) do
    if gui_api.drawLine then gui_api.drawLine(plan.carrier.x,plan.carrier.y,g.x,g.y,"cyan") end
-   if gui_api.drawText then gui_api.drawText(g.x+2,g.y-4,"GK"..tostring(g.rank),"cyan") end
+   if gui_api.drawText then gui_api.drawText(g.x+2,g.y-4,"GK"..tostring(g.rank)..":"..tostring(g.command or "?"),"cyan") end
  end
  for _,link in ipairs(plan.links) do
    local color=link.priority==1 and "lime" or "gray"
