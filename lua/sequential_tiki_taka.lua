@@ -82,27 +82,33 @@ function M.new(config)
    local norm=math.sqrt(v[1]*v[1]+v[2]*v[2])
    local p={x=carrier.x+v[1]*step/norm,y=carrier.y+v[2]*step/norm}
    local valid=true
+   -- Conservative field dimensions, when provided by the state provider.
+   if s.field_length and (p.x<4 or p.x>s.field_length-4) then valid=false end
+   if s.field_width and (p.y<4 or p.y>s.field_width-4) then valid=false end
    local min_enemy=math.huge
    for _,e in ipairs(s.cpu_players) do
     min_enemy=math.min(min_enemy,distance(p,e))
    end
    if min_enemy<min_clear then valid=false end
    local count=0
+   local closest=math.huge
    for _,mate in ipairs(s.my_players) do
     if mate.id~=s.carrier_id and not mate.is_goalkeeper then
      local d=distance(p,mate)
+     if d<closest then closest=d end
      if d>=min_pass and d<=max_pass and lane(p,mate,s.cpu_players)>=pass_clear then count=count+1 end
     end
    end
    local goal_dx=s.opponent_goal.x-s.own_goal.x
    local goal_dy=s.opponent_goal.y-s.own_goal.y
    local projected=v[1]*goal_dx+v[2]*goal_dy
-   local score=count*100+min_enemy*0.01+projected*0.0001
-   if valid and count>0 and score>best_score then
+   -- When everybody is too far, safely approach the nearest teammate.
+   local score=count*10000-closest+math.min(min_enemy,400)*0.01+projected*0.0001
+   if valid and closest<math.huge and score>best_score then
     best_score=score;best={x=p.x,y=p.y,score=score,open_passes=count}
    end
   end
-  if best then return {mode="DRIBBLE",reason="open_short_pass",dribble=best,base=base} end
+  if best then return {mode="DRIBBLE",reason=best.open_passes>0 and "open_short_pass" or "approach_support",dribble=best,base=base} end
   return {mode="HOLD",reason="no_safe_dribble",base=base}
  end
  -- A controller can call this ONLY after confirming that an actual pass began.
