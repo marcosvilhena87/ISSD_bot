@@ -380,3 +380,12 @@ O interpretador Lua do BizHawk não foi executado neste ambiente. Teste estátic
 ## Correcao de inicializacao do main.lua
 
 O `main.lua` agora localiza `lua/tiki_taka.lua`, `lua/gegenpressing.lua` e `lua/possession.lua` **relativamente ao proprio arquivo**, mesmo quando o diretorio de trabalho do BizHawk e diferente da raiz do repositorio. Falhas de leitura WRAM sao registradas no Lua Console uma vez por mensagem distinta, sem encerrar o loop; o estado correspondente fica `INACTIVE`. Confirme que `main.lua` e a pasta `lua/` estao no mesmo projeto e atualize com `git pull --ff-only origin main`. Se continuar sem executar, copie o erro integral do Lua Console. Mudanca ainda nao validada dentro do BizHawk.
+
+
+## Telemetria de decisoes (issd_tactical_report.csv)
+
+O `main.lua` gera automaticamente `issd_tactical_report.csv` no diretorio de trabalho do BizHawk. O arquivo e sobrescrito a cada nova execucao do script: salve uma copia antes de reiniciar se quiser preservar uma captura anterior. O registro ocorre a **cada frame**, inclusive `INACTIVE`, e e descarregado para disco a cada 60 frames ou imediatamente quando muda o estado tatico.
+
+Colunas: `frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y`. Campos nao conhecidos permanecem vazios. `pressers` usa formato `id:ROLE;id:ROLE`; `target_id` e apenas uma recomendacao, nao prova de passe executado. `epoch` aumenta sempre que o contador de frames retrocede (savestate/reset); permite separar trechos da mesma sessao. `raw_owner` corresponde a WRAM `0x00A6`, `raw_team` a `0x104C`. `logical_team` nao e posse confirmada: `0x00A6=0` ainda pode significar passe em voo ou bola solta.
+
+Testes locais: `lua tests/test_tactical_telemetry.lua` (interpretador Lua requerido). O teste no BizHawk ainda precisa ser realizado; o script nao executa comandos `joypad`. Caso o CSV nao possa ser criado, o console apresenta `[ISSD] ERRO CSV` e o planejador permanece executando.
