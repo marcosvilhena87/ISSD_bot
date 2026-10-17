@@ -458,3 +458,10 @@ O `main.lua` executa `gui.clearGraphics()` quando disponível antes de desenhar 
 ## Marcador de condução no radar
 
 O marcador magenta de `support_move` não é mais desenhado no radar tático. Quando o planejador sequencial recomenda `DRIBBLE`, o radar mostra **linha amarela** do portador até o destino e **quadrado amarelo com a letra `D`** sobre o ponto de chegada. Fora do estado com sugestão de condução, o marcador `D` não aparece. As informações de `support_move` permanecem disponíveis na telemetria CSV para análise, sem comandar jogadores.
+
+
+## Reposicao do goleiro v1.14.0
+
+Quando a posse fisica do goleiro e confirmada, o coordenador seleciona GK_DISTRIBUTION em vez de DRIBBLE. O modulo lua/goalkeeper_distribution.lua identifica os tres companheiros mais proximos da bola, mede distancias ao goleiro e a bola, calcula a menor distancia adversaria a linha e identifica o bloqueador. O radar mostra GK1, GK2 e GK3 em ciano. Todas as opcoes sao UNCALIBRATED: nao representam reposicoes confirmadamente executaveis e nao acionam joypad.
+
+O CSV v1.14.0 usa schema 6 com 73 colunas, incluindo gk1_id, gk1_ball_distance, gk1_keeper_distance, gk1_clearance, gk1_blocker_id e equivalentes gk2 e gk3. Teste: lua tests/test_goalkeeper_distribution.lua. Ainda requer validacao no BizHawk.
