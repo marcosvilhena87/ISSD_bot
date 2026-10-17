@@ -41,6 +41,8 @@ local function build(read)
  end
  local own_goal={x=mx,y=width/2}
  local opponent_goal={x=cx,y=width/2}
+ observation.field_length=length
+ observation.field_width=width
  observation.ball=ball
  observation.my_players=my
  observation.cpu_players=cpu
