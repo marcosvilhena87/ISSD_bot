@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.15.6
+# ISSD_bot — Radar v0.15.7
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -273,3 +273,7 @@ Essas opções afetam somente o desenho do overlay; não modificam a WRAM, os pe
 ## Exibição dos jogadores — v0.15.6
 
 O padrão `FOCUS_ONLY=false` permite desenhar simultaneamente os 11 marcadores do time `my` (vermelho), 11 da CPU (ciano) e a bola (amarelo), desde que estejam dentro do radar e com geometria válida. Antes, `FOCUS_ONLY=true` com `TARGET_TEAM="ball"` ocultava todos os jogadores, mesmo com as cores configuradas. `FOCUS_ONLY=true` ainda pode ser usado manualmente para calibrar apenas o alvo selecionado. O CSV continua registrando todas as entidades.
+
+## Overlay oculto com sete leituras WRAM zeradas — v0.15.7
+
+Quando **todas** as leituras abaixo são simultaneamente zero, nenhum marcador é desenhado (cruzes magenta, jogadores, bola ou mira), inclusive com `AUTO_HIDE_CORNERS=false`: `Ball_x` (0x042A), `Ball_y` (0x042C), `Stadium_ID` (0x0086), `field_length` (0x12A2), `field_width` (0x12A4), `center_field_x` (0x12F2) e `center_field_y` (0x12D8). Os relatórios continuam sendo coletados. A regra é de **todos zerados**, não de algum endereço isolado zerado; ela não garante ocultação em menus que mantenham valores residuais.
