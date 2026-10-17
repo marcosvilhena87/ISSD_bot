@@ -79,8 +79,14 @@ function M.plan(s)
  local nearest={}
  for i=1,math.min(3,#options) do nearest[i]=options[i] end
  local selected
+ local hint=s.prepared_direction
+ if hint and EMPIRICAL[2]~=hint and EMPIRICAL[4]~=hint and EMPIRICAL[5]~=hint then
+  return {mode="GK_DISTRIBUTION",reason="unknown_prepared_direction",target_id=nil,
+   calibration_status="UNCALIBRATED",options=nearest,option_count=#options,
+   source={x=s.ball.x,y=s.ball.y}}
+ end
  for _,o in ipairs(options) do
-  if similar2(o,s.ball) then
+  if (not hint or hint=="Up+Right") and similar2(o,s.ball) then
    selected=o
    local found=false
    for _,n in ipairs(nearest) do if n.id==2 then found=true end end
@@ -91,11 +97,11 @@ function M.plan(s)
  -- Give the new observed ID5 profile precedence when both profiles match:
  -- a previous GK4 recommendation in this exact geometry was received by ID5.
  if not selected then
-  for _,o in ipairs(nearest) do if similar5(o) then selected=o;break end end
+  for _,o in ipairs(nearest) do if (not hint or hint=="Down+Right") and similar5(o) then selected=o;break end end
  end
  if not selected then
   for _,o in ipairs(nearest) do
-   if similar(o) then selected=o;break end
+   if (not hint or hint=="Right") and similar(o) then selected=o;break end
   end
  end
  if selected then selected.status="PROVISIONAL_OBSERVED" end
@@ -103,9 +109,11 @@ function M.plan(s)
    (selected.id==2 and "provisional_gk2_reception_zone" or selected.id==5 and "provisional_gk5_geometry_match" or "provisional_gk4_geometry_match")
    or "distribution_requires_calibration"
  return {mode="GK_DISTRIBUTION",
-   reason=reason,
+   reason=selected and hint and "contextual_"..reason or reason,
    target_id=selected and selected.id or nil,
    empirical_direction=selected and selected.empirical_direction or nil,
+   prepared_direction=hint,
+   selected_option=selected,
    calibration_status=selected and "PROVISIONAL_OBSERVED" or "UNCALIBRATED",
    options=nearest,option_count=#options,source={x=s.ball.x,y=s.ball.y}}
 end
