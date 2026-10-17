@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.12.0 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.13.0 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -59,6 +59,63 @@ local function geometry_status(stadium, length, width, game_state)
         return "DIMENSION_MISMATCH", expected_length, expected_width
     end
     return "VALID", expected_length, expected_width
+end
+-- Apenas diagnostico: o bloqueio depende exclusivamente de geometry_status.
+local PENDING_MAX_FRAMES = 1200
+local PERSISTENT_LIVE_FRAMES = 120
+local previous_classification_frame, previous_classification_stadium = nil, nil
+local pending, mismatch_live_since = nil, nil
+local function classify_transition(frame, stadium, length, width, game_state, integrity)
+    if previous_classification_frame and frame <= previous_classification_frame then
+        pending, mismatch_live_since = nil, nil
+        previous_classification_stadium = nil
+    end
+    if previous_classification_stadium ~= nil
+        and stadium ~= previous_classification_stadium then
+        local old = STADIUM_CALIBRATION[previous_classification_stadium]
+        if old and integrity == "DIMENSION_MISMATCH"
+            and length == old.max_x-old.min_x+8
+            and width == old.max_y-old.min_y+8 then
+            pending = {since=frame, from=previous_classification_stadium,
+                to=stadium, length=length, width=width}
+        else
+            pending = nil
+        end
+        mismatch_live_since = nil
+    end
+    local classification, age = integrity, nil
+    if integrity ~= "DIMENSION_MISMATCH" then
+        pending, mismatch_live_since = nil, nil
+    else
+        if pending and (stadium ~= pending.to
+            or length ~= pending.length or width ~= pending.width) then
+            pending = nil
+        end
+        if pending then
+            age = frame-pending.since
+            if age <= PENDING_MAX_FRAMES then
+                classification = "STADIUM_CHANGE_PENDING"
+            else
+                pending = nil
+            end
+        end
+        if not pending then
+            if game_state == 0 then
+                if not mismatch_live_since then mismatch_live_since = frame end
+                age = frame-mismatch_live_since
+                if age >= PERSISTENT_LIVE_FRAMES then
+                    classification = "PERSISTENT_DIMENSION_MISMATCH"
+                end
+            else
+                mismatch_live_since = nil
+            end
+        else
+            mismatch_live_since = nil
+        end
+    end
+    previous_classification_frame = frame
+    previous_classification_stadium = stadium
+    return classification, age, pending
 end
 local SAMPLE_EVERY = 10
 -- Foco: "ball"/0, "my"/1..11 ou "cpu"/1..11.
@@ -175,7 +232,7 @@ local function target_cross(px, py)
 end
 local csv, err = io.open(CSV_NAME, "w")
 if not csv then error("Falha ao criar CSV: " .. tostring(err)) end
-csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance,calibration_status,projection_model,raw_norm_x,raw_norm_y,raw_pixel_x,raw_pixel_y,empirical_norm_x,empirical_norm_y,empirical_pixel_x,empirical_pixel_y,delta_pixel_x,delta_pixel_y,empirical_min_x,empirical_max_x,empirical_min_y,empirical_max_y,empirical_validated,geometric_norm_x,geometric_norm_y,geometric_pixel_x,geometric_pixel_y,geometric_min_x,geometric_max_x,geometric_min_y,geometric_max_y,geometric_minus_empirical_pixel_x,geometric_minus_empirical_pixel_y,geometry_status,geometry_valid,expected_field_length,expected_field_width,game_state,game_state_kind,gameplay_active\n")
+csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance,calibration_status,projection_model,raw_norm_x,raw_norm_y,raw_pixel_x,raw_pixel_y,empirical_norm_x,empirical_norm_y,empirical_pixel_x,empirical_pixel_y,delta_pixel_x,delta_pixel_y,empirical_min_x,empirical_max_x,empirical_min_y,empirical_max_y,empirical_validated,geometric_norm_x,geometric_norm_y,geometric_pixel_x,geometric_pixel_y,geometric_min_x,geometric_max_x,geometric_min_y,geometric_max_y,geometric_minus_empirical_pixel_x,geometric_minus_empirical_pixel_y,geometry_status,geometry_valid,expected_field_length,expected_field_width,game_state,game_state_kind,gameplay_active,transition_status,transition_age_frames,pending_from_stadium,pending_to_stadium\n")
 local function number(value)
     if value == nil then return "" end
     return string.format("%.6f", value)
@@ -183,7 +240,7 @@ end
 -- Registra somente alteracoes, com snapshot inicial para dar contexto.
 local transitions, transitions_err = io.open(TRANSITIONS_CSV_NAME, "w")
 if not transitions then error("Falha ao criar CSV de transicoes: " .. tostring(transitions_err)) end
-transitions:write("frame,event,changed_fields,previous_frame,previous_stadium_id,stadium_id,previous_game_state,game_state,previous_field_length,field_length,previous_field_width,field_width,previous_geometry_status,geometry_status,previous_game_state_kind,game_state_kind,previous_gameplay_active,gameplay_active\n")
+transitions:write("frame,event,changed_fields,previous_frame,previous_stadium_id,stadium_id,previous_game_state,game_state,previous_field_length,field_length,previous_field_width,field_width,previous_geometry_status,geometry_status,previous_game_state_kind,game_state_kind,previous_gameplay_active,gameplay_active,previous_transition_status,transition_status,transition_age_frames,pending_from_stadium,pending_to_stadium\n")
 transitions:flush()
 local previous_geometry = nil
 local function track_geometry(current)
@@ -203,7 +260,11 @@ local function track_geometry(current)
                 changed[#changed + 1] = field
             end
         end
-        if #changed > 0 then event = "CHANGE" end
+        if #changed > 0 then
+            event = "CHANGE"
+        elseif current.transition_status ~= prev.transition_status then
+            event = "CLASSIFICATION_CHANGE"
+        end
     end
     if event then
         transitions:write(table.concat({
@@ -215,7 +276,10 @@ local function track_geometry(current)
             prev and prev.field_width or "", current.field_width,
             prev and prev.geometry_status or "", current.geometry_status,
             prev and prev.game_state_kind or "", current.game_state_kind,
-            prev and prev.gameplay_active or "", current.gameplay_active
+            prev and prev.gameplay_active or "", current.gameplay_active,
+            prev and prev.transition_status or "", current.transition_status,
+            current.transition_age_frames or "",
+            current.pending_from_stadium or "", current.pending_to_stadium or ""
         }, ",") .. "\n")
         transitions:flush()
     end
@@ -231,11 +295,17 @@ while true do
     local gameplay_active = memory.read_u8(GAMEPLAY_ACTIVE, DOMAIN)
     local integrity, expected_length, expected_width = geometry_status(stadium, length, width, game_state)
     local valid_geometry = integrity == "VALID"
+    local transition_status, transition_age, pending_info =
+        classify_transition(frame, stadium, length, width, game_state, integrity)
     track_geometry({
         frame=frame, stadium_id=stadium, game_state=game_state,
         field_length=length, field_width=width,
         geometry_status=integrity, game_state_kind=game_state_kind,
-        gameplay_active=gameplay_active
+        gameplay_active=gameplay_active,
+        transition_status=transition_status,
+        transition_age_frames=transition_age,
+        pending_from_stadium=pending_info and pending_info.from or nil,
+        pending_to_stadium=pending_info and pending_info.to or nil
     })
     local sample = count % SAMPLE_EVERY == 0 or reference_by_frame[frame] ~= nil
     if SHOW_OVERLAY and SHOW_CORNERS then
@@ -298,7 +368,10 @@ while true do
                 number(geo_delta_x), number(geo_delta_y),
                 integrity, valid_geometry and 1 or 0,
                 expected_length or "", expected_width or "",
-                game_state, game_state_kind, gameplay_active
+                game_state, game_state_kind, gameplay_active,
+                transition_status, transition_age or "",
+                pending_info and pending_info.from or "",
+                pending_info and pending_info.to or ""
             }, ",") .. "\n")
         end
     end
