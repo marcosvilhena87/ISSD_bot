@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.15.0
+# ISSD_bot — Radar v0.15.1
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -226,3 +226,22 @@ Execute `python -m unittest discover -s tests -v` e teste a v0.15.0 no BizHawk. 
 A configuração `AUTO_HIDE_CORNERS=true` (padrão) deixa as quatro cruzes magenta visíveis somente quando a leitura sugere que o radar nativo está disponível: `geometry_status=VALID`, `Gameplay_Active=1` e `Game_State` entre 0 e 4. As cruzes deixam de ser desenhadas durante estados suspeitos, como pós-gol (5), fim de período (6), pausa/replay sinalizado por `Gameplay_Active` diferente de 1 e geometria inválida.
 
 **Limitação:** isso é uma *heurística*, não uma leitura comprovada de um bit de visibilidade do radar nativo. Pode ocultar as cruzes mesmo que o radar esteja visível ou exibi-las em alguma tela transitória. Para retornar ao comportamento anterior, ajuste `AUTO_HIDE_CORNERS=false`. A opção afeta apenas as quatro cruzes, não a coleta CSV nem a regra existente para desenhar entidades.
+
+## Visibilidade das cruzes independente da geometria — v0.15.1
+
+Corrigido o falso negativo observado: o radar nativo estava visível, mas as cruzes magenta não apareciam porque a geometria da variante do estádio 7 era classificada como inválida. Agora **a condição `valid_geometry` não controla as cruzes**, continuando a controlar exclusivamente o desenho das entidades.
+
+```lua
+local SHOW_CORNERS = true
+local AUTO_HIDE_CORNERS = true
+local CORNER_VISIBILITY_MODE = "game_state"
+```
+
+- `"game_state"` (padrão): mostra as cruzes durante `Game_State=0..4`, independente das dimensões e de `Gameplay_Active`. Oculta em `POST_GOAL=5`, `PERIOD_TIME_UP=6` e estados desconhecidos.
+- `"strict"`: exige também `Gameplay_Active=1`. É mais conservador e pode ocultar cruzes quando o radar nativo está visível.
+- `"always"`: mostra as cruzes independentemente do estado, útil para diagnóstico.
+- `AUTO_HIDE_CORNERS=false`: desativa a ocultação automática.
+
+As colunas `corners_visible` (0/1) e `corner_visibility_mode` foram adicionadas ao final de `issd_radar_calibration.csv`. Elas registram a decisão do script, **não uma leitura direta da visibilidade do radar nativo**.
+
+**Limitação:** não foi encontrada nem comprovada uma flag de WRAM para presença real do radar. O modo padrão pode deixar cruzes visíveis durante pausas/replays se `Game_State` estiver em 0..4; somente identificar uma flag de renderização confiável permitirá correspondência exata. O script mantém bloqueadas as projeções com `geometry_status` inválido.
