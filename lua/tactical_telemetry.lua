@@ -1,6 +1,6 @@
 -- Tactical telemetry for ISSD; no game controls.
 local M={}
-M.VERSION="1.15.2"
+M.VERSION="1.15.3"
 M.SCHEMA_VERSION=8
 M.COLUMN_COUNT=101
 local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y,pass_safe,pass_too_close,pass_too_far,pass_blocked,best_rejected_id,best_rejected_reason,best_rejected_clearance,support_move_id,support_move_x,support_move_y,bot_version,schema_version,action,dribble_x,dribble_y,open_passes,triangle_via,triangle_next,triangle_score,pass_type,pass_score,pass_clearance,pass_progression,near1_id,near1_carrier_distance,near1_ball_distance,near1_reason,near1_blocker_id,near2_id,near2_carrier_distance,near2_ball_distance,near2_reason,near2_blocker_id,near3_id,near3_carrier_distance,near3_ball_distance,near3_reason,near3_blocker_id,gk1_id,gk1_ball_distance,gk1_keeper_distance,gk1_clearance,gk1_blocker_id,gk2_id,gk2_ball_distance,gk2_keeper_distance,gk2_clearance,gk2_blocker_id,gk3_id,gk3_ball_distance,gk3_keeper_distance,gk3_clearance,gk3_blocker_id,gk1_direction,gk1_command,gk1_dx,gk1_dy,gk1_calibration_status,gk2_direction,gk2_command,gk2_dx,gk2_dy,gk2_calibration_status,gk3_direction,gk3_command,gk3_dx,gk3_dy,gk3_calibration_status,input_status,input_source,input_direction,input_b,pass_id,pass_event,pass_kind,pass_direction,pass_lead_frames,pass_dx,pass_dy,pass_receiver,pass_note"
