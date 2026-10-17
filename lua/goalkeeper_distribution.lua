@@ -1,6 +1,9 @@
 -- Read-only goalkeeper distribution planner. No generic pass range assumptions.
 local M={}
 local Direction=require("directional_pass_calibration")
+-- Empirical dominant directions from distinct observations. They are NOT
+-- confirmed pass commands and do not change the geometric acceptance gates.
+local EMPIRICAL={ [2]="Up+Right",[4]="Right",[5]="Down+Right" }
 -- One associated GK -> receiver 4 event in 2026-10-17 report, frame 6245 -> 6314.
 -- B edge was observed, directional input was NOT observed. Keep this provisional.
 local SAMPLE={dx=343,dy=39,distance=345.2100809652,clearance=272.24437551582}
@@ -65,7 +68,8 @@ function M.plan(s)
       input_sequence=vector and Direction.input_sequence(vector.direction,1,false),
       distance=distance(s.ball,p),
       keeper_distance=distance(keeper,p),clearance=clearance,
-      blocker_id=blocker,status="UNCALIBRATED"}
+      blocker_id=blocker,status="UNCALIBRATED",
+      empirical_direction=EMPIRICAL[p.id],empirical_status=EMPIRICAL[p.id] and "SINGLE_EVENT_HYPOTHESIS" or nil}
   end
  end
  table.sort(options,function(a,b)
@@ -101,6 +105,7 @@ function M.plan(s)
  return {mode="GK_DISTRIBUTION",
    reason=reason,
    target_id=selected and selected.id or nil,
+   empirical_direction=selected and selected.empirical_direction or nil,
    calibration_status=selected and "PROVISIONAL_OBSERVED" or "UNCALIBRATED",
    options=nearest,option_count=#options,source={x=s.ball.x,y=s.ball.y}}
 end
