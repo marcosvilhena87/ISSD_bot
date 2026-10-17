@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.11.0
+# ISSD_bot — Radar v0.12.0
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -143,3 +143,24 @@ A combinação observada **`Game_State=6` e comprimento ou largura igual a zero*
 Três novas colunas foram adicionadas **ao final** do CSV, sem reorganizar as existentes: `game_state`, `game_state_kind` e `gameplay_active`. Assim, a classificação por estádio pode ser analisada por contexto, inclusive transições e final de período. A identificação de `PERIOD_TIME_UP` vem do código anterior; a correlação com dimensões zeradas foi observada experimentalmente, mas o comportamento de todos os estados ainda requer novas capturas.
 
 Execute os testes estáticos com `python -m unittest discover -s tests -v` e valide a leitura dinâmica no BizHawk com um CSV que inclua passagem de tempo encerrado para uma nova partida/período. A versão segue somente leitura, sem automatizar inputs.
+
+## Rastreador de transições geométricas — v0.12.0
+
+O `lua/radar.lua` agora produz **dois CSVs independentes**:
+
+- `issd_radar_calibration.csv`: amostragem das 23 entidades (22 jogadores + bola), preservando as colunas e o intervalo `SAMPLE_EVERY` da v0.11.0.
+- `issd_radar_geometry_transitions.csv`: **um evento por frame em que qualquer um dos quatro campos mudar**, mesmo entre frames não amostrados pelo CSV de calibração.
+
+O segundo arquivo registra `frame`, `event`, `changed_fields`, valores anteriores e atuais de `stadium_id`, `game_state`, `field_length`, `field_width`, mais `geometry_status`, `game_state_kind` e `gameplay_active` anteriores e atuais para contextualizar a mudança. Campos múltiplos em `changed_fields` são separados por ponto e vírgula, sem alterar o delimitador CSV (vírgula).
+
+| event | Quando ocorre |
+| --- | --- |
+| `INITIAL` | Primeira observação da sessão; não representa uma mudança real |
+| `CHANGE` | Um ou mais dos quatro campos diferem do frame observado anteriormente |
+| `TIMELINE_RESET` | `frame <= previous_frame` (ex.: rewind/load state); os campos anteriores são preservados somente para diagnóstico |
+
+O rastreador atualiza sua observação anterior **a cada frame**, mesmo quando não há eventos, portanto não acumula duplicações em períodos estáveis. Uma única linha representa mudanças simultâneas dos quatro campos. O arquivo é descarregado (`flush`) a cada evento para facilitar captura de sessões interrompidas.
+
+A saída não adivinha as causas das transições: uma divergência de dimensão pode ocorrer tanto em fases de jogo quanto em transições e é contextualizada, não automaticamente corrigida. O bloqueio das projeções inválidas da v0.11.0 continua ativo e os oito perfis individuais permanecem preservados com `validated=false`.
+
+**Como testar:** execute `python -m unittest discover -s tests -v` e, no BizHawk, capture uma sessão com mudanças de estádio, gol e fim de período. Envie os dois CSVs: a análise pode cruzar os `frame` do rastreador com a telemetria do radar. Os testes adicionados verificam o contrato no código-fonte; a execução real ainda precisa ser validada no BizHawk.
