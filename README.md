@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.15.3
+# ISSD_bot — Radar v0.15.4
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -249,3 +249,9 @@ As cruzes magenta exigem `field_loaded` (comprimento, largura e centro coerentes
 A variante 2176 × 704 do estádio 7 pode exibir as cruzes, mas **não libera projeções dos jogadores**: para isso continua exigido `geometry_status=VALID`. A coluna `corner_visibility_mode` do CSV passa a valer `known_geometry`.
 
 Essa heurística **não identifica diretamente** a renderização nativa: menus podem preservar na WRAM uma geometria reconhecida, inclusive centro coerente. Nessa situação, as cruzes ainda podem aparecer; seria necessária uma flag de tela/radar para distinguir com garantia. `AUTO_HIDE_CORNERS=false` desativa a condição automática.
+
+## PRE_MATCH_COIN_TOSS — Stadium_ID 8 (v0.15.4)
+
+A captura fornecida identifica `Stadium_ID=8` como a tela pré-partida de **cara ou coroa**, com escolha de bola ou lado, e não como um nono estádio. O radar classifica esse valor como `geometry_status=PRE_MATCH_COIN_TOSS` **antes** de examinar dimensões zeradas ou o perfil de estádio.
+
+Nesse estado as quatro cruzes magenta são ocultadas mesmo se `AUTO_HIDE_CORNERS=false`; projeções de jogadores e bola permanecem bloqueadas (`projection_model=blocked`). As coordenadas brutas e o estado são preservados nos CSVs para auditoria. `STADIUM_CALIBRATION` continua abrangendo somente os estádios 0–7, sem alteração dos seus limites ou indicadores `validated=false`.
