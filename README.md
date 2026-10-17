@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.12.0
+# ISSD_bot — Radar v0.13.0
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -164,3 +164,19 @@ O rastreador atualiza sua observação anterior **a cada frame**, mesmo quando n
 A saída não adivinha as causas das transições: uma divergência de dimensão pode ocorrer tanto em fases de jogo quanto em transições e é contextualizada, não automaticamente corrigida. O bloqueio das projeções inválidas da v0.11.0 continua ativo e os oito perfis individuais permanecem preservados com `validated=false`.
 
 **Como testar:** execute `python -m unittest discover -s tests -v` e, no BizHawk, capture uma sessão com mudanças de estádio, gol e fim de período. Envie os dois CSVs: a análise pode cruzar os `frame` do rastreador com a telemetria do radar. Os testes adicionados verificam o contrato no código-fonte; a execução real ainda precisa ser validada no BizHawk.
+
+## Classificação de transições — v0.13.0
+
+A v0.13.0 adiciona uma **classificação diagnóstica separada de `geometry_status`**, sem alterar os limites dos oito perfis individuais, seus `validated=false` nem a política de bloqueio das projeções.
+
+- `STADIUM_CHANGE_PENDING`: `Stadium_ID` acabou de mudar, as dimensões ainda correspondem **exatamente ao perfil do estádio anterior** e não ao atual. A classificação dura até que as dimensões mudem, a geometria se normalize ou sejam ultrapassados `PENDING_MAX_FRAMES=1200` frames.
+- `PERSISTENT_DIMENSION_MISMATCH`: incompatibilidade geométrica sem transição pendente, persistente por pelo menos `PERSISTENT_LIVE_FRAMES=120` frames consecutivos de `Game_State=0` (LIVE). Esse critério é operacional e não prova erro permanente de mapeamento.
+- Outras observações repetem `geometry_status`, inclusive `VALID`, `PERIOD_ENDED`, `ZERO_DIMENSIONS_UNEXPECTED`, `UNKNOWN_STADIUM` e `DIMENSION_MISMATCH`.
+
+O contador da incompatibilidade persistente reinicia ao sair do estado LIVE, quando a geometria é válida ou quando muda o estádio. Rewind/carregamento de savestate detectado pelo retrocesso do contador de frames também reinicia a classificação temporal. Uma nova sessão iniciada já com dimensões incorretas **não é considerada pendente** sem evidência do estádio anterior; nesses casos, o diagnóstico persistente depende de observação em LIVE.
+
+As novas colunas `transition_status`, `transition_age_frames`, `pending_from_stadium` e `pending_to_stadium` são acrescentadas ao fim de **ambos os CSVs**. No arquivo `issd_radar_geometry_transitions.csv` existe ainda `previous_transition_status`. O rastreador registra um evento `CLASSIFICATION_CHANGE` quando a classificação muda mesmo que nenhuma das quatro variáveis rastreadas mude no mesmo frame. Eventos normais `INITIAL`, `CHANGE` e `TIMELINE_RESET` permanecem.
+
+**Segurança:** somente `geometry_status=VALID` libera projeções no radar. `STADIUM_CHANGE_PENDING` e `PERSISTENT_DIMENSION_MISMATCH` continuam bloqueados, com coordenadas brutas preservadas no CSV. Nenhum perfil é reajustado automaticamente.
+
+Os limites temporais iniciais (1200/120 frames) são hipóteses de diagnóstico ajustáveis mediante novas coletas, e não parâmetros comprovados do jogo. O teste estático cobre o contrato; a execução e a precisão espacial no BizHawk ainda precisam ser verificadas.
