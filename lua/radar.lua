@@ -326,7 +326,7 @@ local function track_geometry(current)
 end
 local variants, variants_err = io.open(VARIANTS_CSV_NAME, "w")
 if not variants then error("Falha ao criar CSV de variantes: " .. tostring(variants_err)) end
-variants:write("stadium_id,field_length,field_width,first_frame,confirmed_frame,consecutive_live_frames,predefined_candidate,validated,status\\n")
+variants:write("stadium_id,field_length,field_width,first_frame,confirmed_frame,consecutive_live_frames,predefined_candidate,validated,status\n")
 variants:flush()
 local count = 0
 while true do
