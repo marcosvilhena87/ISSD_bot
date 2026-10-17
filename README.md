@@ -465,3 +465,8 @@ O marcador magenta de `support_move` não é mais desenhado no radar tático. Qu
 Quando a posse fisica do goleiro e confirmada, o coordenador seleciona GK_DISTRIBUTION em vez de DRIBBLE. O modulo lua/goalkeeper_distribution.lua identifica os tres companheiros mais proximos da bola, mede distancias ao goleiro e a bola, calcula a menor distancia adversaria a linha e identifica o bloqueador. O radar mostra GK1, GK2 e GK3 em ciano. Todas as opcoes sao UNCALIBRATED: nao representam reposicoes confirmadamente executaveis e nao acionam joypad.
 
 O CSV v1.14.0 usa schema 6 com 73 colunas, incluindo gk1_id, gk1_ball_distance, gk1_keeper_distance, gk1_clearance, gk1_blocker_id e equivalentes gk2 e gk3. Teste: lua tests/test_goalkeeper_distribution.lua. Ainda requer validacao no BizHawk.
+
+
+## Calibrador direcional de passes v1.14.1
+
+O modulo `lua/directional_pass_calibration.lua` calcula os vetores `dx`, `dy` da bola ate cada receptor GK1-GK3 e os agrupa em oito setores (Up, Down, Left, Right e quatro diagonais, sempre combinados com B). A classificacao usa limites de 22,5 graus em cada eixo. No radar as tres opcoes recebem o rotulo GK1/GK2/GK3 com o comando nominal; no CSV v1.14.1 (schema 7, 88 colunas) sao registrados direction, command, dx, dy e calibration_status por opcao. O estado permanece UNCALIBRATED: nao ha leitura dos botoes efetivamente usados nem comprovacao de que os comandos do goleiro correspondem aos de passes normais. Direcoes assumem x crescente para direita e y crescente para baixo; confirmar em jogo. O bot continua sem acionar comandos. Teste: lua tests/test_directional_pass_calibration.lua.
