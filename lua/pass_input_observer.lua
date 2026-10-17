@@ -6,9 +6,26 @@ local function pos(s)
  if type(b)=="table" and finite(b.x) and finite(b.y) then return {x=b.x,y=b.y} end
 end
 local function down(t,k)
- return t[k]==true or t[k]==1
+ return t["P1 "..k]==true or t["P1 "..k]==1 or t[k]==true or t[k]==1
 end
-local names={"Up","Down","Left","Right"}
+local function key_diagnostics(t)
+ local keys,recognized={},false
+ for k in pairs(t) do
+  if type(k)=="string" then
+   keys[#keys+1]=k
+  end
+ end
+ table.sort(keys)
+ local recognized_keys={Up=true,Down=true,Left=true,Right=true,B=true}
+ for _,k in ipairs(keys) do
+  if recognized_keys[k] or (k:sub(1,3)=="P1 " and recognized_keys[k:sub(4)]) then
+   recognized=true;break
+  end
+ end
+ local raw=table.concat(keys,";")
+ if #raw>450 then raw=raw:sub(1,450).."...[truncated]" end
+ return recognized,raw
+end
 local function direction(t)
  local v=(down(t,"Up") and not down(t,"Down")) and "Up" or
          (down(t,"Down") and not down(t,"Up")) and "Down" or nil
@@ -21,9 +38,11 @@ function M.new(opts)
  local max_follow=opts.max_follow or 120
  local previous_frame,previous_b,aim_start,aim_dir,last_dir,last_dir_frame
  local active,serial=nil,0
+ local last_key_signature
  local function reset()
   previous_frame,previous_b,aim_start,aim_dir,last_dir,last_dir_frame=nil,false,nil,nil,nil,nil
   active=nil
+  last_key_signature=nil
  end
  local function update(frame,s,buttons,source)
   if not finite(frame) then reset();return {input_status="INVALID_FRAME"} end
@@ -34,6 +53,16 @@ function M.new(opts)
    -- Unknown input is not equivalent to no buttons pressed.
    previous_b=false;aim_start=nil;aim_dir=nil;last_dir=nil
   else
+   local recognized,raw=key_diagnostics(buttons)
+   if raw~=last_key_signature then
+    result.pass_note="joypad_keys="..(raw~="" and raw or "[empty]")
+    last_key_signature=raw
+   end
+   if not recognized then
+    result.input_status="UNKNOWN_LAYOUT"
+    previous_b=false;aim_start=nil;aim_dir=nil;last_dir=nil;last_dir_frame=nil
+    return result
+   end
    local dir=direction(buttons)
    local b=down(buttons,"B")
    result.input_status="OBSERVED"
