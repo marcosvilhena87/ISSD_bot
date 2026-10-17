@@ -1,6 +1,7 @@
 -- Tiki-taka planner for ISSD. Pure tactics: never writes joypad inputs.
 -- Requires independently validated possession, carrier, field coordinates.
 local M={}
+local Support=require("tiki_taka_support")
 local DEFAULT={max_pass_distance=320,min_pass_distance=35,opponent_clearance=65,
     progress_weight=0.35,open_weight=2.0,distance_weight=0.18,
     repeat_penalty=45,pass_cooldown=8,support_radius=420}
@@ -100,31 +101,11 @@ function M.new(config)
             counts[e.reason]=counts[e.reason]+1
             if e.reason~="SAFE" and not best_rejected then best_rejected=e end
         end
-        -- Experimental supporting move: lateral offset from the best rejected
-        -- receiver. Never interpreted as a player-control instruction.
-        local support_move=nil
-        if best_rejected then
-            local receiver
-            for _,p in ipairs(s.my_players) do
-                if p.id==best_rejected.id then receiver=p;break end
-            end
-            if receiver then
-                local side=(receiver.y<=carrier.y) and 1 or -1
-                local proposed={x=receiver.x,y=receiver.y+side*80}
-                local safety=math.huge
-                for _,enemy in ipairs(s.cpu_players) do
-                    if valid(enemy) then
-                        safety=math.min(safety,segment_distance(enemy,carrier,proposed))
-                    end
-                end
-                if safety>best_rejected.clearance and dist(carrier,proposed)<=cfg.max_pass_distance then
-                    support_move={id=receiver.id,x=proposed.x,y=proposed.y,
-                        clearance=safety,reason="IMPROVE_PASS_LANE"}
-                end
-            end
-        end
+        local spatial=Support.analyze(s,carrier,cfg)
         local diagnostics={evaluations=evaluations,counts=counts,
-            best_rejected=best_rejected,support_move=support_move}
+            best_rejected=best_rejected,support_move=spatial.support_move,
+            nearest_teammate_distance=spatial.nearest_teammate_distance,
+            triangle=spatial.triangle,triangle_score=spatial.triangle_score}
         if s.frame-last_pass_frame<cfg.pass_cooldown then
             return {mode="HOLD",reason="pass_cooldown",candidates=candidates,support=support,diagnostics=diagnostics}
         end
