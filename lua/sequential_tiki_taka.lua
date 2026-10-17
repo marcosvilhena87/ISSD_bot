@@ -71,7 +71,9 @@ function M.new(config)
     end
    end
    base.triangle=triangle
-   return {mode="PASS_READY",target_id=base.target_id,pass_type=base.pass_type,reason="safe_pass",
+   return {mode="PASS_READY",target_id=base.target_id,pass_type=base.pass_type,
+     pass_score=base.pass_score,pass_clearance=base.pass_clearance,
+     pass_progression=base.pass_progression,reason=base.reason,
      base=base,triangle=triangle}
   end
   local carrier=find(s.my_players,s.carrier_id)
