@@ -527,3 +527,10 @@ A v1.15.4 continua sendo a versao dos perfis GK-ID2; esta evolucao usa v1.15.5. 
 Telemetria versao 1.15.5, schema 9, 107 colunas: pass_last_single, pass_last_diagonal, pass_dominant, pass_release_delay, pass_recommended, pass_outcome. As 101 colunas anteriores permanecem. A comparacao e por evento, nunca por quantidade de frames. Sem recepcao identificada ate o timeout, registra UNCONFIRMED. Nenhum controle e pressionado automaticamente.
 
 Testes: lua tests/test_pass_input_observer.lua; lua tests/test_tactical_telemetry.lua.
+
+
+## v1.15.6 — Direcoes empiricas e estatisticas por evento
+
+O resultado de recepcao compara IDs numericamente quando ambos representam numeros: 5 e 5.0 sao o mesmo jogador. Os perfis GK2, GK4 e GK5 recebem anotacoes hipoteticas das direcoes predominantes Up+Right, Right e Down+Right, respectivamente. Essas anotacoes **nao** sao comandos confirmados, nao mudam limites geometricos e nao acionam controles.
+
+O modulo lua/pass_event_statistics.lua gera issd_pass_events.csv, com uma linha somente por conclusao de evento (TEAMMATE_POSSESSION ou OBSERVATION_TIMEOUT), mostrando direcao predominante, recebedor, recomendado, classificacao, intervalo desde a direcao e contagens acumuladas de eventos por par direcao/recebedor. Cada execucao cria novo arquivo: salve copias antes de reiniciar. Nao combine eventos de capturas potencialmente repetidas como ensaios independentes. O CSV tatico permanece no schema 9, 107 colunas, agora com bot_version 1.15.6.
