@@ -64,6 +64,19 @@ class StadiumGeometryTests(unittest.TestCase):
         self.assertIn('game_state,game_state_kind,gameplay_active', self.source)
         self.assertIn('game_state, game_state_kind, gameplay_active', self.source)
 
+    def test_transition_tracking_contract(self):
+        self.assertIn('issd_radar_geometry_transitions.csv', self.source)
+        self.assertIn('local function track_geometry(current)', self.source)
+        self.assertIn('event = "INITIAL"', self.source)
+        self.assertIn('event = "TIMELINE_RESET"', self.source)
+        self.assertIn('event = "CHANGE"', self.source)
+        self.assertIn('current.frame <= prev.frame', self.source)
+        for field in ('stadium_id', 'game_state', 'field_length', 'field_width'):
+            self.assertIn('"' + field + '"', self.source)
+        self.assertIn('track_geometry({', self.source)
+        self.assertIn('transitions:flush()', self.source)
+        self.assertIn('previous_geometry = current', self.source)
+
     def test_expected_dimensions_derived_from_profiles(self):
         for stadium, (length, width) in EXPECTED_DIMENSIONS.items():
             bounds = self.profiles[stadium]
