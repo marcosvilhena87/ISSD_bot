@@ -114,9 +114,13 @@ class StadiumGeometryTests(unittest.TestCase):
 
     def test_corner_visibility_guard(self):
         self.assertIn('local AUTO_HIDE_CORNERS = true', self.source)
-        self.assertIn('local radar_likely_visible = valid_geometry and gameplay_active == 1', self.source)
-        self.assertIn('and game_state >= 0 and game_state <= 4', self.source)
+        self.assertIn('local CORNER_VISIBILITY_MODE = "game_state"', self.source)
+        self.assertIn('local radar_likely_visible = state_allows_corners', self.source)
+        self.assertIn('CORNER_VISIBILITY_MODE == "strict"', self.source)
+        self.assertIn('CORNER_VISIBILITY_MODE == "always"', self.source)
         self.assertIn('(not AUTO_HIDE_CORNERS or radar_likely_visible)', self.source)
+        self.assertIn('corners_visible,corner_visibility_mode', self.source)
+        self.assertNotIn('radar_likely_visible = valid_geometry', self.source)
 
     def test_expected_dimensions_derived_from_profiles(self):
         for stadium, (length, width) in EXPECTED_DIMENSIONS.items():
