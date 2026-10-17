@@ -114,13 +114,15 @@ class StadiumGeometryTests(unittest.TestCase):
 
     def test_corner_visibility_guard(self):
         self.assertIn('local AUTO_HIDE_CORNERS = true', self.source)
-        self.assertIn('local CORNER_VISIBILITY_MODE = "game_state"', self.source)
-        self.assertIn('local radar_likely_visible = state_allows_corners', self.source)
-        self.assertIn('CORNER_VISIBILITY_MODE == "strict"', self.source)
-        self.assertIn('CORNER_VISIBILITY_MODE == "always"', self.source)
-        self.assertIn('(not AUTO_HIDE_CORNERS or radar_likely_visible)', self.source)
-        self.assertIn('corners_visible,corner_visibility_mode', self.source)
-        self.assertNotIn('radar_likely_visible = valid_geometry', self.source)
+        self.assertIn('local CENTER_FIELD_X, CENTER_FIELD_Y = 0x12F2, 0x12D8', self.source)
+        self.assertIn('local center_x, center_y = u16(CENTER_FIELD_X), u16(CENTER_FIELD_Y)', self.source)
+        self.assertIn('local field_loaded = length > 8 and width > 8', self.source)
+        self.assertIn('and center_x > 0 and center_x < length', self.source)
+        self.assertIn('and center_y > 0 and center_y < width', self.source)
+        self.assertIn('(not AUTO_HIDE_CORNERS or field_loaded)', self.source)
+        self.assertIn('corners_visible and 1 or 0, "field_loaded"', self.source)
+        self.assertNotIn('CORNER_VISIBILITY_MODE', self.source)
+        self.assertNotIn('radar_likely_visible', self.source)
 
     def test_expected_dimensions_derived_from_profiles(self):
         for stadium, (length, width) in EXPECTED_DIMENSIONS.items():
