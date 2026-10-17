@@ -35,7 +35,7 @@ local STADIUM_CALIBRATION = {
     [4] = {min_x=4, max_x=1916, min_y=4, max_y=636, validated=false},
     [5] = {min_x=4, max_x=1916, min_y=4, max_y=572, validated=false},
     [6] = {min_x=4, max_x=1788, min_y=4, max_y=700, validated=false},
-    [7] = {min_x=4, max_x=1852, min_y=4, max_y=636, validated=false},
+    [7] = {min_x=4, max_x=2172, min_y=4, max_y=700, validated=false},
 }
 -- Rotulos alinhados com tools/bizhawk/issd/state/game_state.lua do ISSD_bot.v0.
 -- Game_State=6 indica fim de periodo; dimensoes zeradas foram observadas nesse estado.
