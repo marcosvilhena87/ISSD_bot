@@ -534,3 +534,10 @@ Testes: lua tests/test_pass_input_observer.lua; lua tests/test_tactical_telemetr
 O resultado de recepcao compara IDs numericamente quando ambos representam numeros: 5 e 5.0 sao o mesmo jogador. Os perfis GK2, GK4 e GK5 recebem anotacoes hipoteticas das direcoes predominantes Up+Right, Right e Down+Right, respectivamente. Essas anotacoes **nao** sao comandos confirmados, nao mudam limites geometricos e nao acionam controles.
 
 O modulo lua/pass_event_statistics.lua gera issd_pass_events.csv, com uma linha somente por conclusao de evento (TEAMMATE_POSSESSION ou OBSERVATION_TIMEOUT), mostrando direcao predominante, recebedor, recomendado, classificacao, intervalo desde a direcao e contagens acumuladas de eventos por par direcao/recebedor. Cada execucao cria novo arquivo: salve copias antes de reiniciar. Nao combine eventos de capturas potencialmente repetidas como ensaios independentes. O CSV tatico permanece no schema 9, 107 colunas, agora com bot_version 1.15.6.
+
+
+## v1.15.7 — Selecao contextual direcional e auditoria por evento
+
+O historico observado de direcoes fornece uma sugestao predominante (`prepared_direction`) ao planejador: Right→ID4, Down+Right→ID5, Up+Right→ID2. A recomendacao contextual so ocorre quando o candidato tambem atende ao seu perfil geometrico provisório e ao filtro de afastamento dos adversarios. Com direcao desconhecida, o comportamento geometrico legado permanece; com outra direcao, nenhuma recomendacao contextual e feita. Sao hipoteses, nao controles confirmados.
+
+O arquivo `issd_pass_events.csv` ganhou `pass_class` (GK_DISTRIBUTION ou OUTFIELD) e coordenadas x/y, dx/dy e afastamento do candidato recomendado capturados no instante de B. As contagens sao por classe/direcao/recebedor, em eventos concluidos. Se nao houver candidato, os campos da geometria ficam vazios. A telemetria principal segue em schema 9, 107 colunas, versionada como 1.15.7. Nao ha escrita de joypad nem calibracao estatistica conclusiva. Testes a executar: `lua tests/test_goalkeeper_distribution.lua`, `lua tests/test_pass_input_observer.lua`, `lua tests/test_pass_event_statistics.lua`, `lua tests/test_tactical_telemetry.lua`.
