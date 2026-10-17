@@ -1,6 +1,6 @@
 -- ISSD main diagnostic bootstrap (runs before module imports).
 print("[ISSD] main.lua: inicio do carregamento")
-if type(gui)=="table" and type(gui.addmessage)=="function" then
+if gui ~= nil and type(gui.addmessage)=="function" then
     pcall(gui.addmessage,"ISSD main.lua: carregando")
 end
 -- ISSD_bot tactical coordinator: tiki-taka + gegenpressing.
@@ -88,7 +88,7 @@ end
 -- Define ISSD_STATE_PROVIDER=function(frame) return validated_state end
 -- before loading main.lua. No game buttons are emitted.
 function M.run(provider, config)
-    assert(type(emu)=="table" and type(emu.frameadvance)=="function"
+    assert(emu ~= nil and type(emu.frameadvance)=="function"
         and type(emu.framecount)=="function","BizHawk emu API required")
     local bot=M.new(config)
     print("[ISSD] main.lua: loop iniciado")
@@ -100,7 +100,7 @@ function M.run(provider, config)
         local s
         local ok, result = pcall(function()
             if provider then return provider(frame) end
-            if type(memory)=="table" then return Possession.bizhawk() end
+            if memory ~= nil then return Possession.bizhawk() end
             return nil
         end)
         if ok then
@@ -130,11 +130,12 @@ function M.run(provider, config)
         emu.frameadvance()
     end
 end
-if type(emu)=="table" and type(emu.frameadvance)=="function" and
+if emu ~= nil and type(emu.frameadvance)=="function" and
    type(emu.framecount)=="function" then
     print("[ISSD] main.lua: API emu detectada")
     M.run(type(ISSD_STATE_PROVIDER)=="function" and ISSD_STATE_PROVIDER or nil)
 else
+    print("[ISSD] API detectada: emu="..type(emu).." frameadvance="..tostring(emu and type(emu.frameadvance)).." framecount="..tostring(emu and type(emu.framecount)).." memory="..type(memory))
     print("[ISSD] main.lua: sem API emu; modulo carregado, loop nao iniciado")
 end
 return M
