@@ -223,7 +223,7 @@ Execute `python -m unittest discover -s tests -v` e teste a v0.15.0 no BizHawk. 
 
 ## Ocultação automática das marcas dos cantos
 
-A configuração `AUTO_HIDE_CORNERS=true` (padrão) deixa as quatro cruzes magenta visíveis somente quando a leitura sugere que o radar nativo está disponível: `geometry_status=VALID`, `Gameplay_Active=1` e `Game_State` entre 0 e 4. As cruzes deixam de ser desenhadas durante estados suspeitos, como pós-gol (5), fim de período (6), pausa/replay sinalizado por `Gameplay_Active` diferente de 1 e geometria inválida.
+A configuração `AUTO_HIDE_CORNERS=true` usa, por padrão, apenas `Game_State` entre 0 e 4 para mostrar as cruzes. **Pausa, `Gameplay_Active` e a validade da geometria não são critérios de ocultação nesse modo.** As cruzes são ocultadas em `POST_GOAL=5`, `PERIOD_TIME_UP=6` e estados não mapeados; confira os modos disponíveis na seção v0.15.1 abaixo.
 
 **Limitação:** isso é uma *heurística*, não uma leitura comprovada de um bit de visibilidade do radar nativo. Pode ocultar as cruzes mesmo que o radar esteja visível ou exibi-las em alguma tela transitória. Para retornar ao comportamento anterior, ajuste `AUTO_HIDE_CORNERS=false`. A opção afeta apenas as quatro cruzes, não a coleta CSV nem a regra existente para desenhar entidades.
 
