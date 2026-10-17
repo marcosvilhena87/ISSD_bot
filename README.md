@@ -220,3 +220,9 @@ O arquivo de descoberta de variantes `issd_radar_geometry_variants.csv` continua
 ### Validação necessária
 
 Execute `python -m unittest discover -s tests -v` e teste a v0.15.0 no BizHawk. Os testes Python são verificações estruturais; a precisão das projeções variantes depende de referências em pixels nativos sincronizadas com os frames. Não marque `projection_validated=true` apenas por observar quatro escanteios.
+
+## Ocultação automática das marcas dos cantos
+
+A configuração `AUTO_HIDE_CORNERS=true` (padrão) deixa as quatro cruzes magenta visíveis somente quando a leitura sugere que o radar nativo está disponível: `geometry_status=VALID`, `Gameplay_Active=1` e `Game_State` entre 0 e 4. As cruzes deixam de ser desenhadas durante estados suspeitos, como pós-gol (5), fim de período (6), pausa/replay sinalizado por `Gameplay_Active` diferente de 1 e geometria inválida.
+
+**Limitação:** isso é uma *heurística*, não uma leitura comprovada de um bit de visibilidade do radar nativo. Pode ocultar as cruzes mesmo que o radar esteja visível ou exibi-las em alguma tela transitória. Para retornar ao comportamento anterior, ajuste `AUTO_HIDE_CORNERS=false`. A opção afeta apenas as quatro cruzes, não a coleta CSV nem a regra existente para desenhar entidades.
