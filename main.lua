@@ -186,7 +186,13 @@ function M.run(provider, config)
                 button_source="joypad.get"
             end
         end
-        local observation=pass_observer.update(frame,s,observed_buttons,button_source)
+        local observed_state=s
+        if type(s)=="table" then
+            observed_state={}
+            for k,v in pairs(s) do observed_state[k]=v end
+            observed_state.recommended_target_id=decision and decision.decision and decision.decision.target_id
+        end
+        local observation=pass_observer.update(frame,observed_state,observed_buttons,button_source)
         if telemetry then
             local wrote,write_error=telemetry.record(frame,s,decision,observation)
             if not wrote and write_error~=last_csv_error then
