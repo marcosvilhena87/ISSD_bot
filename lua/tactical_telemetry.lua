@@ -1,9 +1,9 @@
 -- Tactical telemetry for ISSD; no game controls.
 local M={}
-M.VERSION="1.12.1"
-M.SCHEMA_VERSION=2
-M.COLUMN_COUNT=32
-local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y,pass_safe,pass_too_close,pass_too_far,pass_blocked,best_rejected_id,best_rejected_reason,best_rejected_clearance,support_move_id,support_move_x,support_move_y,bot_version,schema_version"
+M.VERSION="1.13.0"
+M.SCHEMA_VERSION=3
+M.COLUMN_COUNT=39
+local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y,pass_safe,pass_too_close,pass_too_far,pass_blocked,best_rejected_id,best_rejected_reason,best_rejected_clearance,support_move_id,support_move_x,support_move_y,bot_version,schema_version,action,dribble_x,dribble_y,open_passes,triangle_via,triangle_next,triangle_score"
 local function csv(v)
  if v==nil then return "" end
  local s=tostring(v)
@@ -33,11 +33,12 @@ function M.new(path,opts)
    last_frame=frame
    s=type(s)=="table" and s or {}
    result=result or {}
-   local d=result.decision or {}
+   local action=result.decision or {}
+   local d=action.base or action
    local b=s.ball or {}
    local values={frame,epoch,result.mode,result.phase,s.possession,s.logical_team,
      s.raw_owner,s.raw_team,s.ownership_source,s.logical_conflict and 1 or 0,
-     s.carrier_id,s.my_controlled_id,s.cpu_controlled_id,d.target_id,
+     s.carrier_id,s.my_controlled_id,s.cpu_controlled_id,action.target_id or d.target_id,
      pressers(d),result.reason or s.reason,d.reason,d.elapsed,b.x,b.y}
    local diag=d.diagnostics or {}
    local counts=diag.counts or {}
@@ -55,9 +56,18 @@ function M.new(path,opts)
    values[30]=move.y
    values[31]=M.VERSION
    values[32]=M.SCHEMA_VERSION
+   local motion=action.dribble or {}
+   local triangle=action.triangle or {}
+   values[33]=action.mode
+   values[34]=motion.x
+   values[35]=motion.y
+   values[36]=motion.open_passes
+   values[37]=triangle.via
+   values[38]=triangle.next_id
+   values[39]=triangle.score
    local parts={}
    -- ipairs stops at the first nil; always serialize the whole schema.
-   for i=1,32 do parts[i]=csv(values[i]) end
+   for i=1,39 do parts[i]=csv(values[i]) end
    local ok,werr=file:write(table.concat(parts,","),"\n")
    if not ok then return false,werr end
    count=count+1
