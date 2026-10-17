@@ -70,4 +70,22 @@ assert(GK.plan(s2).target_id~=2)
 s2.cpu_players={}
 s2.ball.x=100
 assert(GK.plan(s2).target_id~=2)
+sample.my_players[2].id=4
+sample.ball.x=28
+sample.prepared_direction="Right"
+local right=assert(GK.plan(sample))
+assert(right.target_id==4 and right.reason=="contextual_provisional_gk4_geometry_match")
+sample.prepared_direction="Down+Right"
+assert(GK.plan(sample).target_id==nil)
+s5.prepared_direction="Down+Right"
+s5.my_players[4].id=5
+assert(GK.plan(s5).target_id==5)
+s5.prepared_direction="Right"
+assert(GK.plan(s5).target_id==4)
+s2.ball.x=21
+s2.cpu_players={}
+s2.prepared_direction="Up+Right"
+assert(GK.plan(s2).target_id==2)
+s2.prepared_direction="Down+Right"
+assert(GK.plan(s2).target_id==5)
 print("goalkeeper distribution tests passed")
