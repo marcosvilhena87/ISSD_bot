@@ -502,3 +502,12 @@ Telemetria `1.15.1`, schema 8, 101 colunas sem alteracoes de formato. Teste: `lu
 O relatorio `issd_tactical_report(20261017-153733).csv` registra no frame 6245 uma borda do B, goleiro ID 1, receptor candidato ID 4, `dx=343`, `dy=39`, distancia da bola `345.21`, afastamento minimo dos adversarios na linha `272.24`; no frame 6314, a posse do ID 4 foi reconhecida (69 frames depois, deslocamento liquido da bola +323,+5). A entrada direcional NAO foi observada (`B_ONLY`), portanto isso nao comprova `Right+B`, nem garante um passe.
 
 `lua/goalkeeper_distribution.lua` pode agora **recomendar** `target_id=4` e `PROVISIONAL_OBSERVED` se o ID 4 estiver entre as tres opcoes mais proximas, a direcao nominal for `Right`, os vetores estiverem dentro de `|dx-343|<=35` e `|dy-39|<=25`, a distancia dentro de 40 unidades da amostra e o afastamento minimo ao adversario for pelo menos 240. Esses limites sao tolerancias experimentais conservadoras definidas em torno de UMA amostra; nao foram estimados estatisticamente. Todos os demais casos continuam sem selecao automatica e `UNCALIBRATED`. O bot continua apenas sugerindo, **nao executa comandos `joypad`**. Teste: `lua tests/test_goalkeeper_distribution.lua`.
+
+
+## v1.15.3 — Perfil provisório GK → ID 5
+
+O CSV de 17/10/2026 15:48:40 registra `B_EDGE` no frame 6381 e `TEAMMATE_POSSESSION` do ID 5 no frame 6478 (97 frames). No instante de B, a opcao ID 5 apresentava `dx=410`, `dy=148`, distancia `435.89` e afastamento minimo de adversario `250.19`. O deslocamento liquido da bola ate a identificacao da posse foi `(+282,+194)`. O comando era `RELEASED_THEN_B`, sem direcao confirmada no instante do passe; **nao** e prova de que `Right+B` ou qualquer diagonal produziu a reposicao.
+
+O planejador agora recomenda ID 5 (`PROVISIONAL_OBSERVED`) quando ele esta entre GK1-GK3, em setor nominal `Right`, com `|dx-410|<=30`, `|dy-148|<=25`, `|distancia-435.89|<=35` e afastamento minimo ao adversario pelo menos `235`. Sao tolerancias heuristicas de UMA observacao, nao uma garantia de sucesso. O perfil ID 4 permanece. Quando ambos os perfis coincidem, o ID 5 recebe prioridade porque a captura que motivou esta regra terminou com ID 5, embora a recomendacao anterior fosse ID 4. Esse desempate tambem e provisório. Sem perfil correspondente, nenhuma recomendacao e selecionada. O modo nao aciona botoes.
+
+Versao de telemetria `1.15.3`, esquema 8, 101 colunas. Teste: `lua tests/test_goalkeeper_distribution.lua`.
