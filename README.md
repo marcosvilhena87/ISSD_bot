@@ -303,3 +303,30 @@ O integrador precisa alimentar **a cada frame** `possession` confirmado ("my", "
 **Nao ha comando de movimento nem de desarme** neste modulo. O controlador do bot deve traduzir as decisoes para a API do BizHawk somente apos validar selecao de jogadores, posse e direcao do campo. Os offsets existentes no radar informam coordenadas, mas **nao comprovam posse de bola**.
 
 Testes Lua (requer interpretador Lua instalado): `lua tests/test_gegenpressing.lua`. Estes testes nao foram executados no BizHawk.
+
+
+## Tiki-taka experimental — circulação e passes curtos
+
+O planejador puro `lua/tiki_taka.lua` complementa `lua/gegenpressing.lua` sem alterar `lua/radar.lua`. Ele **não aciona botões**: classifica linhas de passe e indica receptores. O controlador externo deve fornecer posse de bola **validada**, jogador portador, coordenadas das equipes, gols e estado de jogo.
+
+```lua
+local TikiTaka = require("tiki_taka") -- package.path deve incluir lua/
+local planner = TikiTaka.new()
+local decision = planner.update({
+  frame=1200, active=true, possession="my", carrier_id=1,
+  ball={x=500,y=300},
+  own_goal={x=0,y=300}, opponent_goal={x=1800,y=300},
+  my_players={{id=1,x=500,y=300},{id=2,x=610,y=320},{id=3,x=540,y=410}},
+  cpu_players={{id=8,x=560,y=300}}
+})
+-- decision.mode: PASS, HOLD ou INACTIVE
+-- decision.target_id: receptor recomendado apenas no modo PASS
+-- decision.candidates: passes seguros ordenados por pontuacao
+-- decision.support: jogadores proximos para apoio
+-- APENAS quando o controlador realmente iniciar o passe:
+-- planner.confirm_pass(decision.target_id, 1200)
+```
+
+A linha de passe é testada pela menor distância dos adversários ao **segmento** entre portador e receptor. A pontuação combina liberdade do corredor, progressão em direção ao gol e penalidade por distância. Há uma penalização contra passes repetidos para o mesmo receptor e intervalo mínimo entre passes confirmados. A orientação ofensiva é determinada pela direção entre `own_goal` e `opponent_goal`, sem presumir que a equipe ataque sempre pela direita. Fora da posse, em reinício, sem portador válido ou com telemetria incompleta, o módulo não recomenda passes.
+
+**Limitações:** ainda não existe calibração empírica de tempos, controles B/Y, interceptações dinâmicas, triangulações coordenadas nem execução autônoma integrada ao BizHawk. A métrica geométrica de segurança é uma heurística, não garantia de passe bem-sucedido. Para executar testes Lua localmente: `lua tests/test_tiki_taka.lua`. O teste Lua não foi executado neste ambiente.
