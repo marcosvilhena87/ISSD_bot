@@ -1,6 +1,12 @@
 -- Passive input/event observer. Never sends controller commands.
 local M={}
 local function finite(n) return type(n)=="number" and n==n and n~=math.huge and n~=-math.huge end
+local function same_id(a,b)
+ if a==nil or b==nil then return false end
+ local x,y=tonumber(a),tonumber(b)
+ if x and y then return x==y end
+ return tostring(a)==tostring(b)
+end
 local function pos(s)
  local b=type(s)=="table" and s.ball
  if type(b)=="table" and finite(b.x) and finite(b.y) then return {x=b.x,y=b.y} end
@@ -138,11 +144,11 @@ function M.new(opts)
    end
    local age=frame-active.start
    if age>0 and s and s.possession=="my" and s.carrier_id and
-      s.carrier_id~=active.initial_carrier then
+      not same_id(s.carrier_id,active.initial_carrier) then
      result.pass_event="TEAMMATE_POSSESSION"
      result.pass_receiver=s.carrier_id
      result.pass_outcome=active.recommended==nil and "UNCONFIRMED" or
-       (tostring(active.recommended)==tostring(s.carrier_id) and "MATCH" or "MISMATCH")
+       (same_id(active.recommended,s.carrier_id) and "MATCH" or "MISMATCH")
      active=nil
    elseif age>=max_follow then
      result.pass_event="OBSERVATION_TIMEOUT"
