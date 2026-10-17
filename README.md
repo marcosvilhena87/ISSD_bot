@@ -453,3 +453,8 @@ O CSV v1.13.2 utiliza o **esquema 5, com 58 colunas**: acrescenta `near1_id`, `n
 ## Correção visual: limpeza das sugestões após perda da posse
 
 O `main.lua` executa `gui.clearGraphics()` quando disponível antes de desenhar os indicadores de cada frame, inclusive quando a posse é da CPU ou não há dono confirmado. Assim, linhas de passes e sugestões anteriores não ficam presas na tela. As marcações táticas só são redesenhadas com `active=true`, `possession=my`, `ownership_source=PLAYER_BALL_POSSESSION` e `carrier_id` validado. Atenção: `gui.clearGraphics()` pode limpar desenhos de outros scripts Lua que compartilhem a mesma camada gráfica; recomenda-se executar o `main.lua` isoladamente. A telemetria permanece independente.
+
+
+## Marcador de condução no radar
+
+O marcador magenta de `support_move` não é mais desenhado no radar tático. Quando o planejador sequencial recomenda `DRIBBLE`, o radar mostra **linha amarela** do portador até o destino e **quadrado amarelo com a letra `D`** sobre o ponto de chegada. Fora do estado com sugestão de condução, o marcador `D` não aparece. As informações de `support_move` permanecem disponíveis na telemetria CSV para análise, sem comandar jogadores.
