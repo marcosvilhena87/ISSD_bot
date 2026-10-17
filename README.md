@@ -360,3 +360,14 @@ Para integrar um detector validado, defina a função global `ISSD_STATE_PROVIDE
 `active=true` exige gameplay vivo e válido; `possession` deve ser `"my"`, `"cpu"` ou `"loose"`. Não forneça `carrier_id` estimado como confirmado. Coordenadas e lados do campo devem estar sincronizados e calibrados. `ISSD_TACTICAL_OBSERVER(decision,state)` é um callback **opcional apenas para receber decisões**; não confirma execução de passes. O coordenador não aciona automaticamente `confirm_pass`: o integrador só deve chamá-lo depois de confirmar o início efetivo do passe.
 
 Testes: `lua tests/test_main.lua`, `lua tests/test_tiki_taka.lua` e `lua tests/test_gegenpressing.lua`. Requer interpretador Lua; os testes não foram executados neste ambiente nem no BizHawk.
+
+
+## Posse WRAM integrada ao main.lua
+
+`lua/possession.lua` agora fornece snapshots de leitura direta do BizHawk, sem alterar a memória ou emitir comandos. `main.lua` utiliza `Possession.bizhawk()` automaticamente quando nenhum `ISSD_STATE_PROVIDER` externo foi definido.
+
+Leituras: `0x1ACC` (u16, jogador controlado MY), `0x1AFC` (u16, jogador controlado CPU), `0x00A6` (u16, base do possuidor físico) e `0x104C` (u8, equipe lógica). Também lê gameplay `0x0006`, estado `0x00BA`, bola `0x042A/0x042C`, campo `0x12A2/0x12A4` e 22 jogadores por structs de bases `0x0500..0x0F00` e `0x1000..0x1A00` com stride `0x100`, offsets X/Y `0x2A/0x2C`. As posições dos dois goleiros são usadas como referências direcionais, de forma conservadora.
+
+**Prioridade de evidência:** `0x00A6` com base válida identifica o time e o portador; conflito com `0x104C` é registrado em `logical_conflict`, mas a posse individual prevalece. `0x00A6=0` indica passe/chute em trânsito **ou** bola solta. `0x104C=0/1` identifica apenas a equipe lógica, e esse caso retorna `active=false`, `ownership_source=LOGICAL_UNVERIFIED`, sem disparar gegenpressing ou tiki-taka. Estados não-live e geometria/goleiros ambíguos também bloqueiam decisões. Portanto um passe longo em voo não aciona uma falsa perda de bola. Isso é mais conservador que o planejamento de passes com a posse lógica contínua; retomada exige confirmação física.
+
+O interpretador Lua do BizHawk não foi executado neste ambiente. Teste estático previsto: `lua tests/test_possession.lua` e `lua tests/test_main.lua`. A execução **ainda não controla o videogame**: trata-se de recomendação tática baseada em WRAM, sem `joypad.set`. Os endereços e a distinção entre posse individual e posse lógica seguem o [mapa de RAM do ISSD_bot.v0](https://github.com/marcosvilhena87/ISSD_bot.v0/blob/main/docs/RAM_MAP.md).
