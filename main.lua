@@ -24,6 +24,7 @@ local Possession = require("possession")
 local Telemetry = require("tactical_telemetry")
 local TacticalRadar = require("tactical_radar")
 print("[ISSD] main.lua: modulos carregados")
+print(string.format("[ISSD] versao=%s | telemetria_schema=%s | colunas=32",Telemetry.VERSION,Telemetry.SCHEMA_VERSION))
 local function callable_api(v)
     local t=type(v)
     return t=="function" or t=="userdata"
@@ -103,7 +104,7 @@ function M.run(provider, config)
     local last_error
     local telemetry, telemetry_error=Telemetry.new("issd_tactical_report.csv", {flush_every=60})
     if telemetry then
-        print("[ISSD] Telemetria: issd_tactical_report.csv")
+        print(string.format("[ISSD] Telemetria: issd_tactical_report.csv | bot=%s | schema=%s | colunas=32",Telemetry.VERSION,Telemetry.SCHEMA_VERSION))
     else
         print("[ISSD] ERRO CSV: "..tostring(telemetry_error))
     end
