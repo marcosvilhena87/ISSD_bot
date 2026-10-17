@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.15.4
+# ISSD_bot — Radar v0.15.5
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -259,3 +259,13 @@ Nesse estado as quatro cruzes magenta são ocultadas mesmo se `AUTO_HIDE_CORNERS
 ## Revisão do perfil principal do Stadium_ID 7
 
 O perfil principal do estádio 7 agora corresponde a **2176 × 704**, com `min_x=4`, `max_x=2172`, `min_y=4`, `max_y=700`, ainda `validated=false`. A configuração **1856 × 640** previamente observada foi preservada como variante histórica `7_1856x640`, com `geometry_observed=true` e `projection_validated=false`; não é utilizada automaticamente para liberar o desenho das entidades. Os demais sete perfis não foram alterados. As seções anteriores sobre a variante 2176 × 704 documentam a evolução histórica do projeto e devem ser lidas à luz desta revisão.
+
+## Cores configuráveis — v0.15.5
+
+As cores das entidades do overlay foram invertidas para aumentar a distinção visual: **meu time em vermelho**, **CPU em ciano** e **bola em amarelo**. Altere na configuração inicial de `lua/radar.lua`:
+
+```lua
+local MY_COLOR, CPU_COLOR, BALL_COLOR = "red", "cyan", "yellow"
+```
+
+Essas opções afetam somente o desenho do overlay; não modificam a WRAM, os perfis geométricos, os cálculos de projeção nem as colunas CSV.
