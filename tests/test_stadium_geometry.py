@@ -132,6 +132,12 @@ class StadiumGeometryTests(unittest.TestCase):
         self.assertIn('local valid_geometry = integrity == "VALID"', self.source)
         self.assertEqual(set(self.profiles), set(range(8)))
 
+    def test_configurable_team_colors(self):
+        self.assertIn('MY_COLOR, CPU_COLOR, BALL_COLOR = "red", "cyan", "yellow"', self.source)
+        self.assertIn('observe("my", i + 1, x, y, MY_COLOR)', self.source)
+        self.assertIn('observe("cpu", i + 1, x, y, CPU_COLOR)', self.source)
+        self.assertIn('observe("ball", 0, bx, by, BALL_COLOR)', self.source)
+
     def test_expected_dimensions_derived_from_profiles(self):
         for stadium, (length, width) in EXPECTED_DIMENSIONS.items():
             bounds = self.profiles[stadium]
