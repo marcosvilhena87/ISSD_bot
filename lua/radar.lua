@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.8.0 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.9.0 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -18,7 +18,12 @@ local SHOW_BALL = true
 local SHOW_OVERLAY = true   -- false: somente CSV; sem cantos nem entidades
 -- Limites observados da bola nos quatro escanteios, POR estadio.
 -- Sao hipoteses empiricas, NAO validacao contra pixels nativos.
-local USE_EMPIRICAL_BOUNDS = true
+-- Modelos: "field_dimensions", "empirical", "geometric".
+-- O padrao preserva o comportamento da v0.8.
+local PROJECTION_MODEL = "empirical"
+assert(PROJECTION_MODEL == "field_dimensions" or
+       PROJECTION_MODEL == "empirical" or
+       PROJECTION_MODEL == "geometric", "PROJECTION_MODEL invalido")
 local STADIUM_CALIBRATION = {
     [0] = {min_x=4, max_x=1788, min_y=4, max_y=572, validated=false},
     [1] = {min_x=4, max_x=1852, min_y=4, max_y=636, validated=false},
@@ -77,28 +82,46 @@ local function project(nx, ny)
     local inside = nx >= 0 and nx <= 1 and ny >= 0 and ny <= 1
     return px, py, inside and 1 or 0
 end
+local function geometric_bounds(length, width)
+    if length <= 8 or width <= 8 then return nil end
+    return {min_x=4, max_x=length-4, min_y=4, max_y=width-4}
+end
+local function normalize_bounds(x, y, b)
+    if not b or b.max_x <= b.min_x or b.max_y <= b.min_y then
+        return nil, nil
+    end
+    return (x-b.min_x)/(b.max_x-b.min_x),
+           (y-b.min_y)/(b.max_y-b.min_y)
+end
 local function transform(x, y, length, width, stadium)
     local b = STADIUM_CALIBRATION[stadium]
-    local raw_nx, raw_ny, emp_nx, emp_ny
+    local g = geometric_bounds(length, width)
+    local raw_nx, raw_ny
     if length > 0 and width > 0 then
-        raw_nx = (x - ORIGIN_X) * SCALE_X / length
-        raw_ny = (y - ORIGIN_Y) * SCALE_Y / width
+        raw_nx = (x-ORIGIN_X)*SCALE_X/length
+        raw_ny = (y-ORIGIN_Y)*SCALE_Y/width
     end
-    if b and b.max_x > b.min_x and b.max_y > b.min_y then
-        emp_nx = (x - b.min_x) / (b.max_x - b.min_x)
-        emp_ny = (y - b.min_y) / (b.max_y - b.min_y)
-    end
+    local emp_nx, emp_ny = normalize_bounds(x, y, b)
+    local geo_nx, geo_ny = normalize_bounds(x, y, g)
     local raw_px, raw_py = project(raw_nx, raw_ny)
     local emp_px, emp_py = project(emp_nx, emp_ny)
-    local use_emp = USE_EMPIRICAL_BOUNDS and emp_nx ~= nil and length > 0 and width > 0
-    local model = use_emp and "empirical" or "field_dimensions"
-    local nx, ny = use_emp and emp_nx or raw_nx, use_emp and emp_ny or raw_ny
+    local geo_px, geo_py = project(geo_nx, geo_ny)
+    local model, nx, ny = "field_dimensions", raw_nx, raw_ny
+    if length > 0 and width > 0 then
+        if PROJECTION_MODEL == "empirical" and emp_nx ~= nil then
+            model, nx, ny = "empirical", emp_nx, emp_ny
+        elseif PROJECTION_MODEL == "geometric" and geo_nx ~= nil then
+            model, nx, ny = "geometric", geo_nx, geo_ny
+        end
+    end
     local px, py, inside = project(nx, ny)
     return nx, ny, px, py, inside, model,
         raw_nx, raw_ny, raw_px, raw_py, emp_nx, emp_ny, emp_px, emp_py,
-        (raw_px and emp_px) and (emp_px - raw_px) or nil,
-        (raw_py and emp_py) and (emp_py - raw_py) or nil,
-        b
+        (raw_px and emp_px) and (emp_px-raw_px) or nil,
+        (raw_py and emp_py) and (emp_py-raw_py) or nil,
+        b, geo_nx, geo_ny, geo_px, geo_py, g,
+        (emp_px and geo_px) and (geo_px-emp_px) or nil,
+        (emp_py and geo_py) and (geo_py-emp_py) or nil
 end
 local function corner(x, y)
     -- 3 pixels em formato de cruz; os pontos-guia sao independentes
@@ -118,7 +141,7 @@ local function target_cross(px, py)
 end
 local csv, err = io.open(CSV_NAME, "w")
 if not csv then error("Falha ao criar CSV: " .. tostring(err)) end
-csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance,calibration_status,projection_model,raw_norm_x,raw_norm_y,raw_pixel_x,raw_pixel_y,empirical_norm_x,empirical_norm_y,empirical_pixel_x,empirical_pixel_y,delta_pixel_x,delta_pixel_y,empirical_min_x,empirical_max_x,empirical_min_y,empirical_max_y,empirical_validated\n")
+csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance,calibration_status,projection_model,raw_norm_x,raw_norm_y,raw_pixel_x,raw_pixel_y,empirical_norm_x,empirical_norm_y,empirical_pixel_x,empirical_pixel_y,delta_pixel_x,delta_pixel_y,empirical_min_x,empirical_max_x,empirical_min_y,empirical_max_y,empirical_validated,geometric_norm_x,geometric_norm_y,geometric_pixel_x,geometric_pixel_y,geometric_min_x,geometric_max_x,geometric_min_y,geometric_max_y,geometric_minus_empirical_pixel_x,geometric_minus_empirical_pixel_y\n")
 local function number(value)
     if value == nil then return "" end
     return string.format("%.6f", value)
@@ -136,7 +159,7 @@ while true do
         corner(FX + FW, FY + FH)
     end
     local function observe(entity, index, x, y, color)
-        local nx, ny, px, py, inside, model, raw_nx, raw_ny, raw_px, raw_py, emp_nx, emp_ny, emp_px, emp_py, delta_x, delta_y, bounds = transform(x, y, length, width, stadium)
+        local nx, ny, px, py, inside, model, raw_nx, raw_ny, raw_px, raw_py, emp_nx, emp_ny, emp_px, emp_py, delta_x, delta_y, bounds, geo_nx, geo_ny, geo_px, geo_py, geometry, geo_delta_x, geo_delta_y = transform(x, y, length, width, stadium)
         local is_target = entity == TARGET_TEAM and index == TARGET_NUMBER
         if SHOW_OVERLAY and px and py and inside == 1 then
             local enabled = (entity == "ball" and SHOW_BALL)
@@ -182,7 +205,11 @@ while true do
                 number(delta_x), number(delta_y),
                 bounds and bounds.min_x or "", bounds and bounds.max_x or "",
                 bounds and bounds.min_y or "", bounds and bounds.max_y or "",
-                bounds and (bounds.validated and 1 or 0) or ""
+                bounds and (bounds.validated and 1 or 0) or "",
+                number(geo_nx), number(geo_ny), geo_px or "", geo_py or "",
+                geometry and geometry.min_x or "", geometry and geometry.max_x or "",
+                geometry and geometry.min_y or "", geometry and geometry.max_y or "",
+                number(geo_delta_x), number(geo_delta_y)
             }, ",") .. "\n")
         end
     end
