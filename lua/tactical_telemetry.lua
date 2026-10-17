@@ -1,9 +1,9 @@
 -- Tactical telemetry for ISSD; no game controls.
 local M={}
-M.VERSION="1.13.1"
-M.SCHEMA_VERSION=4
-M.COLUMN_COUNT=43
-local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y,pass_safe,pass_too_close,pass_too_far,pass_blocked,best_rejected_id,best_rejected_reason,best_rejected_clearance,support_move_id,support_move_x,support_move_y,bot_version,schema_version,action,dribble_x,dribble_y,open_passes,triangle_via,triangle_next,triangle_score,pass_type,pass_score,pass_clearance,pass_progression"
+M.VERSION="1.13.2"
+M.SCHEMA_VERSION=5
+M.COLUMN_COUNT=58
+local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y,pass_safe,pass_too_close,pass_too_far,pass_blocked,best_rejected_id,best_rejected_reason,best_rejected_clearance,support_move_id,support_move_x,support_move_y,bot_version,schema_version,action,dribble_x,dribble_y,open_passes,triangle_via,triangle_next,triangle_score,pass_type,pass_score,pass_clearance,pass_progression,near1_id,near1_carrier_distance,near1_ball_distance,near1_reason,near1_blocker_id,near2_id,near2_carrier_distance,near2_ball_distance,near2_reason,near2_blocker_id,near3_id,near3_carrier_distance,near3_ball_distance,near3_reason,near3_blocker_id"
 local function csv(v)
  if v==nil then return "" end
  local s=tostring(v)
@@ -69,9 +69,19 @@ function M.new(path,opts)
    values[41]=action.pass_score or d.pass_score
    values[42]=action.pass_clearance or d.pass_clearance
    values[43]=action.pass_progression or d.pass_progression
+   local nearest=diag.nearest or {}
+   for i=1,3 do
+      local n=nearest[i] or {}
+      local k=43+(i-1)*5
+      values[k+1]=n.id
+      values[k+2]=n.distance
+      values[k+3]=n.ball_distance
+      values[k+4]=n.reason
+      values[k+5]=n.blocking_enemy_id
+   end
    local parts={}
    -- ipairs stops at the first nil; always serialize the whole schema.
-   for i=1,43 do parts[i]=csv(values[i]) end
+   for i=1,58 do parts[i]=csv(values[i]) end
    local ok,werr=file:write(table.concat(parts,","),"\n")
    if not ok then return false,werr end
    count=count+1
