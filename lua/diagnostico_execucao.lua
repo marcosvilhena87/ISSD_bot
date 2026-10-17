@@ -1,9 +1,13 @@
 -- Diagnostic standalone BizHawk script. Open through Lua Console > Open Script.
 print("[ISSD DIAG] script carregado")
-if type(gui)=="table" and type(gui.addmessage)=="function" then
+if gui~=nil and type(gui.addmessage)=="function" then
     pcall(gui.addmessage,"ISSD DIAG carregado")
 end
-if type(emu)~="table" or type(emu.frameadvance)~="function" then
+print("[ISSD DIAG] emu="..type(emu)..
+    " frameadvance="..tostring(emu and type(emu.frameadvance))..
+    " framecount="..tostring(emu and type(emu.framecount))..
+    " memory="..type(memory))
+if emu==nil or type(emu.frameadvance)~="function" then
     print("[ISSD DIAG] API emu.frameadvance indisponivel")
     return
 end
