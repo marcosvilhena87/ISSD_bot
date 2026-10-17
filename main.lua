@@ -78,6 +78,12 @@ function M.new(config)
         -- Always update gegenpressing; otherwise it misses the my -> cpu transition.
         local pressure = gegen.update(s)
         if s.possession == "my" then
+            local goalkeeper=GoalkeeperDistribution.plan(s)
+            if goalkeeper then
+                tiki.reset()
+                return {mode="GK_DISTRIBUTION",phase="ATTACK",
+                    decision=goalkeeper,tactical_action="GK_DISTRIBUTION",pressure=pressure}
+            end
             local attack = tiki.update(s)
             local mode=attack.mode=="PASS_READY" and "TIKI_TAKA" or
                 attack.mode=="DRIBBLE" and "DRIBBLE" or
