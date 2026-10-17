@@ -26,7 +26,7 @@ function M.plan(s,decision,stadium,length,width)
  if not carrier then return nil,"carrier_missing" end
  local ax,ay=pos(carrier,length,width)
  if not ax then return nil,"carrier_outside" end
- local result={carrier={x=ax,y=ay},links={},rejected=nil,support_move=nil,dribble=nil,players={},ball=nil}
+ local result={carrier={x=ax,y=ay},links={},rejected=nil,support_move=nil,dribble=nil,nearest={},blocker=nil,players={},ball=nil}
  local bx,by=pos(s.ball,length,width)
  if bx then result.ball={x=bx,y=by} end
  for _,p in ipairs(s.my_players) do
@@ -53,6 +53,21 @@ function M.plan(s,decision,stadium,length,width)
     end
  end
  if d.diagnostics then
+    for _,e in ipairs(d.diagnostics.nearest or {}) do
+       local mate=by_id[e.id]
+       local nx,ny=pos(mate,length,width)
+       if nx then result.nearest[#result.nearest+1]={id=e.id,x=nx,y=ny,reason=e.reason} end
+    end
+    local rejected=d.diagnostics.best_rejected
+    if rejected and rejected.blocking_enemy_id then
+       for _,e in ipairs(s.cpu_players) do
+          if e.id==rejected.blocking_enemy_id then
+             local x,y=pos(e,length,width)
+             if x then result.blocker={x=x,y=y,id=e.id} end
+             break
+          end
+       end
+    end
     local rejected=d.diagnostics.best_rejected
     if rejected and by_id[rejected.id] then
        local rx,ry=pos(by_id[rejected.id],length,width)
@@ -79,6 +94,15 @@ function M.draw(plan,gui_api)
  end
  if plan.dribble and gui_api.drawLine then
    gui_api.drawLine(plan.carrier.x,plan.carrier.y,plan.dribble.x,plan.dribble.y,"yellow")
+ end
+ if gui_api.drawBox then
+   for _,n in ipairs(plan.nearest or {}) do
+      gui_api.drawBox(n.x-1,n.y-1,n.x+1,n.y+1,"white")
+   end
+   if plan.blocker then
+      local b=plan.blocker
+      gui_api.drawBox(b.x-2,b.y-2,b.x+2,b.y+2,"orange")
+   end
  end
  if plan.rejected and gui_api.drawLine then
    local r=plan.rejected
