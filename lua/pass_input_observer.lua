@@ -100,6 +100,8 @@ function M.new(opts)
     local since_release=not dir and last_direction_frame and (frame-last_direction_frame) or nil
     local recommended=s and (s.recommended_target_id or s.target_id)
 
+    local classification=s and s.observed_pass_class or "OTHER"
+    local candidate=s and s.recommended_candidate
     serial=serial+1
     local held=dir~=nil
     local chosen=dir or last_dir
@@ -113,7 +115,12 @@ function M.new(opts)
     active={id=serial,start=frame,origin=pos(s),direction=chosen,kind=kind,
       lead=lead,source=result.input_source,initial_carrier=s and s.carrier_id,
       recommended=recommended,last_single=last_single,last_diagonal=last_diagonal,
-      dominant=dominant,release_delay=since_release}
+      dominant=dominant,release_delay=since_release,
+      pass_class=classification,candidate_x=candidate and candidate.x,
+      candidate_y=candidate and candidate.y,
+      candidate_dx=candidate and candidate.dx,
+      candidate_dy=candidate and candidate.dy,
+      candidate_clearance=candidate and candidate.clearance}
     result.pass_event="B_EDGE"
     result.pass_kind=kind
     result.pass_lead_frames=lead
@@ -129,6 +136,12 @@ function M.new(opts)
   end
   if active then
    result.pass_id=active.id
+   result.pass_class=active.pass_class
+   result.pass_candidate_x=active.candidate_x
+   result.pass_candidate_y=active.candidate_y
+   result.pass_candidate_dx=active.candidate_dx
+   result.pass_candidate_dy=active.candidate_dy
+   result.pass_candidate_clearance=active.candidate_clearance
    result.pass_last_single=active.last_single
    result.pass_last_diagonal=active.last_diagonal
    result.pass_dominant=active.dominant
@@ -158,6 +171,13 @@ function M.new(opts)
   end
   return result
  end
- return {update=update,reset=reset}
+ local function direction_hint()
+  local best,n=nil,0
+  for dir,count in pairs(direction_counts) do
+   if count>n or (count==n and (not best or dir<best)) then best,n=dir,count end
+  end
+  return best
+ end
+ return {update=update,reset=reset,direction_hint=direction_hint}
 end
 return M
