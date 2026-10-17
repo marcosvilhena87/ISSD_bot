@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.14.0
+# ISSD_bot — Radar v0.15.0
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -198,3 +198,25 @@ Uma linha é emitida ao completar o limiar de estabilidade de uma sequência con
 **Importante:** nenhuma variante descoberta modifica `STADIUM_CALIBRATION` ou ativa projeções. A política `geometry_status=VALID` permanece como única condição para desenhar entidades. A dimensão observada, por si só, não comprova escanteios nem correspondência com o radar nativo. Para validar o candidato 2176 × 704 do Stadium_ID 7, é necessário coletar novamente os quatro escanteios nessa configuração e medir referências visuais sincronizadas.
 
 O radar continua produzindo `issd_radar_calibration.csv` e `issd_radar_geometry_transitions.csv`, sem alterar seus formatos. Executar testes estáticos: `python -m unittest discover -s tests -v`. Testes reais de execução no BizHawk permanecem necessários.
+
+## Calibração multivariante — v0.15.0
+
+Os oito perfis originais em `STADIUM_CALIBRATION` foram mantidos. A tabela separada `STADIUM_VARIANT_PROFILES` permite manter múltiplas configurações por `Stadium_ID`, identificadas pela combinação de dimensões. A variante observada para o estádio 7 é:
+
+```lua
+[7] = {
+    {id="7_2176x704", length=2176, width=704,
+     min_x=4, max_x=2172, min_y=4, max_y=700,
+     geometry_observed=true, projection_validated=false}
+}
+```
+
+`geometry_observed=true` significa que as dimensões e quatro cantos foram observados. **Não implica** `projection_validated=true`, que exige medições sincronizadas em pixels do radar nativo. Também não altera o `validated=false` do perfil original.
+
+Quando o `Stadium_ID` e as dimensões coincidem com uma variante, a v0.15.0 calcula projeções **experimentais** de bola e jogadores, porém sem desenhá-las no radar e sem preenchê-las nas colunas antigas de projeção ativa, caso `geometry_status` não seja `VALID`. O CSV principal ganhou as colunas finais `variant_id`, `variant_geometry_observed`, `variant_projection_validated`, `variant_pixel_x`, `variant_pixel_y`, `variant_norm_x`, `variant_norm_y`. Assim é possível comparar numericamente a hipótese multivariante com referências manuais antes de autorizá-la visualmente.
+
+O arquivo de descoberta de variantes `issd_radar_geometry_variants.csv` continua registrando ocorrências estáveis em `LIVE`; não promove perfis automaticamente. O rastreamento de transições e a política de bloqueio `geometry_status=VALID` permanecem preservados.
+
+### Validação necessária
+
+Execute `python -m unittest discover -s tests -v` e teste a v0.15.0 no BizHawk. Os testes Python são verificações estruturais; a precisão das projeções variantes depende de referências em pixels nativos sincronizadas com os frames. Não marque `projection_validated=true` apenas por observar quatro escanteios.
