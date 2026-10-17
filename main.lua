@@ -23,6 +23,7 @@ local GoalkeeperDistribution = require("goalkeeper_distribution")
 local Gegenpressing = require("gegenpressing")
 local Possession = require("possession")
 local Telemetry = require("tactical_telemetry")
+local PassInputObserver = require("pass_input_observer")
 local TacticalRadar = require("tactical_radar")
 print("[ISSD] main.lua: modulos carregados")
 print(string.format("[ISSD] versao=%s | telemetria_schema=%s | colunas=%d",Telemetry.VERSION,Telemetry.SCHEMA_VERSION,Telemetry.COLUMN_COUNT))
@@ -112,6 +113,7 @@ function M.run(provider, config)
     assert(emu ~= nil and callable_api(emu.frameadvance)
         and callable_api(emu.framecount),"BizHawk emu API required")
     local bot=M.new(config)
+    local pass_observer=PassInputObserver.new()
     print("[ISSD] main.lua: loop iniciado")
     if provider ~= nil then assert(type(provider)=="function","provider must be a function") end
     local previous_mode
@@ -176,8 +178,17 @@ function M.run(provider, config)
                 end
             end
         end
+        local observed_buttons,button_source
+        if joypad~=nil and callable_api(joypad.get) then
+            local input_ok,read=pcall(joypad.get)
+            if input_ok and type(read)=="table" then
+                observed_buttons=read
+                button_source="joypad.get"
+            end
+        end
+        local observation=pass_observer.update(frame,s,observed_buttons,button_source)
         if telemetry then
-            local wrote,write_error=telemetry.record(frame,s,decision)
+            local wrote,write_error=telemetry.record(frame,s,decision,observation)
             if not wrote and write_error~=last_csv_error then
                 print("[ISSD] ERRO CSV: "..tostring(write_error))
                 last_csv_error=write_error
