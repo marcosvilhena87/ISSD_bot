@@ -141,6 +141,11 @@ function M.run(provider, config)
         else
             decision=bot.update({frame=frame})
         end
+        -- Clear persistent Lua drawings on EVERY frame, including lost/unknown
+        -- possession. Otherwise old pass lines remain visible on BizHawk.
+        if gui~=nil and callable_api(gui.clearGraphics) then
+            gui.clearGraphics()
+        end
         if type(gui)=="table" and callable_api(gui.text) then
             gui.text(4,4,"ISSD main: "..tostring(decision.mode))
         end
@@ -148,7 +153,8 @@ function M.run(provider, config)
         -- Never draw during uncertain possession or invalid geometry.
         if gui ~= nil and callable_api(gui.drawPixel) and
            memory ~= nil and type(s)=="table" and s.active==true and
-           s.possession=="my" then
+           s.possession=="my" and s.ownership_source=="PLAYER_BALL_POSSESSION" and
+           s.carrier_id~=nil then
             local valid,plan=pcall(function()
                 local stadium=memory.read_s16_le(0x0086,"WRAM")
                 local length=memory.read_u16_le(0x12A2,"WRAM")
