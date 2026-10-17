@@ -1,18 +1,16 @@
--- ISSD_bot Radar v0.15.1 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.15.2 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
 local STADIUM, FIELD_LENGTH, FIELD_WIDTH = 0x0086, 0x12A2, 0x12A4
 local GAME_STATE, GAMEPLAY_ACTIVE = 0x00BA, 0x0006
+local CENTER_FIELD_X, CENTER_FIELD_Y = 0x12F2, 0x12D8
 
 -- ETAPA 1: ajuste estes valores para enquadrar o radar nativo.
 local FX, FY, FW, FH = 88, 161, 79, 54
 local SHOW_CORNERS = true   -- quatro cantos MAGENTA, independentes dos offsets
 local AUTO_HIDE_CORNERS = true -- heuristica independente da geometria
-local CORNER_VISIBILITY_MODE = "game_state" -- "game_state", "strict", "always"
--- "game_state": 0..4, independentemente das dimensoes e Gameplay_Active.
--- "strict": tambem exige Gameplay_Active=1; pode ocultar radar visivel.
--- "always": ignora estados; util para diagnostico, respeita SHOW_CORNERS.
+-- Somente geometria carregada; nao depende de Game_State, pausa ou perfil.
 -- ETAPA 2: alinhe jogadores e bola, sem mover os quatro cantos.
 local ORIGIN_X, ORIGIN_Y = 0, 0
 local SCALE_X, SCALE_Y = 1, 1
@@ -382,19 +380,14 @@ while true do
         pending_to_stadium=pending_info and pending_info.to or nil
     })
     local sample = count % SAMPLE_EVERY == 0 or reference_by_frame[frame] ~= nil
-    -- Independente da integridade geometrica: as cruzes servem para calibrar
-    -- inclusive estadios com variantes ainda bloqueadas para entidades.
-    local state_allows_corners = game_state >= 0 and game_state <= 4
-    local radar_likely_visible = state_allows_corners
-    if CORNER_VISIBILITY_MODE == "strict" then
-        radar_likely_visible = state_allows_corners and gameplay_active == 1
-    elseif CORNER_VISIBILITY_MODE == "always" then
-        radar_likely_visible = true
-    elseif CORNER_VISIBILITY_MODE ~= "game_state" then
-        error("CORNER_VISIBILITY_MODE invalido")
-    end
+    -- Centros devem estar dentro das dimensoes carregadas.
+    -- Independente de profile VALID, Game_State ou Gameplay_Active.
+    local center_x, center_y = u16(CENTER_FIELD_X), u16(CENTER_FIELD_Y)
+    local field_loaded = length > 8 and width > 8
+        and center_x > 0 and center_x < length
+        and center_y > 0 and center_y < width
     local corners_visible = SHOW_OVERLAY and SHOW_CORNERS
-        and (not AUTO_HIDE_CORNERS or radar_likely_visible)
+        and (not AUTO_HIDE_CORNERS or field_loaded)
     if corners_visible then
         corner(FX, FY)
         corner(FX + FW, FY)
