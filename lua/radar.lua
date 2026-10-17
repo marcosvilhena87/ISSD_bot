@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.15.5 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.15.6 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -176,7 +176,7 @@ end
 local SAMPLE_EVERY = 10
 -- Foco: "ball"/0, "my"/1..11 ou "cpu"/1..11.
 local TARGET_TEAM, TARGET_NUMBER = "ball", 0
-local FOCUS_ONLY = true   -- ocultar outros marcadores, mas manter CSV completo
+local FOCUS_ONLY = false  -- exibir todos os jogadores e a bola; CSV permanece completo
 local SHOW_TARGET_CROSS = true
 -- Referencias MANUAIS sincronizadas: um registro por frame/alvo.
 -- Substitua pelos frames exatos de savestates e pixels logicos observados.
