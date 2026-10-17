@@ -421,3 +421,14 @@ A partir do bot **v1.12.0**, o console Lua mostra `versao=1.12.0 | telemetria_sc
 ### v1.12.1 — arquivo CSV junto ao script
 
 Para evitar capturar um CSV antigo no diretorio de trabalho do BizHawk, `main.lua` agora grava `issd_tactical_report.csv` **na mesma pasta do proprio `main.lua`** quando o caminho do script puder ser identificado. O console exibe `arquivo principal:` e `caminho CSV:` antes de iniciar o relatorio, bem como a versao **1.12.1**, esquema **2**, **32 colunas**. Se o caminho nao puder ser identificado, usa o diretorio de trabalho como alternativa. A cada nova inicializacao o CSV no destino e sobrescrito. Para confirmar a versao, encerre a instancia antiga no Lua Console, rode `git pull --ff-only origin main`, abra novamente o script e procure `[ISSD] caminho CSV:`.
+
+
+## Tiki-taka sequencial v1.13.0 (um jogador controlavel por vez)
+
+A v1.13.0 integra `lua/sequential_tiki_taka.lua` ao `main.lua`. O planejamento nao tenta controlar companheiros simultaneamente: examina passes curtos disponiveis, sugere uma conducao do portador em **oito direcoes** quando nao ha passe seguro, e simula uma possivel segunda ligacao (`triangle`). Todos os alvos sao indicacoes, **sem `joypad.set`**.
+
+Estados previstos: `PASS_READY` (exposto no coordenador como `TIKI_TAKA`), `DRIBBLE`, `HOLD`, `WAIT_RECEIVE` e `REPLAN`. Para iniciar `WAIT_RECEIVE`, um controlador futuro deve chamar `confirm_pass(target_id, frame)` **somente apos verificar que um passe real comecou**. Sem emissao de comandos, a confirmacao nao ocorre automaticamente e esses estados nao necessariamente aparecerao no log. A recepcao e confirmada apenas pela identificacao de posse fisica do novo jogador; ao receber, o plano e recalculado. Quando a posse e incerta, permanece o bloqueio conservador.
+
+O radar desenha em amarelo o trecho de conducao sugerido, em verde os passes aprovados e em laranja a melhor rejeicao. A telemetria passou ao **schema 3 com 39 colunas**, preservando os campos anteriores e acrescentando `action`, `dribble_x`, `dribble_y`, `open_passes`, `triangle_via`, `triangle_next` e `triangle_score`. O posicionamento e geometricamente hipotetico: executar um deslocamento real exige calibrar velocidade, comando direcional, selecao do jogador e validacao de seguranca no BizHawk.
+
+Teste isolado: `lua tests/test_sequential_tiki_taka.lua`. Os testes foram adicionados, mas a execucao no BizHawk ainda precisa ser validada.
