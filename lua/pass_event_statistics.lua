@@ -8,7 +8,7 @@ end
 function M.new(path)
  local f,err=io.open(path or "issd_pass_events.csv","w")
  if not f then return nil,err end
- f:write("frame,pass_id,dominant,receiver,recommended,outcome,release_delay,dx,dy,direction_receiver_count,direction_total\n")
+ f:write("frame,pass_id,dominant,receiver,recommended,outcome,release_delay,dx,dy,direction_receiver_count,direction_total,pass_class,candidate_x,candidate_y,candidate_dx,candidate_dy,candidate_clearance\n")
  f:flush()
  local stats={}
  local function record(frame,o)
@@ -16,15 +16,18 @@ function M.new(path)
   if o.pass_event~="TEAMMATE_POSSESSION" and o.pass_event~="OBSERVATION_TIMEOUT" then return false end
   local dir=o.pass_dominant or "UNKNOWN"
   local receiver=o.pass_receiver or "UNCONFIRMED"
-  local k=dir.."|"..tostring(receiver)
+  local cls=o.pass_class or "OTHER"
+  local k=cls.."|"..dir.."|"..tostring(receiver)
   stats[k]=(stats[k] or 0)+1
   local total=0
   for name,n in pairs(stats) do
-   if name:sub(1,#dir+1)==dir.."|" then total=total+n end
+   if name:sub(1,#cls+#dir+2)==cls.."|"..dir.."|" then total=total+n end
   end
   local fields={frame,o.pass_id,dir,receiver,o.pass_recommended,o.pass_outcome,
-   o.pass_release_delay,o.pass_dx,o.pass_dy,stats[k],total}
-  for i=1,11 do fields[i]=csv(fields[i]) end
+   o.pass_release_delay,o.pass_dx,o.pass_dy,stats[k],total,
+   cls,o.pass_candidate_x,o.pass_candidate_y,o.pass_candidate_dx,
+   o.pass_candidate_dy,o.pass_candidate_clearance}
+  for i=1,17 do fields[i]=csv(fields[i]) end
   f:write(table.concat(fields,","),"\n")
   f:flush()
   return true
