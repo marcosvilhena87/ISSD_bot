@@ -479,3 +479,12 @@ A legenda `Control Pad + B` **nao exige pressionamento simultaneo**. Uma alterna
 O planejador do goleiro inclui `input_sequence` nas opcoes internas com 1 frame de preparacao e direcional mantido. Isso **nao significa que o bot executou o passe**, nem que a preparacao de 1 frame e ideal; servira de parametro inicial para futuros experimentos. As opcoes continuam `UNCALIBRATED`. Nenhum comando `joypad` e enviado. O CSV mantem o schema 7 e 88 colunas: o campo `command` continua representando a notacao nominal (ex. `Right+B`), **nao uma garantia de simultaneidade**. A retencao da direcao depois de soltar o direcional e a influencia do numero de frames requerem verificacao no BizHawk.
 
 Teste: `lua tests/test_directional_pass_calibration.lua`.
+
+
+## v1.15.0 — Observacao passiva do direcional e do B
+
+O modulo `lua/pass_input_observer.lua` consulta `joypad.get()` no loop, quando a API esta disponivel. Detecta a borda de subida do B; distingue `SIMULTANEOUS`, `HELD_SEQUENTIAL`, `RELEASED_THEN_B` e `B_ONLY`. O intervalo de preparacao e medido somente quando o direcional continua pressionado. A retencao de direcao apos soltura nao foi comprovada. Entradas indisponiveis sao marcadas `UNAVAILABLE` (nao equivalem a botoes soltos).
+
+Cada borda de B inicia uma observacao de ate 120 frames com deslocamento da bola e eventual identificacao de um novo portador da mesma equipe. `TEAMMATE_POSSESSION` representa associacao temporal, nao prova causal de passe; `OBSERVATION_TIMEOUT` fecha uma observacao sem recepcao identificada. Saltos de frames e savestates reinicializam o observador. `joypad.get()` pode representar entradas emuladas: verifique se captura os botoes manuais no seu BizHawk/core.
+
+CSV: v1.15.0, schema 8, 101 colunas (as 88 anteriores preservadas). Novas: `input_status,input_source,input_direction,input_b,pass_id,pass_event,pass_kind,pass_direction,pass_lead_frames,pass_dx,pass_dy,pass_receiver,pass_note`. O bot permanece estritamente somente leitura, sem `joypad.set`; nao foi feita calibracao conclusiva ou selecao automatica de passe. Testes: `lua tests/test_pass_input_observer.lua` e `lua tests/test_tactical_telemetry.lua`.
