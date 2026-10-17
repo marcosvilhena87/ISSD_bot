@@ -183,7 +183,7 @@ end
 -- Registra somente alteracoes, com snapshot inicial para dar contexto.
 local transitions, transitions_err = io.open(TRANSITIONS_CSV_NAME, "w")
 if not transitions then error("Falha ao criar CSV de transicoes: " .. tostring(transitions_err)) end
-transitions:write("frame,event,changed_fields,previous_frame,previous_stadium_id,stadium_id,previous_game_state,game_state,previous_field_length,field_length,previous_field_width,field_width,previous_geometry_status,geometry_status,previous_game_state_kind,game_state_kind,previous_gameplay_active,gameplay_active\\n")
+transitions:write("frame,event,changed_fields,previous_frame,previous_stadium_id,stadium_id,previous_game_state,game_state,previous_field_length,field_length,previous_field_width,field_width,previous_geometry_status,geometry_status,previous_game_state_kind,game_state_kind,previous_gameplay_active,gameplay_active\n")
 transitions:flush()
 local previous_geometry = nil
 local function track_geometry(current)
@@ -216,7 +216,7 @@ local function track_geometry(current)
             prev and prev.geometry_status or "", current.geometry_status,
             prev and prev.game_state_kind or "", current.game_state_kind,
             prev and prev.gameplay_active or "", current.gameplay_active
-        }, ",") .. "\\n")
+        }, ",") .. "\n")
         transitions:flush()
     end
     previous_geometry = current
