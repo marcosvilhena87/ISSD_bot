@@ -1,7 +1,8 @@
 -- Tactical telemetry for ISSD; no game controls.
 local M={}
-M.VERSION="1.12.0"
+M.VERSION="1.12.1"
 M.SCHEMA_VERSION=2
+M.COLUMN_COUNT=32
 local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y,pass_safe,pass_too_close,pass_too_far,pass_blocked,best_rejected_id,best_rejected_reason,best_rejected_clearance,support_move_id,support_move_x,support_move_y,bot_version,schema_version"
 local function csv(v)
  if v==nil then return "" end
