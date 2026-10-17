@@ -1,9 +1,9 @@
 -- Tactical telemetry for ISSD; no game controls.
 local M={}
-M.VERSION="1.14.2"
-M.SCHEMA_VERSION=7
-M.COLUMN_COUNT=88
-local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y,pass_safe,pass_too_close,pass_too_far,pass_blocked,best_rejected_id,best_rejected_reason,best_rejected_clearance,support_move_id,support_move_x,support_move_y,bot_version,schema_version,action,dribble_x,dribble_y,open_passes,triangle_via,triangle_next,triangle_score,pass_type,pass_score,pass_clearance,pass_progression,near1_id,near1_carrier_distance,near1_ball_distance,near1_reason,near1_blocker_id,near2_id,near2_carrier_distance,near2_ball_distance,near2_reason,near2_blocker_id,near3_id,near3_carrier_distance,near3_ball_distance,near3_reason,near3_blocker_id,gk1_id,gk1_ball_distance,gk1_keeper_distance,gk1_clearance,gk1_blocker_id,gk2_id,gk2_ball_distance,gk2_keeper_distance,gk2_clearance,gk2_blocker_id,gk3_id,gk3_ball_distance,gk3_keeper_distance,gk3_clearance,gk3_blocker_id,gk1_direction,gk1_command,gk1_dx,gk1_dy,gk1_calibration_status,gk2_direction,gk2_command,gk2_dx,gk2_dy,gk2_calibration_status,gk3_direction,gk3_command,gk3_dx,gk3_dy,gk3_calibration_status"
+M.VERSION="1.15.0"
+M.SCHEMA_VERSION=8
+M.COLUMN_COUNT=101
+local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y,pass_safe,pass_too_close,pass_too_far,pass_blocked,best_rejected_id,best_rejected_reason,best_rejected_clearance,support_move_id,support_move_x,support_move_y,bot_version,schema_version,action,dribble_x,dribble_y,open_passes,triangle_via,triangle_next,triangle_score,pass_type,pass_score,pass_clearance,pass_progression,near1_id,near1_carrier_distance,near1_ball_distance,near1_reason,near1_blocker_id,near2_id,near2_carrier_distance,near2_ball_distance,near2_reason,near2_blocker_id,near3_id,near3_carrier_distance,near3_ball_distance,near3_reason,near3_blocker_id,gk1_id,gk1_ball_distance,gk1_keeper_distance,gk1_clearance,gk1_blocker_id,gk2_id,gk2_ball_distance,gk2_keeper_distance,gk2_clearance,gk2_blocker_id,gk3_id,gk3_ball_distance,gk3_keeper_distance,gk3_clearance,gk3_blocker_id,gk1_direction,gk1_command,gk1_dx,gk1_dy,gk1_calibration_status,gk2_direction,gk2_command,gk2_dx,gk2_dy,gk2_calibration_status,gk3_direction,gk3_command,gk3_dx,gk3_dy,gk3_calibration_status,input_status,input_source,input_direction,input_b,pass_id,pass_event,pass_kind,pass_direction,pass_lead_frames,pass_dx,pass_dy,pass_receiver,pass_note"
 local function csv(v)
  if v==nil then return "" end
  local s=tostring(v)
@@ -27,7 +27,7 @@ function M.new(path,opts)
  local flush_every=opts.flush_every or 60
  assert(type(flush_every)=="number" and flush_every>=1,"invalid flush_every")
  local closed=false
- local function record(frame,s,result)
+ local function record(frame,s,result,observation)
    if closed then return false,"closed" end
    if last_frame and frame<last_frame then epoch=epoch+1 end
    last_frame=frame
@@ -101,9 +101,14 @@ function M.new(path,opts)
          values[k+5]=option.status
       end
    end
+   observation=type(observation)=="table" and observation or {}
+   local extra={"input_status","input_source","input_direction","input_b","pass_id",
+     "pass_event","pass_kind","pass_direction","pass_lead_frames",
+     "pass_dx","pass_dy","pass_receiver","pass_note"}
+   for i,key in ipairs(extra) do values[88+i]=observation[key] end
    local parts={}
    -- ipairs stops at the first nil; always serialize the whole schema.
-   for i=1,88 do parts[i]=csv(values[i]) end
+   for i=1,M.COLUMN_COUNT do parts[i]=csv(values[i]) end
    local ok,werr=file:write(table.concat(parts,","),"\n")
    if not ok then return false,werr end
    count=count+1
