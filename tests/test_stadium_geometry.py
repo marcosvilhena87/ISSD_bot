@@ -77,6 +77,18 @@ class StadiumGeometryTests(unittest.TestCase):
         self.assertIn('transitions:flush()', self.source)
         self.assertIn('previous_geometry = current', self.source)
 
+    def test_transition_classifier_contract(self):
+        self.assertIn('local function classify_transition(', self.source)
+        self.assertIn('PENDING_MAX_FRAMES = 1200', self.source)
+        self.assertIn('PERSISTENT_LIVE_FRAMES = 120', self.source)
+        self.assertIn('classification = "STADIUM_CHANGE_PENDING"', self.source)
+        self.assertIn('classification = "PERSISTENT_DIMENSION_MISMATCH"', self.source)
+        self.assertIn('current.transition_status ~= prev.transition_status', self.source)
+        self.assertIn('event = "CLASSIFICATION_CHANGE"', self.source)
+        self.assertIn('transition_status,transition_age_frames,pending_from_stadium,pending_to_stadium', self.source)
+        self.assertIn('local valid_geometry = integrity == "VALID"', self.source)
+        self.assertIn('previous_classification_frame and frame <= previous_classification_frame', self.source)
+
     def test_expected_dimensions_derived_from_profiles(self):
         for stadium, (length, width) in EXPECTED_DIMENSIONS.items():
             bounds = self.profiles[stadium]
