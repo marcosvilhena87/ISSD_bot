@@ -132,6 +132,10 @@ class StadiumGeometryTests(unittest.TestCase):
         self.assertIn('local valid_geometry = integrity == "VALID"', self.source)
         self.assertEqual(set(self.profiles), set(range(8)))
 
+    def test_players_visible_by_default(self):
+        self.assertIn('local FOCUS_ONLY = false', self.source)
+        self.assertIn('if enabled and (not FOCUS_ONLY or is_target) then', self.source)
+
     def test_configurable_team_colors(self):
         self.assertIn('MY_COLOR, CPU_COLOR, BALL_COLOR = "red", "cyan", "yellow"', self.source)
         self.assertIn('observe("my", i + 1, x, y, MY_COLOR)', self.source)
