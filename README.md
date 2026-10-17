@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.9.0
+# ISSD_bot — Radar v0.10.0
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -74,7 +74,7 @@ As colunas antigas `norm_x/y`, `pixel_x/y` e `inside_bounds` continuam descreven
 
 Não altera a memória nem envia inputs. O código foi publicado, mas ainda requer execução no BizHawk para validar esta versão.
 
-## Comparação dos três modelos — v0.9.0
+## Comparação dos três modelos — v0.10.0
 
 | Modelo | Dados utilizados | Histórico de validação |
 | --- | --- | --- |
@@ -84,7 +84,7 @@ Não altera a memória nem envia inputs. O código foi publicado, mas ainda requ
 
 A regra geométrica produz os mesmos **limites min/max** que os oito perfis atuais; isso não significa que o modelo reproduza com exatidão as posições nativas. Também não reproduz a assimetria da posição da bola nos cantos superiores (X=4 ou L-8) e inferiores (X=8 ou L-4); os limites são extremos globais observados.
 
-As colunas anteriores do CSV são preservadas. A v0.9.0 acrescenta `geometric_norm_x/y`, `geometric_pixel_x/y`, `geometric_min_x/max_x/min_y/max_y` e `geometric_minus_empirical_pixel_x/y`. Essas diferenças **não** são erros contra o radar nativo.
+As colunas anteriores do CSV são preservadas. A v0.10.0 acrescenta `geometric_norm_x/y`, `geometric_pixel_x/y`, `geometric_min_x/max_x/min_y/max_y` e `geometric_minus_empirical_pixel_x/y`. Essas diferenças **não** são erros contra o radar nativo.
 
 ### Teste de regressão
 
@@ -97,3 +97,28 @@ python -m unittest discover -s tests -v
 O teste `tests/test_stadium_geometry.py` lê os oito perfis reais do Lua, verifica presença, `validated=false` e igualdade dos limites com a fórmula para as dimensões medidas. Não testa a execução no BizHawk, a correspondência visual no radar nativo ou a exatidão dos pixels do jogo.
 
 **Atenção:** se `Stadium_ID` e dimensões WRAM forem inconsistentes durante transições de partida, os modelos `empirical` e `geometric` podem divergir. Essa diferença é informativa; não marca nenhum perfil como validado automaticamente.
+
+## Integridade geométrica — v0.10.0
+
+O radar agora confere **em todo frame** se `Stadium_ID` (WRAM 0x0086) e as dimensões `field_length`/`field_width` são coerentes com o perfil individual cadastrado. As dimensões esperadas são recuperadas dos perfis: `expected_field_length = max_x - min_x + 8` e `expected_field_width = max_y - min_y + 8`.
+
+| geometry_status | Condição | Renderizar entidades? |
+| --- | --- | --- |
+| `VALID` | Estádio conhecido e ambas dimensões correspondem exatamente | Sim |
+| `ZERO_DIMENSIONS` | Uma ou ambas dimensões zeradas | Não |
+| `DIMENSION_MISMATCH` | Estádio conhecido, mas dimensões não correspondem ao perfil | Não |
+| `UNKNOWN_STADIUM` | Estádio sem perfil cadastrado | Não |
+
+Política **fail-closed**: o script não projeta nenhum dos três modelos durante estados inválidos, mesmo que haja um perfil empírico salvo. Os quatro marcadores magenta de enquadramento, independentes da geometria de jogo, continuam visíveis. As leituras WRAM (posição e dimensões) permanecem integralmente no CSV; os campos de coordenadas projetadas ficam vazios e `projection_model="blocked"`.
+
+As quatro novas colunas são: `geometry_status`, `geometry_valid` (1/0), `expected_field_length` e `expected_field_width`. Nos frames inválidos, `calibration_status` registra o motivo e **não calcula erro** nem atribui `MATCHED`, mesmo com referência manual anotada.
+
+### Testes
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Os testes estáticos verificam oito perfis, dimensões esperadas e presença dos bloqueios no código-fonte. Não substituem um teste dinâmico de execução no BizHawk, que continua pendente.
+
+**Compatibilidade:** as colunas antigas permanecem na mesma ordem e as quatro colunas novas são acrescentadas no final. Em estados suspeitos o radar não reutiliza dimensões do frame anterior nem tenta adivinhar o estádio.
