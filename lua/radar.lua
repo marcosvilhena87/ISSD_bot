@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.15.3 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.15.4 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -47,6 +47,7 @@ local GAME_STATE_KIND = {
 -- Medidas de cada estadio derivadas dos perfis empiricos observados.
 -- Classificacao conservadora: nao desenhar objetos com geometria suspeita.
 local function geometry_status(stadium, length, width, game_state)
+    if stadium == 8 then return "PRE_MATCH_COIN_TOSS", nil, nil end
     if length == 0 or width == 0 then
         if game_state == 6 then
             return "PERIOD_ENDED", nil, nil
@@ -386,9 +387,10 @@ while true do
         and center_x > 0 and center_x < length
         and center_y > 0 and center_y < width
     -- As cruzes aceitam variantes observadas, mas nao liberam entidades.
-    local corners_geometry_known = valid_geometry
-        or (variant_profile ~= nil and variant_profile.geometry_observed == true)
+    local corners_geometry_known = stadium ~= 8 and (valid_geometry
+        or (variant_profile ~= nil and variant_profile.geometry_observed == true))
     local corners_visible = SHOW_OVERLAY and SHOW_CORNERS
+        and stadium ~= 8
         and (not AUTO_HIDE_CORNERS or (field_loaded and corners_geometry_known))
     if corners_visible then
         corner(FX, FY)
