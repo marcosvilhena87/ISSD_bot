@@ -36,4 +36,22 @@ sample.cpu_players={}
 sample.my_players[2].id=6
 local wrong_id=assert(GK.plan(sample))
 assert(wrong_id.target_id==nil)
+-- GK5: reproduce the measured 6381 geometry from the CSV.
+local s5={active=true,possession="my",ownership_source="PLAYER_BALL_POSSESSION",
+ carrier_id=1,ball={x=25,y=349},
+ my_players={{id=1,x=20,y=349,is_goalkeeper=true},
+ {id=4,x=371,y=386},{id=3,x=372,y=259},{id=5,x=435,y=497}},
+ cpu_players={}}
+local p5=assert(GK.plan(s5))
+assert(p5.target_id==5 and p5.reason=="provisional_gk5_geometry_match")
+assert(p5.calibration_status=="PROVISIONAL_OBSERVED")
+assert(p5.options[3].id==5 and p5.options[3].status=="PROVISIONAL_OBSERVED")
+s5.my_players[4].x=520
+assert(GK.plan(s5).target_id==4) -- existing GK4 profile preserved
+s5.my_players[4].x=435
+s5.cpu_players={{id=99,x=210,y=415}}
+assert(GK.plan(s5).target_id~=5) -- blocked GK5 corridor
+s5.cpu_players={}
+s5.my_players[4].id=6
+assert(GK.plan(s5).target_id~=5)
 print("goalkeeper distribution tests passed")
