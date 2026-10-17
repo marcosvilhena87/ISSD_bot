@@ -19,6 +19,12 @@ local function similar5(o)
    math.abs(o.dx-SAMPLE5.dx)<=30 and math.abs(o.dy-SAMPLE5.dy)<=25 and
    math.abs(o.distance-SAMPLE5.distance)<=35 and o.clearance>=235
 end
+-- ID2 receipt at (540,88) after B from (21,347); origin target unknown.
+local function similar2(o,ball)
+ return o.id==2 and math.abs(ball.x-21)<=25 and math.abs(ball.y-347)<=25
+ and math.abs(o.dx-519)<=60 and math.abs(o.dy+259)<=60
+ and o.direction=="Up+Right" and o.clearance>=200
+end
 local function finite(n) return type(n)=="number" and n==n and n~=math.huge and n~=-math.huge end
 local function point(p) return type(p)=="table" and finite(p.x) and finite(p.y) end
 local function distance(a,b)
@@ -69,10 +75,19 @@ function M.plan(s)
  local nearest={}
  for i=1,math.min(3,#options) do nearest[i]=options[i] end
  local selected
+ for _,o in ipairs(options) do
+  if similar2(o,s.ball) then
+   selected=o
+   local found=false
+   for _,n in ipairs(nearest) do if n.id==2 then found=true end end
+   if not found then nearest[#nearest+1]=o end
+   break
+  end
+ end
  -- Give the new observed ID5 profile precedence when both profiles match:
  -- a previous GK4 recommendation in this exact geometry was received by ID5.
- for _,o in ipairs(nearest) do
-  if similar5(o) then selected=o;break end
+ if not selected then
+  for _,o in ipairs(nearest) do if similar5(o) then selected=o;break end end
  end
  if not selected then
   for _,o in ipairs(nearest) do
@@ -81,7 +96,7 @@ function M.plan(s)
  end
  if selected then selected.status="PROVISIONAL_OBSERVED" end
  local reason=selected and
-   (selected.id==5 and "provisional_gk5_geometry_match" or "provisional_gk4_geometry_match")
+   (selected.id==2 and "provisional_gk2_reception_zone" or selected.id==5 and "provisional_gk5_geometry_match" or "provisional_gk4_geometry_match")
    or "distribution_requires_calibration"
  return {mode="GK_DISTRIBUTION",
    reason=reason,
