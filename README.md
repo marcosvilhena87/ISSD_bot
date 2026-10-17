@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.15.1
+# ISSD_bot — Radar v0.15.2
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -221,27 +221,23 @@ O arquivo de descoberta de variantes `issd_radar_geometry_variants.csv` continua
 
 Execute `python -m unittest discover -s tests -v` e teste a v0.15.0 no BizHawk. Os testes Python são verificações estruturais; a precisão das projeções variantes depende de referências em pixels nativos sincronizadas com os frames. Não marque `projection_validated=true` apenas por observar quatro escanteios.
 
-## Ocultação automática das marcas dos cantos
+## Marcas magenta somente quando o campo estiver carregado — v0.15.2
 
-A configuração `AUTO_HIDE_CORNERS=true` usa, por padrão, apenas `Game_State` entre 0 e 4 para mostrar as cruzes. **Pausa, `Gameplay_Active` e a validade da geometria não são critérios de ocultação nesse modo.** As cruzes são ocultadas em `POST_GOAL=5`, `PERIOD_TIME_UP=6` e estados não mapeados; confira os modos disponíveis na seção v0.15.1 abaixo.
+As quatro cruzes de enquadramento são desenhadas quando `SHOW_OVERLAY=true`, `SHOW_CORNERS=true` e os dados de campo da WRAM estão carregados. A configuração padrão é `AUTO_HIDE_CORNERS=true`.
 
-**Limitação:** isso é uma *heurística*, não uma leitura comprovada de um bit de visibilidade do radar nativo. Pode ocultar as cruzes mesmo que o radar esteja visível ou exibi-las em alguma tela transitória. Para retornar ao comportamento anterior, ajuste `AUTO_HIDE_CORNERS=false`. A opção afeta apenas as quatro cruzes, não a coleta CSV nem a regra existente para desenhar entidades.
+São lidos quatro valores u16 little-endian por frame:
 
-## Visibilidade das cruzes independente da geometria — v0.15.1
+| Endereço | Campo |
+| --- | --- |
+| `0x12A2` | `field_length` |
+| `0x12A4` | `field_width` |
+| `0x12F2` | `center_field (x)` |
+| `0x12D8` | `center_field (y)` |
 
-Corrigido o falso negativo observado: o radar nativo estava visível, mas as cruzes magenta não apareciam porque a geometria da variante do estádio 7 era classificada como inválida. Agora **a condição `valid_geometry` não controla as cruzes**, continuando a controlar exclusivamente o desenho das entidades.
+A condição para o desenho é comprimento e largura maiores que 8, centro X estritamente entre 0 e comprimento, e centro Y estritamente entre 0 e largura. Isso evita cruzes em telas com dimensões zeradas ou centro inconsistente.
 
-```lua
-local SHOW_CORNERS = true
-local AUTO_HIDE_CORNERS = true
-local CORNER_VISIBILITY_MODE = "game_state"
-```
+**A pausa não oculta as cruzes:** o desenho delas não depende mais de `Game_State`, `Gameplay_Active` ou `geometry_status=VALID`. Portanto, variantes ainda não validadas, como o Stadium_ID 7 com dimensões 2176 × 704, continuam aptas a mostrar as cruzes quando os quatro valores estão carregados. O bloqueio das projeções das entidades em geometria inválida permanece inalterado.
 
-- `"game_state"` (padrão): mostra as cruzes durante `Game_State=0..4`, independente das dimensões e de `Gameplay_Active`. Oculta em `POST_GOAL=5`, `PERIOD_TIME_UP=6` e estados desconhecidos.
-- `"strict"`: exige também `Gameplay_Active=1`. É mais conservador e pode ocultar cruzes quando o radar nativo está visível.
-- `"always"`: mostra as cruzes independentemente do estado, útil para diagnóstico.
-- `AUTO_HIDE_CORNERS=false`: desativa a ocultação automática.
+O CSV principal mantém `corners_visible` e `corner_visibility_mode`; este último recebe o valor `field_loaded`. Definir `AUTO_HIDE_CORNERS=false` restaura o desenho incondicional das cruzes (desde que `SHOW_OVERLAY` e `SHOW_CORNERS` estejam ativos).
 
-As colunas `corners_visible` (0/1) e `corner_visibility_mode` foram adicionadas ao final de `issd_radar_calibration.csv`. Elas registram a decisão do script, **não uma leitura direta da visibilidade do radar nativo**.
-
-**Limitação:** não foi encontrada nem comprovada uma flag de WRAM para presença real do radar. O modo padrão pode deixar cruzes visíveis durante pausas/replays se `Game_State` estiver em 0..4; somente identificar uma flag de renderização confiável permitirá correspondência exata. O script mantém bloqueadas as projeções com `geometry_status` inválido.
+**Limitação:** dimensões e centro carregados não são uma prova de que o radar nativo esteja sendo renderizado: em algumas telas o jogo pode manter esses valores na WRAM. O comportamento solicitado deve ser confirmado no BizHawk, inclusive em pausa, menu e replay.
