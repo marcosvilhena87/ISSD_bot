@@ -136,6 +136,7 @@ class StadiumGeometryTests(unittest.TestCase):
         self.assertIn('local all_addresses_zero = bx == 0 and by == 0\n        and length == 0', self.source)
         self.assertNotIn('by == 0 and stadium == 0', self.source)
         self.assertIn('and length == 0 and width == 0 and center_x == 0 and center_y == 0', self.source)
+        self.assertIn('if all_addresses_zero then gui.clearGraphics() end', self.source)
         self.assertIn('and not all_addresses_zero', self.source)
         self.assertIn('SHOW_OVERLAY and not all_addresses_zero and valid_geometry', self.source)
         self.assertIn('observe("ball", 0, bx, by, BALL_COLOR)', self.source)
