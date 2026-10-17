@@ -24,7 +24,7 @@ local Possession = require("possession")
 local Telemetry = require("tactical_telemetry")
 local TacticalRadar = require("tactical_radar")
 print("[ISSD] main.lua: modulos carregados")
-print(string.format("[ISSD] versao=%s | telemetria_schema=%s | colunas=32",Telemetry.VERSION,Telemetry.SCHEMA_VERSION))
+print(string.format("[ISSD] versao=%s | telemetria_schema=%s | colunas=%d",Telemetry.VERSION,Telemetry.SCHEMA_VERSION,Telemetry.COLUMN_COUNT))
 local function callable_api(v)
     local t=type(v)
     return t=="function" or t=="userdata"
@@ -102,9 +102,12 @@ function M.run(provider, config)
     if provider ~= nil then assert(type(provider)=="function","provider must be a function") end
     local previous_mode
     local last_error
-    local telemetry, telemetry_error=Telemetry.new("issd_tactical_report.csv", {flush_every=60})
+    local report_path=(script_dir or "./").."issd_tactical_report.csv"
+    print("[ISSD] arquivo principal: "..tostring(source))
+    print("[ISSD] caminho CSV: "..report_path)
+    local telemetry, telemetry_error=Telemetry.new(report_path, {flush_every=60})
     if telemetry then
-        print(string.format("[ISSD] Telemetria: issd_tactical_report.csv | bot=%s | schema=%s | colunas=32",Telemetry.VERSION,Telemetry.SCHEMA_VERSION))
+        print(string.format("[ISSD] Telemetria ativa: %s | bot=%s | schema=%s | colunas=%d",report_path,Telemetry.VERSION,Telemetry.SCHEMA_VERSION,Telemetry.COLUMN_COUNT))
     else
         print("[ISSD] ERRO CSV: "..tostring(telemetry_error))
     end
