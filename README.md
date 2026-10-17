@@ -277,3 +277,29 @@ O padrão `FOCUS_ONLY=false` permite desenhar simultaneamente os 11 marcadores d
 ## Overlay oculto com sete leituras WRAM zeradas — v0.15.7
 
 Quando **todas** as seis leituras abaixo são simultaneamente zero, nenhum marcador é desenhado (cruzes magenta, jogadores, bola ou mira), inclusive com `AUTO_HIDE_CORNERS=false`: `Ball_x` (0x042A), `Ball_y` (0x042C), `field_length` (0x12A2), `field_width` (0x12A4), `center_field_x` (0x12F2) e `center_field_y` (0x12D8). O `Stadium_ID` (0x0086) continua sendo lido para a calibração, mas não participa da condição de ocultação. Quando esses seis valores estão zerados, `gui.clearGraphics()` remove também os desenhos Lua remanescentes da tela. Essa chamada limpa a superfície gráfica Lua compartilhada, podendo afetar outros overlays; execute apenas uma instância do radar no Lua Console. Para visualizar a mudança, recarregue o script e avance pelo menos um frame; não é possível atualizar o overlay com o emulador totalmente pausado. Os relatórios continuam sendo coletados. A regra é de **todos zerados**, não de algum endereço isolado zerado; ela não garante ocultação em menus que mantenham valores residuais.
+
+
+## Gegenpressing experimental (planejador tatico)
+
+O modulo `lua/gegenpressing.lua` implementa uma maquina de estados **sem escrever controles** no BizHawk. A versao atual de `lua/radar.lua` continua somente leitura; nenhuma integracao automatica com joypad ou detector de posse foi presumida.
+
+Interface:
+
+```lua
+local Gegenpressing = require("gegenpressing")
+local plan = Gegenpressing.new({window=90, radius=260, max_pressers=2})
+local decision = plan.update({
+    frame=1234, active=true, possession="cpu",
+    ball={x=800,y=320},
+    own_goal={x=0,y=320},
+    my_players={{id=1,x=830,y=320},{id=2,x=760,y=350}}
+})
+-- decision.mode: INACTIVE, NORMAL, GEGENPRESS, RECOVER_SHAPE
+-- decision.pressers: {id, role, target_x, target_y, distance}
+```
+
+O integrador precisa alimentar **a cada frame** `possession` confirmado ("my", "cpu" ou "loose"), coordenadas das entidades e `active=true` apenas em jogo válido. Os identificadores de jogador devem ser estaveis. A perda `my -> cpu/loose` inicia uma janela de pressao; o mais proximo vai na bola e o segundo fecha a linha para `own_goal`. Goleiros marcados `is_goalkeeper=true` sao excluidos. Fora do raio, na expiracao da janela ou em estado desconhecido, nao gera alvo de pressao. Reset de timeline e estado invalido impedem falsas transicoes.
+
+**Nao ha comando de movimento nem de desarme** neste modulo. O controlador do bot deve traduzir as decisoes para a API do BizHawk somente apos validar selecao de jogadores, posse e direcao do campo. Os offsets existentes no radar informam coordenadas, mas **nao comprovam posse de bola**.
+
+Testes Lua (requer interpretador Lua instalado): `lua tests/test_gegenpressing.lua`. Estes testes nao foram executados no BizHawk.
