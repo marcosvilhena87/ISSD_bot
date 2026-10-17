@@ -139,14 +139,15 @@ function M.run(provider, config)
                 last_csv_error=write_error
             end
         end
-        if decision.mode~=previous_mode then
+        local mode_changed=decision.mode~=previous_mode
+        if mode_changed then
             print(string.format("[ISSD][%d] %s",frame,decision.mode))
             previous_mode=decision.mode
         end
         if type(ISSD_TACTICAL_OBSERVER)=="function" then
             ISSD_TACTICAL_OBSERVER(decision,s)
         end
-        if telemetry and previous_mode~=decision.mode then telemetry.flush() end
+        if telemetry and mode_changed then telemetry.flush() end
         emu.frameadvance()
     end
 end
