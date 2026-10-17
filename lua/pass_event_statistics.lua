@@ -24,7 +24,7 @@ function M.new(path)
   end
   local fields={frame,o.pass_id,dir,receiver,o.pass_recommended,o.pass_outcome,
    o.pass_release_delay,o.pass_dx,o.pass_dy,stats[k],total}
-  for i=1,#fields do fields[i]=csv(fields[i]) end
+  for i=1,11 do fields[i]=csv(fields[i]) end
   f:write(table.concat(fields,","),"\n")
   f:flush()
   return true
