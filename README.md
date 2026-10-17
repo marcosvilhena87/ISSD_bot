@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.15.2
+# ISSD_bot — Radar v0.15.3
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -241,3 +241,11 @@ A condição para o desenho é comprimento e largura maiores que 8, centro X est
 O CSV principal mantém `corners_visible` e `corner_visibility_mode`; este último recebe o valor `field_loaded`. Definir `AUTO_HIDE_CORNERS=false` restaura o desenho incondicional das cruzes (desde que `SHOW_OVERLAY` e `SHOW_CORNERS` estejam ativos).
 
 **Limitação:** dimensões e centro carregados não são uma prova de que o radar nativo esteja sendo renderizado: em algumas telas o jogo pode manter esses valores na WRAM. O comportamento solicitado deve ser confirmado no BizHawk, inclusive em pausa, menu e replay.
+
+## Cruzes com geometria reconhecida — v0.15.3
+
+As cruzes magenta exigem `field_loaded` (comprimento, largura e centro coerentes) **e** geometria reconhecida: `geometry_status=VALID` para o perfil original **ou** uma entrada de `STADIUM_VARIANT_PROFILES` correspondente às dimensões e com `geometry_observed=true`. A regra é independente de `Game_State` e `Gameplay_Active`: pausa não as oculta se a geometria permanecer carregada e reconhecida.
+
+A variante 2176 × 704 do estádio 7 pode exibir as cruzes, mas **não libera projeções dos jogadores**: para isso continua exigido `geometry_status=VALID`. A coluna `corner_visibility_mode` do CSV passa a valer `known_geometry`.
+
+Essa heurística **não identifica diretamente** a renderização nativa: menus podem preservar na WRAM uma geometria reconhecida, inclusive centro coerente. Nessa situação, as cruzes ainda podem aparecer; seria necessária uma flag de tela/radar para distinguir com garantia. `AUTO_HIDE_CORNERS=false` desativa a condição automática.
