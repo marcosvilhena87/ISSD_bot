@@ -8,6 +8,7 @@ local GAME_STATE, GAMEPLAY_ACTIVE = 0x00BA, 0x0006
 -- ETAPA 1: ajuste estes valores para enquadrar o radar nativo.
 local FX, FY, FW, FH = 88, 161, 79, 54
 local SHOW_CORNERS = true   -- quatro cantos MAGENTA, independentes dos offsets
+local AUTO_HIDE_CORNERS = true -- heuristica de visibilidade do radar nativo
 -- ETAPA 2: alinhe jogadores e bola, sem mover os quatro cantos.
 local ORIGIN_X, ORIGIN_Y = 0, 0
 local SCALE_X, SCALE_Y = 1, 1
@@ -377,7 +378,12 @@ while true do
         pending_to_stadium=pending_info and pending_info.to or nil
     })
     local sample = count % SAMPLE_EVERY == 0 or reference_by_frame[frame] ~= nil
-    if SHOW_OVERLAY and SHOW_CORNERS then
+    -- A WRAM ainda nao oferece uma flag comprovada de radar nativo visivel.
+    -- Evitar cruzes soltas em pause/replay, pos-gol, fim de periodo ou sem campo.
+    local radar_likely_visible = valid_geometry and gameplay_active == 1
+        and game_state >= 0 and game_state <= 4
+    if SHOW_OVERLAY and SHOW_CORNERS
+        and (not AUTO_HIDE_CORNERS or radar_likely_visible) then
         corner(FX, FY)
         corner(FX + FW, FY)
         corner(FX, FY + FH)
