@@ -1,5 +1,6 @@
 -- Read-only goalkeeper distribution planner. No generic pass range assumptions.
 local M={}
+local Direction=require("directional_pass_calibration")
 local function finite(n) return type(n)=="number" and n==n and n~=math.huge and n~=-math.huge end
 local function point(p) return type(p)=="table" and finite(p.x) and finite(p.y) end
 local function distance(a,b)
@@ -34,7 +35,10 @@ function M.plan(s)
      if d<clearance then clearance=d;blocker=enemy.id end
     end
    end
-   options[#options+1]={id=p.id,distance=distance(s.ball,p),
+   local vector=Direction.direction(s.ball,p)
+   options[#options+1]={id=p.id,direction=vector and vector.direction,
+      command=vector and vector.command,dx=vector and vector.dx,dy=vector and vector.dy,
+      distance=distance(s.ball,p),
       keeper_distance=distance(keeper,p),clearance=clearance,
       blocker_id=blocker,status="UNCALIBRATED"}
   end
