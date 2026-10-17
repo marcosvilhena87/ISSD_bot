@@ -10,6 +10,15 @@ local function similar(o)
    math.abs(o.distance-SAMPLE.distance)<=40 and
    o.clearance>=240
 end
+-- Frame 6381 -> 6478: B, then team possession by ID 5.
+-- GK option ID5: dx=410 dy=148 distance=435.89 clearance=250.19.
+-- Input was RELEASED_THEN_B: direction at B is unverified.
+local SAMPLE5={dx=410,dy=148,distance=435.8944826446}
+local function similar5(o)
+ return o.id==5 and o.direction=="Right" and
+   math.abs(o.dx-SAMPLE5.dx)<=30 and math.abs(o.dy-SAMPLE5.dy)<=25 and
+   math.abs(o.distance-SAMPLE5.distance)<=35 and o.clearance>=235
+end
 local function finite(n) return type(n)=="number" and n==n and n~=math.huge and n~=-math.huge end
 local function point(p) return type(p)=="table" and finite(p.x) and finite(p.y) end
 local function distance(a,b)
@@ -60,15 +69,22 @@ function M.plan(s)
  local nearest={}
  for i=1,math.min(3,#options) do nearest[i]=options[i] end
  local selected
+ -- Give the new observed ID5 profile precedence when both profiles match:
+ -- a previous GK4 recommendation in this exact geometry was received by ID5.
  for _,o in ipairs(nearest) do
-  if similar(o) then
-   o.status="PROVISIONAL_OBSERVED"
-   selected=o
-   break
+  if similar5(o) then selected=o;break end
+ end
+ if not selected then
+  for _,o in ipairs(nearest) do
+   if similar(o) then selected=o;break end
   end
  end
+ if selected then selected.status="PROVISIONAL_OBSERVED" end
+ local reason=selected and
+   (selected.id==5 and "provisional_gk5_geometry_match" or "provisional_gk4_geometry_match")
+   or "distribution_requires_calibration"
  return {mode="GK_DISTRIBUTION",
-   reason=selected and "provisional_gk4_geometry_match" or "distribution_requires_calibration",
+   reason=reason,
    target_id=selected and selected.id or nil,
    calibration_status=selected and "PROVISIONAL_OBSERVED" or "UNCALIBRATED",
    options=nearest,option_count=#options,source={x=s.ball.x,y=s.ball.y}}
