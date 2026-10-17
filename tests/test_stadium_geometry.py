@@ -45,14 +45,24 @@ class StadiumGeometryTests(unittest.TestCase):
                 self.assertFalse(self.profiles[stadium][4])
 
     def test_geometry_integrity_contract(self):
-        self.assertIn('local function geometry_status(stadium, length, width)', self.source)
-        for status in ("VALID", "ZERO_DIMENSIONS", "DIMENSION_MISMATCH", "UNKNOWN_STADIUM"):
+        self.assertIn('local function geometry_status(stadium, length, width, game_state)', self.source)
+        for status in ("VALID", "ZERO_DIMENSIONS_UNEXPECTED", "PERIOD_ENDED", "DIMENSION_MISMATCH", "UNKNOWN_STADIUM"):
             self.assertIn('"'+status+'"', self.source)
         self.assertIn('local valid_geometry = integrity == "VALID"', self.source)
         self.assertIn('transform(x, y, length, width, stadium, valid_geometry)', self.source)
         self.assertIn('if not geometry_valid then', self.source)
         self.assertIn('SHOW_OVERLAY and valid_geometry', self.source)
         self.assertIn('geometry_status,geometry_valid,expected_field_length,expected_field_width', self.source)
+
+    def test_game_state_context(self):
+        self.assertIn('local GAME_STATE, GAMEPLAY_ACTIVE = 0x00BA, 0x0006', self.source)
+        self.assertIn('[6]="PERIOD_TIME_UP"', self.source)
+        self.assertIn('if game_state == 6 then', self.source)
+        self.assertIn('return "PERIOD_ENDED", nil, nil', self.source)
+        self.assertIn('return "ZERO_DIMENSIONS_UNEXPECTED", nil, nil', self.source)
+        self.assertIn('local gameplay_active = memory.read_u8(GAMEPLAY_ACTIVE, DOMAIN)', self.source)
+        self.assertIn('game_state,game_state_kind,gameplay_active', self.source)
+        self.assertIn('game_state, game_state_kind, gameplay_active', self.source)
 
     def test_expected_dimensions_derived_from_profiles(self):
         for stadium, (length, width) in EXPECTED_DIMENSIONS.items():
