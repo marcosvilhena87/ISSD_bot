@@ -1,6 +1,6 @@
 -- ISSD main diagnostic bootstrap (runs before module imports).
 print("[ISSD] main.lua: inicio do carregamento")
-if gui ~= nil and type(gui.addmessage)=="function" then
+if gui ~= nil and (type(gui.addmessage)=="function" or type(gui.addmessage)=="userdata") then
     pcall(gui.addmessage,"ISSD main.lua: carregando")
 end
 -- ISSD_bot tactical coordinator: tiki-taka + gegenpressing.
@@ -22,6 +22,10 @@ local TikiTaka = require("tiki_taka")
 local Gegenpressing = require("gegenpressing")
 local Possession = require("possession")
 print("[ISSD] main.lua: modulos carregados")
+local function callable_api(v)
+    local t=type(v)
+    return t=="function" or t=="userdata"
+end
 local M = {}
 local function finite(n)
     return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge
@@ -88,8 +92,8 @@ end
 -- Define ISSD_STATE_PROVIDER=function(frame) return validated_state end
 -- before loading main.lua. No game buttons are emitted.
 function M.run(provider, config)
-    assert(emu ~= nil and type(emu.frameadvance)=="function"
-        and type(emu.framecount)=="function","BizHawk emu API required")
+    assert(emu ~= nil and callable_api(emu.frameadvance)
+        and callable_api(emu.framecount),"BizHawk emu API required")
     local bot=M.new(config)
     print("[ISSD] main.lua: loop iniciado")
     if provider ~= nil then assert(type(provider)=="function","provider must be a function") end
@@ -117,7 +121,7 @@ function M.run(provider, config)
         else
             decision=bot.update({frame=frame})
         end
-        if type(gui)=="table" and type(gui.text)=="function" then
+        if type(gui)=="table" and callable_api(gui.text) then
             gui.text(4,4,"ISSD main: "..tostring(decision.mode))
         end
         if decision.mode~=previous_mode then
@@ -130,8 +134,8 @@ function M.run(provider, config)
         emu.frameadvance()
     end
 end
-if emu ~= nil and type(emu.frameadvance)=="function" and
-   type(emu.framecount)=="function" then
+if emu ~= nil and callable_api(emu.frameadvance) and
+   callable_api(emu.framecount) then
     print("[ISSD] main.lua: API emu detectada")
     M.run(type(ISSD_STATE_PROVIDER)=="function" and ISSD_STATE_PROVIDER or nil)
 else
