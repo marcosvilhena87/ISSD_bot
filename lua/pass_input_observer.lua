@@ -38,7 +38,7 @@ function M.new(opts)
  local max_follow=opts.max_follow or 120
  local previous_frame,previous_b,aim_start,aim_dir,last_dir,last_dir_frame
  local active,serial=nil,0
- local direction_counts,last_single,last_diagonal,last_direction_frame,release_frame
+ local direction_counts,last_single,last_diagonal,last_direction_frame,release_frame={},nil,nil,nil,nil
  local last_key_signature
  local function reset()
   previous_frame,previous_b,aim_start,aim_dir,last_dir,last_dir_frame=nil,false,nil,nil,nil,nil
@@ -53,7 +53,8 @@ function M.new(opts)
   local result={input_status="UNAVAILABLE"}
   if type(buttons)~="table" then
    -- Unknown input is not equivalent to no buttons pressed.
-   previous_b=false;aim_start=nil;aim_dir=nil;last_dir=nil
+   previous_b=false;aim_start=nil;aim_dir=nil;last_dir=nil;last_dir_frame=nil
+   direction_counts={};last_single=nil;last_diagonal=nil;last_direction_frame=nil;release_frame=nil
   else
    local recognized,raw=key_diagnostics(buttons)
    if raw~=last_key_signature then
@@ -63,6 +64,7 @@ function M.new(opts)
    if not recognized then
     result.input_status="UNKNOWN_LAYOUT"
     previous_b=false;aim_start=nil;aim_dir=nil;last_dir=nil;last_dir_frame=nil
+    direction_counts={};last_single=nil;last_diagonal=nil;last_direction_frame=nil;release_frame=nil
     return result
    end
    local dir=direction(buttons)
