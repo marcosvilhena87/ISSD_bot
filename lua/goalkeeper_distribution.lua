@@ -1,6 +1,15 @@
 -- Read-only goalkeeper distribution planner. No generic pass range assumptions.
 local M={}
 local Direction=require("directional_pass_calibration")
+-- One associated GK -> receiver 4 event in 2026-10-17 report, frame 6245 -> 6314.
+-- B edge was observed, directional input was NOT observed. Keep this provisional.
+local SAMPLE={dx=343,dy=39,distance=345.2100809652,clearance=272.24437551582}
+local function similar(o)
+ return o.id==4 and o.direction=="Right" and
+   math.abs(o.dx-SAMPLE.dx)<=35 and math.abs(o.dy-SAMPLE.dy)<=25 and
+   math.abs(o.distance-SAMPLE.distance)<=40 and
+   o.clearance>=240
+end
 local function finite(n) return type(n)=="number" and n==n and n~=math.huge and n~=-math.huge end
 local function point(p) return type(p)=="table" and finite(p.x) and finite(p.y) end
 local function distance(a,b)
@@ -50,7 +59,18 @@ function M.plan(s)
  end)
  local nearest={}
  for i=1,math.min(3,#options) do nearest[i]=options[i] end
- return {mode="GK_DISTRIBUTION",reason="distribution_requires_calibration",
+ local selected
+ for _,o in ipairs(nearest) do
+  if similar(o) then
+   o.status="PROVISIONAL_OBSERVED"
+   selected=o
+   break
+  end
+ end
+ return {mode="GK_DISTRIBUTION",
+   reason=selected and "provisional_gk4_geometry_match" or "distribution_requires_calibration",
+   target_id=selected and selected.id or nil,
+   calibration_status=selected and "PROVISIONAL_OBSERVED" or "UNCALIBRATED",
    options=nearest,option_count=#options,source={x=s.ball.x,y=s.ball.y}}
 end
 return M
