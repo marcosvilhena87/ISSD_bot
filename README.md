@@ -416,3 +416,8 @@ Teste local: `lua tests/test_tiki_taka_diagnostics.lua`. Ainda requer validacao 
 ## Identificacao da versao nos logs
 
 A partir do bot **v1.12.0**, o console Lua mostra `versao=1.12.0 | telemetria_schema=2 | colunas=32` ao carregar `main.lua`. O arquivo `issd_tactical_report.csv` tem duas novas colunas finais, `bot_version` e `schema_version`, em todas as linhas. A versao e o esquema identificam a estrutura logica e o formato do relatorio, nao necessariamente o SHA do commit do GitHub. O esquema 2 tem 32 colunas; capturas com 20 ou 30 colunas foram geradas por revisoes anteriores. Feche o script antigo no BizHawk e abra novamente o `main.lua` apos `git pull --ff-only origin main` para confirmar a versao exibida.
+
+
+### v1.12.1 — arquivo CSV junto ao script
+
+Para evitar capturar um CSV antigo no diretorio de trabalho do BizHawk, `main.lua` agora grava `issd_tactical_report.csv` **na mesma pasta do proprio `main.lua`** quando o caminho do script puder ser identificado. O console exibe `arquivo principal:` e `caminho CSV:` antes de iniciar o relatorio, bem como a versao **1.12.1**, esquema **2**, **32 colunas**. Se o caminho nao puder ser identificado, usa o diretorio de trabalho como alternativa. A cada nova inicializacao o CSV no destino e sobrescrito. Para confirmar a versao, encerre a instancia antiga no Lua Console, rode `git pull --ff-only origin main`, abra novamente o script e procure `[ISSD] caminho CSV:`.
