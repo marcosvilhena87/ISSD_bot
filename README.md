@@ -495,3 +495,10 @@ CSV: v1.15.0, schema 8, 101 colunas (as 88 anteriores preservadas). Novas: `inpu
 O observador agora reconhece explicitamente `P1 Up`, `P1 Down`, `P1 Left`, `P1 Right` e `P1 B` retornados pelo BizHawk, mantendo compatibilidade com nomes sem prefixo. Controles `P2` nao sao usados como comandos do jogador 1. A primeira lista de chaves retornada (e eventuais mudancas) aparece em `pass_note` como `joypad_keys=...`, com limite de comprimento para preservar o CSV. Uma tabela sem chaves reconhecidas recebe `UNKNOWN_LAYOUT`, nao um falso `OBSERVED` com B solto. Atenção: tabelas esparsas vazias tambem recebem `UNKNOWN_LAYOUT`; nesse caso o diagnostico sozinho nao confirma se os controles estao soltos ou indisponiveis. `joypad.get()` continua sujeito ao formato e ao comportamento da versao do BizHawk.
 
 Telemetria `1.15.1`, schema 8, 101 colunas sem alteracoes de formato. Teste: `lua tests/test_pass_input_observer.lua`. O bot permanece somente leitura.
+
+
+## v1.15.2 — GK distribution: primeira calibracao provisoria para ID 4
+
+O relatorio `issd_tactical_report(20261017-153733).csv` registra no frame 6245 uma borda do B, goleiro ID 1, receptor candidato ID 4, `dx=343`, `dy=39`, distancia da bola `345.21`, afastamento minimo dos adversarios na linha `272.24`; no frame 6314, a posse do ID 4 foi reconhecida (69 frames depois, deslocamento liquido da bola +323,+5). A entrada direcional NAO foi observada (`B_ONLY`), portanto isso nao comprova `Right+B`, nem garante um passe.
+
+`lua/goalkeeper_distribution.lua` pode agora **recomendar** `target_id=4` e `PROVISIONAL_OBSERVED` se o ID 4 estiver entre as tres opcoes mais proximas, a direcao nominal for `Right`, os vetores estiverem dentro de `|dx-343|<=35` e `|dy-39|<=25`, a distancia dentro de 40 unidades da amostra e o afastamento minimo ao adversario for pelo menos 240. Esses limites sao tolerancias experimentais conservadoras definidas em torno de UMA amostra; nao foram estimados estatisticamente. Todos os demais casos continuam sem selecao automatica e `UNCALIBRATED`. O bot continua apenas sugerindo, **nao executa comandos `joypad`**. Teste: `lua tests/test_goalkeeper_distribution.lua`.
