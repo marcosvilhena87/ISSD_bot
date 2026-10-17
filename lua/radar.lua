@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.15.2 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.15.3 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -9,8 +9,7 @@ local CENTER_FIELD_X, CENTER_FIELD_Y = 0x12F2, 0x12D8
 -- ETAPA 1: ajuste estes valores para enquadrar o radar nativo.
 local FX, FY, FW, FH = 88, 161, 79, 54
 local SHOW_CORNERS = true   -- quatro cantos MAGENTA, independentes dos offsets
-local AUTO_HIDE_CORNERS = true -- heuristica independente da geometria
--- Somente geometria carregada; nao depende de Game_State, pausa ou perfil.
+local AUTO_HIDE_CORNERS = true -- exige geometria conhecida (original ou variante)
 -- ETAPA 2: alinhe jogadores e bola, sem mover os quatro cantos.
 local ORIGIN_X, ORIGIN_Y = 0, 0
 local SCALE_X, SCALE_Y = 1, 1
@@ -386,8 +385,11 @@ while true do
     local field_loaded = length > 8 and width > 8
         and center_x > 0 and center_x < length
         and center_y > 0 and center_y < width
+    -- As cruzes aceitam variantes observadas, mas nao liberam entidades.
+    local corners_geometry_known = valid_geometry
+        or (variant_profile ~= nil and variant_profile.geometry_observed == true)
     local corners_visible = SHOW_OVERLAY and SHOW_CORNERS
-        and (not AUTO_HIDE_CORNERS or field_loaded)
+        and (not AUTO_HIDE_CORNERS or (field_loaded and corners_geometry_known))
     if corners_visible then
         corner(FX, FY)
         corner(FX + FW, FY)
@@ -463,7 +465,7 @@ while true do
                 variant_profile and (variant_profile.projection_validated and 1 or 0) or "",
                 variant_px or "", variant_py or "",
                 number(variant_nx), number(variant_ny),
-                corners_visible and 1 or 0, "field_loaded"
+                corners_visible and 1 or 0, "known_geometry"
             }, ",") .. "\n")
         end
     end
