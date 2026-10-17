@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.15.5
+# ISSD_bot — Radar v0.15.6
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -269,3 +269,7 @@ local MY_COLOR, CPU_COLOR, BALL_COLOR = "red", "cyan", "yellow"
 ```
 
 Essas opções afetam somente o desenho do overlay; não modificam a WRAM, os perfis geométricos, os cálculos de projeção nem as colunas CSV.
+
+## Exibição dos jogadores — v0.15.6
+
+O padrão `FOCUS_ONLY=false` permite desenhar simultaneamente os 11 marcadores do time `my` (vermelho), 11 da CPU (ciano) e a bola (amarelo), desde que estejam dentro do radar e com geometria válida. Antes, `FOCUS_ONLY=true` com `TARGET_TEAM="ball"` ocultava todos os jogadores, mesmo com as cores configuradas. `FOCUS_ONLY=true` ainda pode ser usado manualmente para calibrar apenas o alvo selecionado. O CSV continua registrando todas as entidades.
