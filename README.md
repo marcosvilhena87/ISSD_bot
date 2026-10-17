@@ -12,7 +12,8 @@ A WRAM `0x0086` (i16) contém `Stadium_ID`. O script lê esse valor a cada frame
 | 1 | 1856 × 640 | 4 | 1852 | 4 | 636 | Observado; ainda não validado contra pixels nativos |
 | 2 | 1984 × 704 | 4 | 1980 | 4 | 700 | Observado; ainda não validado contra pixels nativos |
 | 3 | 2048 × 640 | 4 | 2044 | 4 | 636 | Observado; ainda não validado contra pixels nativos |
-| 4–7 | Lidas dinamicamente | — | — | — | — | Sem calibração empírica |
+| 4 | 1920 × 640 | 4 | 1916 | 4 | 636 | Observado; ainda não validado contra pixels nativos |
+| 5–7 | Lidas dinamicamente | — | — | — | — | Sem calibração empírica |
 
 Esses limites representam **posições repetidas da bola em quatro escanteios**, não limites comprovados de todos os objetos do campo. Jogadores ou bola fora desses limites permanecem no CSV mesmo quando não são desenhados.
 
@@ -25,6 +26,7 @@ local STADIUM_CALIBRATION = {
     [1] = {min_x=4, max_x=1852, min_y=4, max_y=636, validated=false},
     [2] = {min_x=4, max_x=1980, min_y=4, max_y=700, validated=false},
     [3] = {min_x=4, max_x=2044, min_y=4, max_y=636, validated=false},
+    [4] = {min_x=4, max_x=1916, min_y=4, max_y=636, validated=false},
 }
 ```
 
