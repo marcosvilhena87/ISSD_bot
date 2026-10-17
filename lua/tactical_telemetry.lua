@@ -1,6 +1,8 @@
 -- Tactical telemetry for ISSD; no game controls.
 local M={}
-local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y,pass_safe,pass_too_close,pass_too_far,pass_blocked,best_rejected_id,best_rejected_reason,best_rejected_clearance,support_move_id,support_move_x,support_move_y"
+M.VERSION="1.12.0"
+M.SCHEMA_VERSION=2
+local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y,pass_safe,pass_too_close,pass_too_far,pass_blocked,best_rejected_id,best_rejected_reason,best_rejected_clearance,support_move_id,support_move_x,support_move_y,bot_version,schema_version"
 local function csv(v)
  if v==nil then return "" end
  local s=tostring(v)
@@ -50,10 +52,11 @@ function M.new(path,opts)
    values[28]=move.id
    values[29]=move.x
    values[30]=move.y
+   values[31]=M.VERSION
+   values[32]=M.SCHEMA_VERSION
    local parts={}
-   for i,v in ipairs(values) do parts[i]=csv(v) end
    -- ipairs stops at the first nil; always serialize the whole schema.
-   for i=1,30 do parts[i]=csv(values[i]) end
+   for i=1,32 do parts[i]=csv(values[i]) end
    local ok,werr=file:write(table.concat(parts,","),"\n")
    if not ok then return false,werr end
    count=count+1
