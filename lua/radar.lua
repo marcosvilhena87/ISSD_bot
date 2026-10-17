@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.15.0 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.15.1 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -8,7 +8,11 @@ local GAME_STATE, GAMEPLAY_ACTIVE = 0x00BA, 0x0006
 -- ETAPA 1: ajuste estes valores para enquadrar o radar nativo.
 local FX, FY, FW, FH = 88, 161, 79, 54
 local SHOW_CORNERS = true   -- quatro cantos MAGENTA, independentes dos offsets
-local AUTO_HIDE_CORNERS = true -- heuristica de visibilidade do radar nativo
+local AUTO_HIDE_CORNERS = true -- heuristica independente da geometria
+local CORNER_VISIBILITY_MODE = "game_state" -- "game_state", "strict", "always"
+-- "game_state": 0..4, independentemente das dimensoes e Gameplay_Active.
+-- "strict": tambem exige Gameplay_Active=1; pode ocultar radar visivel.
+-- "always": ignora estados; util para diagnostico, respeita SHOW_CORNERS.
 -- ETAPA 2: alinhe jogadores e bola, sem mover os quatro cantos.
 local ORIGIN_X, ORIGIN_Y = 0, 0
 local SCALE_X, SCALE_Y = 1, 1
@@ -286,7 +290,7 @@ local function target_cross(px, py)
 end
 local csv, err = io.open(CSV_NAME, "w")
 if not csv then error("Falha ao criar CSV: " .. tostring(err)) end
-csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance,calibration_status,projection_model,raw_norm_x,raw_norm_y,raw_pixel_x,raw_pixel_y,empirical_norm_x,empirical_norm_y,empirical_pixel_x,empirical_pixel_y,delta_pixel_x,delta_pixel_y,empirical_min_x,empirical_max_x,empirical_min_y,empirical_max_y,empirical_validated,geometric_norm_x,geometric_norm_y,geometric_pixel_x,geometric_pixel_y,geometric_min_x,geometric_max_x,geometric_min_y,geometric_max_y,geometric_minus_empirical_pixel_x,geometric_minus_empirical_pixel_y,geometry_status,geometry_valid,expected_field_length,expected_field_width,game_state,game_state_kind,gameplay_active,transition_status,transition_age_frames,pending_from_stadium,pending_to_stadium,variant_id,variant_geometry_observed,variant_projection_validated,variant_pixel_x,variant_pixel_y,variant_norm_x,variant_norm_y\n")
+csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance,calibration_status,projection_model,raw_norm_x,raw_norm_y,raw_pixel_x,raw_pixel_y,empirical_norm_x,empirical_norm_y,empirical_pixel_x,empirical_pixel_y,delta_pixel_x,delta_pixel_y,empirical_min_x,empirical_max_x,empirical_min_y,empirical_max_y,empirical_validated,geometric_norm_x,geometric_norm_y,geometric_pixel_x,geometric_pixel_y,geometric_min_x,geometric_max_x,geometric_min_y,geometric_max_y,geometric_minus_empirical_pixel_x,geometric_minus_empirical_pixel_y,geometry_status,geometry_valid,expected_field_length,expected_field_width,game_state,game_state_kind,gameplay_active,transition_status,transition_age_frames,pending_from_stadium,pending_to_stadium,variant_id,variant_geometry_observed,variant_projection_validated,variant_pixel_x,variant_pixel_y,variant_norm_x,variant_norm_y,corners_visible,corner_visibility_mode\n")
 local function number(value)
     if value == nil then return "" end
     return string.format("%.6f", value)
@@ -378,12 +382,20 @@ while true do
         pending_to_stadium=pending_info and pending_info.to or nil
     })
     local sample = count % SAMPLE_EVERY == 0 or reference_by_frame[frame] ~= nil
-    -- A WRAM ainda nao oferece uma flag comprovada de radar nativo visivel.
-    -- Evitar cruzes soltas em pause/replay, pos-gol, fim de periodo ou sem campo.
-    local radar_likely_visible = valid_geometry and gameplay_active == 1
-        and game_state >= 0 and game_state <= 4
-    if SHOW_OVERLAY and SHOW_CORNERS
-        and (not AUTO_HIDE_CORNERS or radar_likely_visible) then
+    -- Independente da integridade geometrica: as cruzes servem para calibrar
+    -- inclusive estadios com variantes ainda bloqueadas para entidades.
+    local state_allows_corners = game_state >= 0 and game_state <= 4
+    local radar_likely_visible = state_allows_corners
+    if CORNER_VISIBILITY_MODE == "strict" then
+        radar_likely_visible = state_allows_corners and gameplay_active == 1
+    elseif CORNER_VISIBILITY_MODE == "always" then
+        radar_likely_visible = true
+    elseif CORNER_VISIBILITY_MODE ~= "game_state" then
+        error("CORNER_VISIBILITY_MODE invalido")
+    end
+    local corners_visible = SHOW_OVERLAY and SHOW_CORNERS
+        and (not AUTO_HIDE_CORNERS or radar_likely_visible)
+    if corners_visible then
         corner(FX, FY)
         corner(FX + FW, FY)
         corner(FX, FY + FH)
@@ -457,7 +469,8 @@ while true do
                 variant_profile and (variant_profile.geometry_observed and 1 or 0) or "",
                 variant_profile and (variant_profile.projection_validated and 1 or 0) or "",
                 variant_px or "", variant_py or "",
-                number(variant_nx), number(variant_ny)
+                number(variant_nx), number(variant_ny),
+                corners_visible and 1 or 0, CORNER_VISIBILITY_MODE
             }, ",") .. "\n")
         end
     end
