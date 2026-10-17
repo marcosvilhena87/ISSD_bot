@@ -1,7 +1,16 @@
+-- ISSD main diagnostic bootstrap (runs before module imports).
+print("[ISSD] main.lua: inicio do carregamento")
+if type(gui)=="table" and type(gui.addmessage)=="function" then
+    pcall(gui.addmessage,"ISSD main.lua: carregando")
+end
 -- ISSD_bot tactical coordinator: tiki-taka + gegenpressing.
 -- Safe by default: no unvalidated possession inference or joypad writes.
 -- Resolve modules relative to THIS script rather than BizHawk's working directory.
-local source = debug.getinfo(1, "S").source
+local source = ""
+if type(debug)=="table" and type(debug.getinfo)=="function" then
+    local info=debug.getinfo(1,"S")
+    source=info and info.source or ""
+end
 local script_dir = source:sub(1,1) == "@" and
     source:sub(2):match("^(.*[/\\])") or nil
 if script_dir then
@@ -12,6 +21,7 @@ end
 local TikiTaka = require("tiki_taka")
 local Gegenpressing = require("gegenpressing")
 local Possession = require("possession")
+print("[ISSD] main.lua: modulos carregados")
 local M = {}
 local function finite(n)
     return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge
@@ -81,6 +91,7 @@ function M.run(provider, config)
     assert(type(emu)=="table" and type(emu.frameadvance)=="function"
         and type(emu.framecount)=="function","BizHawk emu API required")
     local bot=M.new(config)
+    print("[ISSD] main.lua: loop iniciado")
     if provider ~= nil then assert(type(provider)=="function","provider must be a function") end
     local previous_mode
     local last_error
@@ -106,6 +117,9 @@ function M.run(provider, config)
         else
             decision=bot.update({frame=frame})
         end
+        if type(gui)=="table" and type(gui.text)=="function" then
+            gui.text(4,4,"ISSD main: "..tostring(decision.mode))
+        end
         if decision.mode~=previous_mode then
             print(string.format("[ISSD][%d] %s",frame,decision.mode))
             previous_mode=decision.mode
@@ -118,6 +132,9 @@ function M.run(provider, config)
 end
 if type(emu)=="table" and type(emu.frameadvance)=="function" and
    type(emu.framecount)=="function" then
+    print("[ISSD] main.lua: API emu detectada")
     M.run(type(ISSD_STATE_PROVIDER)=="function" and ISSD_STATE_PROVIDER or nil)
+else
+    print("[ISSD] main.lua: sem API emu; modulo carregado, loop nao iniciado")
 end
 return M
