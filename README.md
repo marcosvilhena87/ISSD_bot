@@ -432,3 +432,10 @@ Estados previstos: `PASS_READY` (exposto no coordenador como `TIKI_TAKA`), `DRIB
 O radar desenha em amarelo o trecho de conducao sugerido, em verde os passes aprovados e em laranja a melhor rejeicao. A telemetria passou ao **schema 3 com 39 colunas**, preservando os campos anteriores e acrescentando `action`, `dribble_x`, `dribble_y`, `open_passes`, `triangle_via`, `triangle_next` e `triangle_score`. O posicionamento e geometricamente hipotetico: executar um deslocamento real exige calibrar velocidade, comando direcional, selecao do jogador e validacao de seguranca no BizHawk.
 
 Teste isolado: `lua tests/test_sequential_tiki_taka.lua`. Os testes foram adicionados, mas a execucao no BizHawk ainda precisa ser validada.
+
+
+## Tiki-taka v1.13.1: progressão com apoio lateral ou recuo
+
+Com posse confirmada, `tiki_taka.lua` avalia passes de todas as direções pelo eixo dos gols: `PROGRESSIVE` (avança), `LATERAL` (apoio) e `BACKWARD` (recuo). Só entram na seleção passes aprovados pelos limites existentes de distância e corredor livre. Um passe progressivo válido tem preferência; um lateral ou recuo pode prevalecer quando apresentar corredor pelo menos `safety_override_margin=45` unidades mais livre que o melhor progressivo. Sem passe aprovado, o planejador sequencial considera `DRIBBLE`.
+
+A v1.13.1 atualiza o CSV para **schema 4, 43 colunas**, acrescentando `pass_type`, `pass_score`, `pass_clearance` e `pass_progression`. O modo continua somente leitura, sem comandos `joypad`. Teste de regressão: `lua tests/test_pass_priority.lua`. A preferência de passe é uma hipótese de planejamento e exige validação visual no BizHawk.
