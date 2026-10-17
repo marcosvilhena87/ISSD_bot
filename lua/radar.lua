@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.14.0 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.15.0 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -155,6 +155,20 @@ local function observe_variant(frame, stadium, length, width, game_state, integr
         first_frame=variant_run.since, confirmed_frame=frame,
         live_frames=age, predefined=predefined}
 end
+-- Alternative per-stadium bounds observed from four corners; never auto-authorized.
+local STADIUM_VARIANT_PROFILES = {
+    [7] = {
+        {id="7_2176x704", length=2176, width=704,
+         min_x=4, max_x=2172, min_y=4, max_y=700,
+         geometry_observed=true, projection_validated=false}
+    }
+}
+local function match_variant_profile(stadium, length, width)
+    for _, p in ipairs(STADIUM_VARIANT_PROFILES[stadium] or {}) do
+        if p.length == length and p.width == width then return p end
+    end
+    return nil
+end
 local SAMPLE_EVERY = 10
 -- Foco: "ball"/0, "my"/1..11 ou "cpu"/1..11.
 local TARGET_TEAM, TARGET_NUMBER = "ball", 0
@@ -271,7 +285,7 @@ local function target_cross(px, py)
 end
 local csv, err = io.open(CSV_NAME, "w")
 if not csv then error("Falha ao criar CSV: " .. tostring(err)) end
-csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance,calibration_status,projection_model,raw_norm_x,raw_norm_y,raw_pixel_x,raw_pixel_y,empirical_norm_x,empirical_norm_y,empirical_pixel_x,empirical_pixel_y,delta_pixel_x,delta_pixel_y,empirical_min_x,empirical_max_x,empirical_min_y,empirical_max_y,empirical_validated,geometric_norm_x,geometric_norm_y,geometric_pixel_x,geometric_pixel_y,geometric_min_x,geometric_max_x,geometric_min_y,geometric_max_y,geometric_minus_empirical_pixel_x,geometric_minus_empirical_pixel_y,geometry_status,geometry_valid,expected_field_length,expected_field_width,game_state,game_state_kind,gameplay_active,transition_status,transition_age_frames,pending_from_stadium,pending_to_stadium\n")
+csv:write("frame,stadium_id,entity,number,raw_x,raw_y,field_length,field_width,norm_x,norm_y,pixel_x,pixel_y,inside_bounds,fx,fy,fw,fh,offset_x,offset_y,origin_x,origin_y,scale_x,scale_y,invert_x,invert_y,is_target,reference_x,reference_y,error_x,error_y,error_distance,calibration_status,projection_model,raw_norm_x,raw_norm_y,raw_pixel_x,raw_pixel_y,empirical_norm_x,empirical_norm_y,empirical_pixel_x,empirical_pixel_y,delta_pixel_x,delta_pixel_y,empirical_min_x,empirical_max_x,empirical_min_y,empirical_max_y,empirical_validated,geometric_norm_x,geometric_norm_y,geometric_pixel_x,geometric_pixel_y,geometric_min_x,geometric_max_x,geometric_min_y,geometric_max_y,geometric_minus_empirical_pixel_x,geometric_minus_empirical_pixel_y,geometry_status,geometry_valid,expected_field_length,expected_field_width,game_state,game_state_kind,gameplay_active,transition_status,transition_age_frames,pending_from_stadium,pending_to_stadium,variant_id,variant_geometry_observed,variant_projection_validated,variant_pixel_x,variant_pixel_y,variant_norm_x,variant_norm_y\n")
 local function number(value)
     if value == nil then return "" end
     return string.format("%.6f", value)
@@ -338,6 +352,7 @@ while true do
     local gameplay_active = memory.read_u8(GAMEPLAY_ACTIVE, DOMAIN)
     local integrity, expected_length, expected_width = geometry_status(stadium, length, width, game_state)
     local valid_geometry = integrity == "VALID"
+    local variant_profile = match_variant_profile(stadium, length, width)
     local transition_status, transition_age, pending_info =
         classify_transition(frame, stadium, length, width, game_state, integrity)
     local variant = observe_variant(frame, stadium, length, width, game_state,
@@ -370,6 +385,12 @@ while true do
     end
     local function observe(entity, index, x, y, color)
         local nx, ny, px, py, inside, model, raw_nx, raw_ny, raw_px, raw_py, emp_nx, emp_ny, emp_px, emp_py, delta_x, delta_y, bounds, geo_nx, geo_ny, geo_px, geo_py, geometry, geo_delta_x, geo_delta_y = transform(x, y, length, width, stadium, valid_geometry)
+        -- Experimental coordinates are exported separately and never rendered.
+        local variant_nx, variant_ny = nil, nil
+        if variant_profile then
+            variant_nx, variant_ny = normalize_bounds(x, y, variant_profile)
+        end
+        local variant_px, variant_py = project(variant_nx, variant_ny)
         local is_target = entity == TARGET_TEAM and index == TARGET_NUMBER
         if SHOW_OVERLAY and valid_geometry and px and py and inside == 1 then
             local enabled = (entity == "ball" and SHOW_BALL)
@@ -425,7 +446,12 @@ while true do
                 game_state, game_state_kind, gameplay_active,
                 transition_status, transition_age or "",
                 pending_info and pending_info.from or "",
-                pending_info and pending_info.to or ""
+                pending_info and pending_info.to or "",
+                variant_profile and variant_profile.id or "",
+                variant_profile and (variant_profile.geometry_observed and 1 or 0) or "",
+                variant_profile and (variant_profile.projection_validated and 1 or 0) or "",
+                variant_px or "", variant_py or "",
+                number(variant_nx), number(variant_ny)
             }, ",") .. "\n")
         end
     end
