@@ -6,7 +6,8 @@ local DEFAULT={max_pass_distance=320,min_pass_distance=35,opponent_clearance=65,
     progress_weight=0.35,open_weight=2.0,distance_weight=0.18,
     repeat_penalty=45,pass_cooldown=8,support_radius=420,
     progressive_threshold=20,lateral_threshold=20,progressive_bonus=65,
-    lateral_bonus=20,backward_bonus=0}
+    lateral_bonus=20,backward_bonus=0,
+    safety_override_margin=45}
 local function finite(x) return type(x)=="number" and x==x and x~=math.huge and x~=-math.huge end
 local function valid(p) return type(p)=="table" and finite(p.x) and finite(p.y) end
 local function dist(a,b)
@@ -91,6 +92,24 @@ function M.new(config)
                 if reason=="SAFE" then candidates[#candidates+1]=item end
             end
         end
+        -- Progression is preferred when safe; a considerably clearer support
+        -- lane may override it. Never authorize a rejected pass.
+        local function choose(items)
+            local progressive,support_choice
+            for _,p in ipairs(items) do
+                if p.pass_type=="PROGRESSIVE" then
+                    if not progressive or p.score>progressive.score then progressive=p end
+                else
+                    if not support_choice or p.score>support_choice.score then support_choice=p end
+                end
+            end
+            if not progressive then return support_choice end
+            if not support_choice then return progressive end
+            if support_choice.clearance>=progressive.clearance+cfg.safety_override_margin then
+                return support_choice
+            end
+            return progressive
+        end
         local function order(a,b)
             if a.score==b.score then return tostring(a.id)<tostring(b.id) end
             return a.score>b.score
@@ -118,8 +137,11 @@ function M.new(config)
         if #candidates==0 then
             return {mode="HOLD",reason="no_safe_pass",candidates={},support=support,diagnostics=diagnostics}
         end
-        return {mode="PASS",target_id=candidates[1].id,
-            reason="safe_short_pass",pass_type=candidates[1].pass_type,
+        local choice=choose(candidates)
+        return {mode="PASS",target_id=choice.id,
+            reason=choice.pass_type=="PROGRESSIVE" and "progressive_pass" or "support_pass",
+            pass_type=choice.pass_type,pass_score=choice.score,
+            pass_clearance=choice.clearance,pass_progression=choice.progression,
             candidates=candidates,support=support,diagnostics=diagnostics}
     end
     -- Call only after the controller has verified an actual pass initiation.
