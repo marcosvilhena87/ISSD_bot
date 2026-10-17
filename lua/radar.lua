@@ -161,8 +161,8 @@ end
 -- Alternative per-stadium bounds observed from four corners; never auto-authorized.
 local STADIUM_VARIANT_PROFILES = {
     [7] = {
-        {id="7_2176x704", length=2176, width=704,
-         min_x=4, max_x=2172, min_y=4, max_y=700,
+        {id="7_1856x640", length=1856, width=640,
+         min_x=4, max_x=1852, min_y=4, max_y=636,
          geometry_observed=true, projection_validated=false}
     }
 }
