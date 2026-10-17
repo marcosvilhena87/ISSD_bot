@@ -205,8 +205,8 @@ Os oito perfis originais em `STADIUM_CALIBRATION` foram mantidos. A tabela separ
 
 ```lua
 [7] = {
-    {id="7_2176x704", length=2176, width=704,
-     min_x=4, max_x=2172, min_y=4, max_y=700,
+    {id="7_1856x640", length=1856, width=640,
+     min_x=4, max_x=1852, min_y=4, max_y=636,
      geometry_observed=true, projection_validated=false}
 }
 ```
@@ -255,3 +255,7 @@ Essa heurística **não identifica diretamente** a renderização nativa: menus 
 A captura fornecida identifica `Stadium_ID=8` como a tela pré-partida de **cara ou coroa**, com escolha de bola ou lado, e não como um nono estádio. O radar classifica esse valor como `geometry_status=PRE_MATCH_COIN_TOSS` **antes** de examinar dimensões zeradas ou o perfil de estádio.
 
 Nesse estado as quatro cruzes magenta são ocultadas mesmo se `AUTO_HIDE_CORNERS=false`; projeções de jogadores e bola permanecem bloqueadas (`projection_model=blocked`). As coordenadas brutas e o estado são preservados nos CSVs para auditoria. `STADIUM_CALIBRATION` continua abrangendo somente os estádios 0–7, sem alteração dos seus limites ou indicadores `validated=false`.
+
+## Revisão do perfil principal do Stadium_ID 7
+
+O perfil principal do estádio 7 agora corresponde a **2176 × 704**, com `min_x=4`, `max_x=2172`, `min_y=4`, `max_y=700`, ainda `validated=false`. A configuração **1856 × 640** previamente observada foi preservada como variante histórica `7_1856x640`, com `geometry_observed=true` e `projection_validated=false`; não é utilizada automaticamente para liberar o desenho das entidades. Os demais sete perfis não foram alterados. As seções anteriores sobre a variante 2176 × 704 documentam a evolução histórica do projeto e devem ser lidas à luz desta revisão.
