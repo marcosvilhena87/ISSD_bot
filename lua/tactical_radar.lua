@@ -26,7 +26,7 @@ function M.plan(s,decision,stadium,length,width)
  if not carrier then return nil,"carrier_missing" end
  local ax,ay=pos(carrier,length,width)
  if not ax then return nil,"carrier_outside" end
- local result={carrier={x=ax,y=ay},links={},rejected=nil,dribble=nil,nearest={},blocker=nil,players={},ball=nil}
+ local result={carrier={x=ax,y=ay},links={},rejected=nil,dribble=nil,nearest={},blocker=nil,players={},ball=nil,gk_options={}}
  local bx,by=pos(s.ball,length,width)
  if bx then result.ball={x=bx,y=by} end
  for _,p in ipairs(s.my_players) do
@@ -39,6 +39,15 @@ function M.plan(s,decision,stadium,length,width)
  end
  local action=decision.decision or {}
  local d=action.base or action
+ if decision.mode=="GK_DISTRIBUTION" then
+    for i,option in ipairs(action.options or {}) do
+       local target=by_id[option.id]
+       local x,y=pos(target,length,width)
+       if x and i<=3 then
+          result.gk_options[#result.gk_options+1]={x=x,y=y,id=option.id,rank=i}
+       end
+    end
+ end
  if action.dribble then
    local dx,dy=pos(action.dribble,length,width)
    if dx then result.dribble={x=dx,y=dy} end
@@ -82,6 +91,10 @@ function M.draw(plan,gui_api)
    gui_api.drawPixel(p.x,p.y,p.team=="my" and "red" or "cyan")
  end
  if plan.ball then gui_api.drawPixel(plan.ball.x,plan.ball.y,"yellow") end
+ for _,g in ipairs(plan.gk_options or {}) do
+   if gui_api.drawLine then gui_api.drawLine(plan.carrier.x,plan.carrier.y,g.x,g.y,"cyan") end
+   if gui_api.drawText then gui_api.drawText(g.x+2,g.y-4,"GK"..tostring(g.rank),"cyan") end
+ end
  for _,link in ipairs(plan.links) do
    local color=link.priority==1 and "lime" or "gray"
    if gui_api.drawLine then gui_api.drawLine(link.x1,link.y1,link.x2,link.y2,color) end
