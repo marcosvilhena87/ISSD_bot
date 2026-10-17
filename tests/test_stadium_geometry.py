@@ -101,6 +101,17 @@ class StadiumGeometryTests(unittest.TestCase):
         self.assertIn('0, "OBSERVED_UNVALIDATED"', self.source)
         self.assertIn('local valid_geometry = integrity == "VALID"', self.source)
 
+    def test_multivariant_geometry_contract(self):
+        self.assertIn('local STADIUM_VARIANT_PROFILES = {', self.source)
+        self.assertIn('id="7_2176x704"', self.source)
+        self.assertIn('min_x=4, max_x=2172, min_y=4, max_y=700', self.source)
+        self.assertIn('geometry_observed=true, projection_validated=false', self.source)
+        self.assertIn('local function match_variant_profile(', self.source)
+        self.assertIn('local variant_profile = match_variant_profile(', self.source)
+        self.assertIn('variant_pixel_x,variant_pixel_y,variant_norm_x,variant_norm_y', self.source)
+        self.assertIn('local variant_px, variant_py = project(variant_nx, variant_ny)', self.source)
+        self.assertIn('if SHOW_OVERLAY and valid_geometry', self.source)
+
     def test_expected_dimensions_derived_from_profiles(self):
         for stadium, (length, width) in EXPECTED_DIMENSIONS.items():
             bounds = self.profiles[stadium]
