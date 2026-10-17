@@ -400,3 +400,14 @@ Legenda: jogador MY em vermelho, CPU em ciano, bola amarela, portador com contor
 A projeção usa os perfis empíricos dos oito estádios cadastrados em `radar.lua`, sem modificar a calibração. Desenho tático bloqueado quando `Stadium_ID` é desconhecido, dimensões divergem, não há portador confirmado ou posse é incerta. Perfis observados não constituem prova de alinhamento visual com o radar nativo: valide os marcadores no BizHawk. O `main.lua` continua produzindo `issd_tactical_report.csv`, e o controle automático de passes permanece desativado.
 
 Teste de lógica isolada: `lua tests/test_tactical_radar.lua` (a execução local requer Lua; a validação visual exige BizHawk).
+
+
+## Diagnostico de passes tiki-taka (radar assistido)
+
+`lua/tiki_taka.lua` agora avalia todos os jogadores de linha elegiveis (nao somente os aprovados) e fornece `decision.diagnostics.evaluations` com `id`, `distance`, `clearance`, `progression`, `score` e `reason`. As rejeicoes sao classificadas como `TOO_CLOSE`, `TOO_FAR` ou `BLOCKED`; `SAFE` representa passe que passou pelas regras atuais. Limites existentes permanecem inalterados.
+
+O `issd_tactical_report.csv` conserva suas 20 colunas originais e acrescenta: `pass_safe`, `pass_too_close`, `pass_too_far`, `pass_blocked`, `best_rejected_id`, `best_rejected_reason`, `best_rejected_clearance`, `support_move_id`, `support_move_x`, `support_move_y`. Campos vazios indicam ausencia de avaliacao. `best_rejected` representa o candidato rejeitado com maior pontuacao, e nao um passe autorizado.
+
+O radar passa a mostrar **linha laranja** para o candidato rejeitado com melhor pontuacao e **marcador magenta** para uma posicao hipotetica de apoio, quando uma mudanca lateral melhora a distancia minima aos adversarios e respeita o alcance maximo de passe. O movimento e apenas uma hipotese geometrica; **nenhum jogador e movimentado**. As marcacoes continuam ocultas quando a geometria ou a posse confirmada nao permitem projeção.
+
+Teste local: `lua tests/test_tiki_taka_diagnostics.lua`. Ainda requer validacao real no BizHawk. O CSV e sobrescrito ao reiniciar o script.
