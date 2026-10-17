@@ -24,6 +24,8 @@ local function build(read)
  if not live then observation.reason="not_live";return observation end
  local length,width=u16(A.length),u16(A.width)
  if length<=8 or width<=8 then observation.reason="invalid_field";return observation end
+ observation.field_length=length
+ observation.field_width=width
  local ball={x=s16(A.ball_x),y=s16(A.ball_y)}
  local my,cpu={},{}
  for i=0,10 do
