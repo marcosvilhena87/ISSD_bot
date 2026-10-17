@@ -463,7 +463,7 @@ while true do
                 variant_profile and (variant_profile.projection_validated and 1 or 0) or "",
                 variant_px or "", variant_py or "",
                 number(variant_nx), number(variant_ny),
-                corners_visible and 1 or 0, CORNER_VISIBILITY_MODE
+                corners_visible and 1 or 0, "field_loaded"
             }, ",") .. "\n")
         end
     end
