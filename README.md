@@ -330,3 +330,33 @@ local decision = planner.update({
 A linha de passe é testada pela menor distância dos adversários ao **segmento** entre portador e receptor. A pontuação combina liberdade do corredor, progressão em direção ao gol e penalidade por distância. Há uma penalização contra passes repetidos para o mesmo receptor e intervalo mínimo entre passes confirmados. A orientação ofensiva é determinada pela direção entre `own_goal` e `opponent_goal`, sem presumir que a equipe ataque sempre pela direita. Fora da posse, em reinício, sem portador válido ou com telemetria incompleta, o módulo não recomenda passes.
 
 **Limitações:** ainda não existe calibração empírica de tempos, controles B/Y, interceptações dinâmicas, triangulações coordenadas nem execução autônoma integrada ao BizHawk. A métrica geométrica de segurança é uma heurística, não garantia de passe bem-sucedido. Para executar testes Lua localmente: `lua tests/test_tiki_taka.lua`. O teste Lua não foi executado neste ambiente.
+
+
+## Main.lua — coordenador de tiki-taka + gegenpressing
+
+O arquivo raiz `main.lua` carrega `lua/tiki_taka.lua` e `lua/gegenpressing.lua` e pode ser executado no BizHawk via **Tools → Lua Console → Open Script** a partir da raiz do repositório (diretório de trabalho contendo `lua/`). Carregue somente uma instância para evitar múltiplos loops. O coordenador **não envia botões** e não altera o radar.
+
+- `TIKI_TAKA`: nossa posse, passe recomendado; `KEEP_POSSESSION`: nossa posse, sem passe recomendado.
+- `GEGENPRESS`: perda da posse detectada pelo módulo de pressão; `RECOVER_SHAPE`: janela encerrada/sem jogadores próximos; `DEFEND`: defesa sem pressão ativa.
+- `INACTIVE`: estado inválido ou ausente, sem decisão tática.
+- Recuperar a posse cancela a pressão; perda da posse zera o planejador ofensivo.
+
+### Fonte de estado obrigatória
+
+O radar existente fornece coordenadas brutas, mas **não identifica posse nem portador com confiabilidade**. Sem um fornecedor de estados validado, o `main.lua` funciona em modo `INACTIVE` (seguro) e não tenta deduzir a posse por mera proximidade com a bola.
+
+Para integrar um detector validado, defina a função global `ISSD_STATE_PROVIDER(frame)` **antes de carregar o script**. Ela deve retornar a cada frame uma tabela:
+
+```lua
+{
+  frame=frame, active=true, possession="my", carrier_id=1,
+  ball={x=500,y=300},
+  own_goal={x=0,y=300}, opponent_goal={x=1800,y=300},
+  my_players={{id=1,x=500,y=300},{id=2,x=600,y=330}},
+  cpu_players={{id=1,x=700,y=300}}
+}
+```
+
+`active=true` exige gameplay vivo e válido; `possession` deve ser `"my"`, `"cpu"` ou `"loose"`. Não forneça `carrier_id` estimado como confirmado. Coordenadas e lados do campo devem estar sincronizados e calibrados. `ISSD_TACTICAL_OBSERVER(decision,state)` é um callback **opcional apenas para receber decisões**; não confirma execução de passes. O coordenador não aciona automaticamente `confirm_pass`: o integrador só deve chamá-lo depois de confirmar o início efetivo do passe.
+
+Testes: `lua tests/test_main.lua`, `lua tests/test_tiki_taka.lua` e `lua tests/test_gegenpressing.lua`. Requer interpretador Lua; os testes não foram executados neste ambiente nem no BizHawk.
