@@ -1,6 +1,10 @@
-# ISSD_bot — Radar v0.15.7
+# ISSD_bot
 
-Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
+Bot experimental para **International Superstar Soccer Deluxe (SNES)**, executado no **BizHawk**, com leitura de RAM, controle via Lua e decisões táticas baseadas em regras.
+
+**Estado atual:** a leitura de memória e os planejadores de **tiki-taka** e **gegenpressing** estão implementados. O `main.lua` coordena as decisões, mas a emissão automática de comandos de jogo pelo controle Lua ainda não está integrada nem validada no BizHawk. O radar permanece um módulo somente leitura.
+
+## Radar v0.15.7
 
 ## Novidade: calibração por estádio (Stadium_ID 0–7)
 
