@@ -387,6 +387,8 @@ while true do
     local bx, by = xy(BASE_BALL)
     local all_addresses_zero = bx == 0 and by == 0
         and length == 0 and width == 0 and center_x == 0 and center_y == 0
+    -- Limpa desenhos Lua anteriores quando as seis leituras estao zeradas.
+    if all_addresses_zero then gui.clearGraphics() end
     local field_loaded = length > 8 and width > 8
         and center_x > 0 and center_x < length
         and center_y > 0 and center_y < width
