@@ -470,3 +470,12 @@ O CSV v1.14.0 usa schema 6 com 73 colunas, incluindo gk1_id, gk1_ball_distance, 
 ## Calibrador direcional de passes v1.14.1
 
 O modulo `lua/directional_pass_calibration.lua` calcula os vetores `dx`, `dy` da bola ate cada receptor GK1-GK3 e os agrupa em oito setores (Up, Down, Left, Right e quatro diagonais, sempre combinados com B). A classificacao usa limites de 22,5 graus em cada eixo. No radar as tres opcoes recebem o rotulo GK1/GK2/GK3 com o comando nominal; no CSV v1.14.1 (schema 7, 88 colunas) sao registrados direction, command, dx, dy e calibration_status por opcao. O estado permanece UNCALIBRATED: nao ha leitura dos botoes efetivamente usados nem comprovacao de que os comandos do goleiro correspondem aos de passes normais. Direcoes assumem x crescente para direita e y crescente para baixo; confirmar em jogo. O bot continua sem acionar comandos. Teste: lua tests/test_directional_pass_calibration.lua.
+
+
+## Acionamento temporal do passe (v1.14.2 — proposta experimental)
+
+A legenda `Control Pad + B` **nao exige pressionamento simultaneo**. Uma alternativa e pressionar o direcional primeiro e, mantendo-o pressionado, apertar B posteriormente. O modulo `lua/directional_pass_calibration.lua` expoe `input_sequence(direction, lead_frames, release_before_b)` para descrever as fases `AIM` e `PASS` (e, opcionalmente, `RELEASE`). Por exemplo, `input_sequence("Right",3,false)` descreve 3 frames de `Right`, seguidos de 1 frame de `Right+B`. `input_sequence("Right",0,false)` descreve o acionamento simultaneo em um frame. `input_sequence("Right",3,true)` descreve direcao, soltura, B, **apenas como hipotese ainda nao comprovada**.
+
+O planejador do goleiro inclui `input_sequence` nas opcoes internas com 1 frame de preparacao e direcional mantido. Isso **nao significa que o bot executou o passe**, nem que a preparacao de 1 frame e ideal; servira de parametro inicial para futuros experimentos. As opcoes continuam `UNCALIBRATED`. Nenhum comando `joypad` e enviado. O CSV mantem o schema 7 e 88 colunas: o campo `command` continua representando a notacao nominal (ex. `Right+B`), **nao uma garantia de simultaneidade**. A retencao da direcao depois de soltar o direcional e a influencia do numero de frames requerem verificacao no BizHawk.
+
+Teste: `lua tests/test_directional_pass_calibration.lua`.
