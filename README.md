@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.13.0
+# ISSD_bot — Radar v0.14.0
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -180,3 +180,21 @@ As novas colunas `transition_status`, `transition_age_frames`, `pending_from_sta
 **Segurança:** somente `geometry_status=VALID` libera projeções no radar. `STADIUM_CHANGE_PENDING` e `PERSISTENT_DIMENSION_MISMATCH` continuam bloqueados, com coordenadas brutas preservadas no CSV. Nenhum perfil é reajustado automaticamente.
 
 Os limites temporais iniciais (1200/120 frames) são hipóteses de diagnóstico ajustáveis mediante novas coletas, e não parâmetros comprovados do jogo. O teste estático cobre o contrato; a execução e a precisão espacial no BizHawk ainda precisam ser verificadas.
+
+## Descoberta conservadora de variantes geométricas — v0.14.0
+
+A versão acrescenta um terceiro relatório: `issd_radar_geometry_variants.csv`. Uma combinação (`stadium_id`, `field_length`, `field_width`) divergente do perfil original é reportada como **candidata**, não como uma nova calibração válida, quando:
+
+1. O estádio tem perfil individual cadastrado;
+2. `Game_State=0` (`LIVE`);
+3. `geometry_status=DIMENSION_MISMATCH`;
+4. A classificação não é `STADIUM_CHANGE_PENDING`;
+5. A mesma combinação persiste em **120 frames consecutivos**.
+
+O script mantém o exemplo observado `STADIUM_VARIANT_CANDIDATES[7] = {{length=2176, width=704, validated=false}}`. A lista serve só para indicar candidatos conhecidos; dimensões diferentes também podem ser descobertas. O novo CSV registra `stadium_id`, `field_length`, `field_width`, `first_frame`, `confirmed_frame`, `consecutive_live_frames`, `predefined_candidate`, `validated=0` e `status=OBSERVED_UNVALIDATED`.
+
+Uma linha é emitida ao completar o limiar de estabilidade de uma sequência contínua. Se essa sequência for interrompida e depois voltar, pode haver outra linha para a mesma variante — útil para investigar sessões distintas. Rewind ou load state que retrocede o contador de frames reinicia o contador de estabilidade.
+
+**Importante:** nenhuma variante descoberta modifica `STADIUM_CALIBRATION` ou ativa projeções. A política `geometry_status=VALID` permanece como única condição para desenhar entidades. A dimensão observada, por si só, não comprova escanteios nem correspondência com o radar nativo. Para validar o candidato 2176 × 704 do Stadium_ID 7, é necessário coletar novamente os quatro escanteios nessa configuração e medir referências visuais sincronizadas.
+
+O radar continua produzindo `issd_radar_calibration.csv` e `issd_radar_geometry_transitions.csv`, sem alterar seus formatos. Executar testes estáticos: `python -m unittest discover -s tests -v`. Testes reais de execução no BizHawk permanecem necessários.
