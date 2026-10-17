@@ -1,6 +1,6 @@
 -- Tactical telemetry for ISSD; no game controls.
 local M={}
-local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y"
+local HEADER="frame,epoch,mode,phase,possession,logical_team,raw_owner,raw_team,ownership_source,logical_conflict,carrier_id,my_controlled_id,cpu_controlled_id,target_id,pressers,reason,decision_reason,elapsed,ball_x,ball_y,pass_safe,pass_too_close,pass_too_far,pass_blocked,best_rejected_id,best_rejected_reason,best_rejected_clearance,support_move_id,support_move_x,support_move_y"
 local function csv(v)
  if v==nil then return "" end
  local s=tostring(v)
@@ -36,10 +36,24 @@ function M.new(path,opts)
      s.raw_owner,s.raw_team,s.ownership_source,s.logical_conflict and 1 or 0,
      s.carrier_id,s.my_controlled_id,s.cpu_controlled_id,d.target_id,
      pressers(d),result.reason or s.reason,d.reason,d.elapsed,b.x,b.y}
+   local diag=d.diagnostics or {}
+   local counts=diag.counts or {}
+   local rejected=diag.best_rejected or {}
+   local move=diag.support_move or {}
+   values[21]=counts.SAFE
+   values[22]=counts.TOO_CLOSE
+   values[23]=counts.TOO_FAR
+   values[24]=counts.BLOCKED
+   values[25]=rejected.id
+   values[26]=rejected.reason
+   values[27]=rejected.clearance
+   values[28]=move.id
+   values[29]=move.x
+   values[30]=move.y
    local parts={}
    for i,v in ipairs(values) do parts[i]=csv(v) end
    -- ipairs stops at the first nil; always serialize the whole schema.
-   for i=1,20 do parts[i]=csv(values[i]) end
+   for i=1,30 do parts[i]=csv(values[i]) end
    local ok,werr=file:write(table.concat(parts,","),"\n")
    if not ok then return false,werr end
    count=count+1
