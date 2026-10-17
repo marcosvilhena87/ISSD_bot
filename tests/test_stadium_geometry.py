@@ -89,6 +89,18 @@ class StadiumGeometryTests(unittest.TestCase):
         self.assertIn('local valid_geometry = integrity == "VALID"', self.source)
         self.assertIn('previous_classification_frame and frame <= previous_classification_frame', self.source)
 
+    def test_variant_discovery_contract(self):
+        self.assertIn("STADIUM_VARIANT_CANDIDATES", self.source)
+        self.assertIn("[7] = {{length=2176, width=704, validated=false}}", self.source)
+        self.assertIn("VARIANT_MIN_LIVE_FRAMES = 120", self.source)
+        self.assertIn('issd_radar_geometry_variants.csv', self.source)
+        self.assertIn("local function observe_variant(", self.source)
+        self.assertIn('game_state == 0 and integrity == "DIMENSION_MISMATCH"', self.source)
+        self.assertIn('transition_status ~= "STADIUM_CHANGE_PENDING"', self.source)
+        self.assertIn("frame ~= variant_run.last_frame+1", self.source)
+        self.assertIn('0, "OBSERVED_UNVALIDATED"', self.source)
+        self.assertIn('local valid_geometry = integrity == "VALID"', self.source)
+
     def test_expected_dimensions_derived_from_profiles(self):
         for stadium, (length, width) in EXPECTED_DIMENSIONS.items():
             bounds = self.profiles[stadium]
