@@ -26,7 +26,7 @@ function M.plan(s,decision,stadium,length,width)
  if not carrier then return nil,"carrier_missing" end
  local ax,ay=pos(carrier,length,width)
  if not ax then return nil,"carrier_outside" end
- local result={carrier={x=ax,y=ay},links={},rejected=nil,support_move=nil,players={},ball=nil}
+ local result={carrier={x=ax,y=ay},links={},rejected=nil,support_move=nil,dribble=nil,players={},ball=nil}
  local bx,by=pos(s.ball,length,width)
  if bx then result.ball={x=bx,y=by} end
  for _,p in ipairs(s.my_players) do
@@ -37,7 +37,12 @@ function M.plan(s,decision,stadium,length,width)
     local x,y=pos(p,length,width)
     if x then result.players[#result.players+1]={x=x,y=y,team="cpu",id=p.id} end
  end
- local d=decision.decision or {}
+ local action=decision.decision or {}
+ local d=action.base or action
+ if action.dribble then
+   local dx,dy=pos(action.dribble,length,width)
+   if dx then result.dribble={x=dx,y=dy} end
+ end
  if decision.phase=="ATTACK" and type(d.candidates)=="table" then
     for i,p in ipairs(d.candidates) do
        if i>3 then break end
@@ -71,6 +76,9 @@ function M.draw(plan,gui_api)
    local color=link.priority==1 and "lime" or "gray"
    if gui_api.drawLine then gui_api.drawLine(link.x1,link.y1,link.x2,link.y2,color) end
    if gui_api.drawText then gui_api.drawText(link.x2+2,link.y2-6,tostring(link.id),color) end
+ end
+ if plan.dribble and gui_api.drawLine then
+   gui_api.drawLine(plan.carrier.x,plan.carrier.y,plan.dribble.x,plan.dribble.y,"yellow")
  end
  if plan.rejected and gui_api.drawLine then
    local r=plan.rejected
