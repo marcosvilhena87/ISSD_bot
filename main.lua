@@ -24,6 +24,7 @@ local Gegenpressing = require("gegenpressing")
 local Possession = require("possession")
 local Telemetry = require("tactical_telemetry")
 local PassInputObserver = require("pass_input_observer")
+local PassEventStatistics = require("pass_event_statistics")
 local TacticalRadar = require("tactical_radar")
 print("[ISSD] main.lua: modulos carregados")
 print(string.format("[ISSD] versao=%s | telemetria_schema=%s | colunas=%d",Telemetry.VERSION,Telemetry.SCHEMA_VERSION,Telemetry.COLUMN_COUNT))
@@ -114,6 +115,8 @@ function M.run(provider, config)
         and callable_api(emu.framecount),"BizHawk emu API required")
     local bot=M.new(config)
     local pass_observer=PassInputObserver.new()
+    local pass_stats,stats_error=PassEventStatistics.new((script_dir or "./").."issd_pass_events.csv")
+    if not pass_stats then print("[ISSD] ERRO eventos: "..tostring(stats_error)) end
     print("[ISSD] main.lua: loop iniciado")
     if provider ~= nil then assert(type(provider)=="function","provider must be a function") end
     local previous_mode
@@ -193,6 +196,7 @@ function M.run(provider, config)
             observed_state.recommended_target_id=decision and decision.decision and decision.decision.target_id
         end
         local observation=pass_observer.update(frame,observed_state,observed_buttons,button_source)
+        if pass_stats then pass_stats.record(frame,observation) end
         if telemetry then
             local wrote,write_error=telemetry.record(frame,s,decision,observation)
             if not wrote and write_error~=last_csv_error then
