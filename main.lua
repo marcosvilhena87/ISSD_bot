@@ -147,6 +147,7 @@ function M.run(provider, config)
             last_error=result
         end
         local decision
+        if type(s)=="table" then s.prepared_direction=pass_observer.direction_hint() end
         if type(s)=="table" then
             s.frame=frame
             decision=bot.update(s)
@@ -194,6 +195,12 @@ function M.run(provider, config)
             observed_state={}
             for k,v in pairs(s) do observed_state[k]=v end
             observed_state.recommended_target_id=decision and decision.decision and decision.decision.target_id
+            observed_state.observed_pass_class=decision and decision.mode=="GK_DISTRIBUTION" and "GK_DISTRIBUTION" or "OUTFIELD"
+            local opt=decision and decision.decision and decision.decision.selected_option
+            if opt then
+                observed_state.recommended_candidate={x=s.ball.x+opt.dx,y=s.ball.y+opt.dy,
+                    dx=opt.dx,dy=opt.dy,clearance=opt.clearance}
+            end
         end
         local observation=pass_observer.update(frame,observed_state,observed_buttons,button_source)
         if pass_stats then pass_stats.record(frame,observation) end
