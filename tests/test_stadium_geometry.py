@@ -103,8 +103,8 @@ class StadiumGeometryTests(unittest.TestCase):
 
     def test_multivariant_geometry_contract(self):
         self.assertIn('local STADIUM_VARIANT_PROFILES = {', self.source)
-        self.assertIn('id="7_2176x704"', self.source)
-        self.assertIn('min_x=4, max_x=2172, min_y=4, max_y=700', self.source)
+        self.assertIn('id="7_1856x640"', self.source)
+        self.assertIn('min_x=4, max_x=1852, min_y=4, max_y=636', self.source)
         self.assertIn('geometry_observed=true, projection_validated=false', self.source)
         self.assertIn('local function match_variant_profile(', self.source)
         self.assertIn('local variant_profile = match_variant_profile(', self.source)
