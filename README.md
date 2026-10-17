@@ -411,3 +411,8 @@ O `issd_tactical_report.csv` conserva suas 20 colunas originais e acrescenta: `p
 O radar passa a mostrar **linha laranja** para o candidato rejeitado com melhor pontuacao e **marcador magenta** para uma posicao hipotetica de apoio, quando uma mudanca lateral melhora a distancia minima aos adversarios e respeita o alcance maximo de passe. O movimento e apenas uma hipotese geometrica; **nenhum jogador e movimentado**. As marcacoes continuam ocultas quando a geometria ou a posse confirmada nao permitem projeção.
 
 Teste local: `lua tests/test_tiki_taka_diagnostics.lua`. Ainda requer validacao real no BizHawk. O CSV e sobrescrito ao reiniciar o script.
+
+
+## Identificacao da versao nos logs
+
+A partir do bot **v1.12.0**, o console Lua mostra `versao=1.12.0 | telemetria_schema=2 | colunas=32` ao carregar `main.lua`. O arquivo `issd_tactical_report.csv` tem duas novas colunas finais, `bot_version` e `schema_version`, em todas as linhas. A versao e o esquema identificam a estrutura logica e o formato do relatorio, nao necessariamente o SHA do commit do GitHub. O esquema 2 tem 32 colunas; capturas com 20 ou 30 colunas foram geradas por revisoes anteriores. Feche o script antigo no BizHawk e abra novamente o `main.lua` apos `git pull --ff-only origin main` para confirmar a versao exibida.
