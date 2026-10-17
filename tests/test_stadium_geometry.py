@@ -112,6 +112,12 @@ class StadiumGeometryTests(unittest.TestCase):
         self.assertIn('local variant_px, variant_py = project(variant_nx, variant_ny)', self.source)
         self.assertIn('if SHOW_OVERLAY and valid_geometry', self.source)
 
+    def test_corner_visibility_guard(self):
+        self.assertIn('local AUTO_HIDE_CORNERS = true', self.source)
+        self.assertIn('local radar_likely_visible = valid_geometry and gameplay_active == 1', self.source)
+        self.assertIn('and game_state >= 0 and game_state <= 4', self.source)
+        self.assertIn('(not AUTO_HIDE_CORNERS or radar_likely_visible)', self.source)
+
     def test_expected_dimensions_derived_from_profiles(self):
         for stadium, (length, width) in EXPECTED_DIMENSIONS.items():
             bounds = self.profiles[stadium]
