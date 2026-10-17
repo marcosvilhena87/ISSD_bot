@@ -68,10 +68,16 @@ function M.new(config)
                 if d<=cfg.support_radius then
                     support[#support+1]={id=p.id,distance=d,role="SUPPORT"}
                 end
+                local ball_distance=dist(s.ball,p)
                 local clearance=math.huge
+                local blocking_enemy_id=nil
                 for _,enemy in ipairs(s.cpu_players) do
                     if valid(enemy) then
-                        clearance=math.min(clearance,segment_distance(enemy,carrier,p))
+                        local proximity=segment_distance(enemy,carrier,p)
+                        if proximity<clearance then
+                            clearance=proximity
+                            blocking_enemy_id=enemy.id
+                        end
                     end
                 end
                 local progression=(p.x-carrier.x)*ux+(p.y-carrier.y)*uy
@@ -86,7 +92,8 @@ function M.new(config)
                 if d<cfg.min_pass_distance then reason="TOO_CLOSE"
                 elseif d>cfg.max_pass_distance then reason="TOO_FAR"
                 elseif clearance<cfg.opponent_clearance then reason="BLOCKED" end
-                local item={id=p.id,distance=d,clearance=clearance,
+                local item={id=p.id,distance=d,ball_distance=ball_distance,
+                    blocking_enemy_id=blocking_enemy_id,clearance=clearance,
                     progression=progression,score=score,reason=reason,pass_type=pass_type}
                 evaluations[#evaluations+1]=item
                 if reason=="SAFE" then candidates[#candidates+1]=item end
@@ -126,8 +133,15 @@ function M.new(config)
             counts[e.reason]=counts[e.reason]+1
             if e.reason~="SAFE" and not best_rejected then best_rejected=e end
         end
+        local nearest={}
+        for _,e in ipairs(evaluations) do nearest[#nearest+1]=e end
+        table.sort(nearest,function(a,b)
+            if a.distance==b.distance then return tostring(a.id)<tostring(b.id) end
+            return a.distance<b.distance
+        end)
+        while #nearest>3 do table.remove(nearest) end
         local spatial=Support.analyze(s,carrier,cfg)
-        local diagnostics={evaluations=evaluations,counts=counts,
+        local diagnostics={evaluations=evaluations,nearest=nearest,counts=counts,
             best_rejected=best_rejected,support_move=spatial.support_move,
             nearest_teammate_distance=spatial.nearest_teammate_distance,
             triangle=spatial.triangle,triangle_score=spatial.triangle_score}
