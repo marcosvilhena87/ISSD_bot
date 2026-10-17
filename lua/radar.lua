@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.11.0 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.12.0 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -72,6 +72,8 @@ local REFERENCES = {
 }
 -- Cada frame listado no REFERENCES e exportado mesmo fora do SAMPLE_EVERY.
 local CSV_NAME = "issd_radar_calibration.csv"
+-- Eventos independentes da cadencia SAMPLE_EVERY: uma linha por alteracao/frame.
+local TRANSITIONS_CSV_NAME = "issd_radar_geometry_transitions.csv"
 local function valid_target()
     return (TARGET_TEAM == "ball" and TARGET_NUMBER == 0)
         or ((TARGET_TEAM == "my" or TARGET_TEAM == "cpu")
@@ -178,6 +180,47 @@ local function number(value)
     if value == nil then return "" end
     return string.format("%.6f", value)
 end
+-- Registra somente alteracoes, com snapshot inicial para dar contexto.
+local transitions, transitions_err = io.open(TRANSITIONS_CSV_NAME, "w")
+if not transitions then error("Falha ao criar CSV de transicoes: " .. tostring(transitions_err)) end
+transitions:write("frame,event,changed_fields,previous_frame,previous_stadium_id,stadium_id,previous_game_state,game_state,previous_field_length,field_length,previous_field_width,field_width,previous_geometry_status,geometry_status,previous_game_state_kind,game_state_kind,previous_gameplay_active,gameplay_active\\n")
+transitions:flush()
+local previous_geometry = nil
+local function track_geometry(current)
+    local prev = previous_geometry
+    local changed = {}
+    local event
+    if not prev then
+        event = "INITIAL"
+        changed = {"stadium_id", "game_state", "field_length", "field_width"}
+    elseif current.frame <= prev.frame then
+        -- Savestate/rewind: nao interpretar diferencas como fluxo temporal continuo.
+        event = "TIMELINE_RESET"
+        changed = {"stadium_id", "game_state", "field_length", "field_width"}
+    else
+        for _, field in ipairs({"stadium_id", "game_state", "field_length", "field_width"}) do
+            if current[field] ~= prev[field] then
+                changed[#changed + 1] = field
+            end
+        end
+        if #changed > 0 then event = "CHANGE" end
+    end
+    if event then
+        transitions:write(table.concat({
+            current.frame, event, table.concat(changed, ";"),
+            prev and prev.frame or "",
+            prev and prev.stadium_id or "", current.stadium_id,
+            prev and prev.game_state or "", current.game_state,
+            prev and prev.field_length or "", current.field_length,
+            prev and prev.field_width or "", current.field_width,
+            prev and prev.geometry_status or "", current.geometry_status,
+            prev and prev.game_state_kind or "", current.game_state_kind,
+            prev and prev.gameplay_active or "", current.gameplay_active
+        }, ",") .. "\\n")
+        transitions:flush()
+    end
+    previous_geometry = current
+end
 local count = 0
 while true do
     local frame = emu.framecount()
@@ -188,6 +231,12 @@ while true do
     local gameplay_active = memory.read_u8(GAMEPLAY_ACTIVE, DOMAIN)
     local integrity, expected_length, expected_width = geometry_status(stadium, length, width, game_state)
     local valid_geometry = integrity == "VALID"
+    track_geometry({
+        frame=frame, stadium_id=stadium, game_state=game_state,
+        field_length=length, field_width=width,
+        geometry_status=integrity, game_state_kind=game_state_kind,
+        gameplay_active=gameplay_active
+    })
     local sample = count % SAMPLE_EVERY == 0 or reference_by_frame[frame] ~= nil
     if SHOW_OVERLAY and SHOW_CORNERS then
         corner(FX, FY)
