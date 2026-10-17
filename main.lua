@@ -22,6 +22,7 @@ local TikiTaka = require("tiki_taka")
 local Gegenpressing = require("gegenpressing")
 local Possession = require("possession")
 local Telemetry = require("tactical_telemetry")
+local TacticalRadar = require("tactical_radar")
 print("[ISSD] main.lua: modulos carregados")
 local function callable_api(v)
     local t=type(v)
@@ -131,6 +132,25 @@ function M.run(provider, config)
         end
         if type(gui)=="table" and callable_api(gui.text) then
             gui.text(4,4,"ISSD main: "..tostring(decision.mode))
+        end
+        -- Tactical radar: same six-/eight-stadium empirical projection as radar.lua.
+        -- Never draw during uncertain possession or invalid geometry.
+        if gui ~= nil and callable_api(gui.drawPixel) and
+           memory ~= nil and type(s)=="table" and s.active==true and
+           s.possession=="my" then
+            local valid,plan=pcall(function()
+                local stadium=memory.read_s16_le(0x0086,"WRAM")
+                local length=memory.read_u16_le(0x12A2,"WRAM")
+                local width=memory.read_u16_le(0x12A4,"WRAM")
+                return TacticalRadar.plan(s,decision,stadium,length,width)
+            end)
+            if valid and plan then
+                local drawn,draw_error=pcall(TacticalRadar.draw,plan,gui)
+                if not drawn and draw_error~=last_error then
+                    print("[ISSD] Radar tatico: "..tostring(draw_error))
+                    last_error=draw_error
+                end
+            end
         end
         if telemetry then
             local wrote,write_error=telemetry.record(frame,s,decision)
