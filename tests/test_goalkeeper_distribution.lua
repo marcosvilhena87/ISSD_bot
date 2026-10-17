@@ -22,7 +22,7 @@ local sample={active=true,possession="my",ownership_source="PLAYER_BALL_POSSESSI
  {id=3,x=375,y=260},{id=5,x=440,y=505}},
  cpu_players={}}
 local matched=assert(GK.plan(sample))
-assert(matched.target_id==4)
+assert(matched.target_id==4 and matched.empirical_direction=="Right")
 assert(matched.reason=="provisional_gk4_geometry_match")
 assert(matched.options[1].status=="PROVISIONAL_OBSERVED")
 sample.my_players[2].y=440
@@ -43,7 +43,7 @@ local s5={active=true,possession="my",ownership_source="PLAYER_BALL_POSSESSION",
  {id=4,x=371,y=386},{id=3,x=372,y=259},{id=5,x=435,y=497}},
  cpu_players={}}
 local p5=assert(GK.plan(s5))
-assert(p5.target_id==5 and p5.reason=="provisional_gk5_geometry_match")
+assert(p5.target_id==5 and p5.empirical_direction=="Down+Right" and p5.reason=="provisional_gk5_geometry_match")
 assert(p5.calibration_status=="PROVISIONAL_OBSERVED")
 assert(p5.options[3].id==5 and p5.options[3].status=="PROVISIONAL_OBSERVED")
 s5.my_players[4].x=520
@@ -60,7 +60,7 @@ local s2={active=true,possession="my",ownership_source="PLAYER_BALL_POSSESSION",
  {id=3,x=372,y=259},{id=5,x=435,y=497},{id=2,x=540,y=88}},
  cpu_players={}}
 local r2=assert(GK.plan(s2))
-assert(r2.target_id==2 and r2.reason=="provisional_gk2_reception_zone")
+assert(r2.target_id==2 and r2.empirical_direction=="Up+Right" and r2.reason=="provisional_gk2_reception_zone")
 assert(#r2.options==4 and r2.options[4].status=="PROVISIONAL_OBSERVED")
 s2.my_players[5].x=700
 assert(GK.plan(s2).target_id==5)
