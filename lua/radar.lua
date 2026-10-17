@@ -1,4 +1,4 @@
--- ISSD_bot Radar v0.13.0 | BizHawk SNES | read-only calibration
+-- ISSD_bot Radar v0.14.0 | BizHawk SNES | read-only calibration
 local DOMAIN = "WRAM"
 local BASE_BALL, BASE_MY, BASE_CPU = 0x042A, 0x052A, 0x102A
 local STRIDE, XY_DELTA = 0x0100, 2
@@ -117,6 +117,44 @@ local function classify_transition(frame, stadium, length, width, game_state, in
     previous_classification_stadium = stadium
     return classification, age, pending
 end
+-- Discovery-only geometric variants: no automatic recalibration.
+local STADIUM_VARIANT_CANDIDATES = {
+    [7] = {{length=2176, width=704, validated=false}},
+}
+local VARIANT_MIN_LIVE_FRAMES = 120
+local variant_run = nil
+local variant_session = {}
+local function observe_variant(frame, stadium, length, width, game_state, integrity, transition_status)
+    if variant_run and frame <= variant_run.last_frame then variant_run = nil end
+    local eligible = game_state == 0 and integrity == "DIMENSION_MISMATCH"
+        and transition_status ~= "STADIUM_CHANGE_PENDING"
+        and STADIUM_CALIBRATION[stadium] ~= nil
+    local key = tostring(stadium) .. ":" .. tostring(length) .. ":" .. tostring(width)
+    if not eligible then variant_run = nil; return nil end
+    if not variant_run or variant_run.key ~= key or frame ~= variant_run.last_frame+1 then
+        variant_run = {key=key, since=frame, last_frame=frame}
+    else
+        variant_run.last_frame = frame
+    end
+    local age = frame-variant_run.since+1
+    if age < VARIANT_MIN_LIVE_FRAMES then return nil end
+    if variant_run.reported then return nil end
+    variant_run.reported = true
+    local p = STADIUM_VARIANT_CANDIDATES[stadium]
+    local predefined = false
+    if p then
+        for _, candidate in ipairs(p) do
+            if candidate.length == length and candidate.width == width then
+                predefined = true
+                break
+            end
+        end
+    end
+    variant_session[key] = true
+    return {stadium=stadium, length=length, width=width,
+        first_frame=variant_run.since, confirmed_frame=frame,
+        live_frames=age, predefined=predefined}
+end
 local SAMPLE_EVERY = 10
 -- Foco: "ball"/0, "my"/1..11 ou "cpu"/1..11.
 local TARGET_TEAM, TARGET_NUMBER = "ball", 0
@@ -131,6 +169,7 @@ local REFERENCES = {
 local CSV_NAME = "issd_radar_calibration.csv"
 -- Eventos independentes da cadencia SAMPLE_EVERY: uma linha por alteracao/frame.
 local TRANSITIONS_CSV_NAME = "issd_radar_geometry_transitions.csv"
+local VARIANTS_CSV_NAME = "issd_radar_geometry_variants.csv"
 local function valid_target()
     return (TARGET_TEAM == "ball" and TARGET_NUMBER == 0)
         or ((TARGET_TEAM == "my" or TARGET_TEAM == "cpu")
@@ -285,6 +324,10 @@ local function track_geometry(current)
     end
     previous_geometry = current
 end
+local variants, variants_err = io.open(VARIANTS_CSV_NAME, "w")
+if not variants then error("Falha ao criar CSV de variantes: " .. tostring(variants_err)) end
+variants:write("stadium_id,field_length,field_width,first_frame,confirmed_frame,consecutive_live_frames,predefined_candidate,validated,status\\n")
+variants:flush()
 local count = 0
 while true do
     local frame = emu.framecount()
@@ -297,6 +340,17 @@ while true do
     local valid_geometry = integrity == "VALID"
     local transition_status, transition_age, pending_info =
         classify_transition(frame, stadium, length, width, game_state, integrity)
+    local variant = observe_variant(frame, stadium, length, width, game_state,
+        integrity, transition_status)
+    if variant then
+        variants:write(table.concat({
+            variant.stadium, variant.length, variant.width,
+            variant.first_frame, variant.confirmed_frame,
+            variant.live_frames, variant.predefined and 1 or 0,
+            0, "OBSERVED_UNVALIDATED"
+        }, ",") .. "\\n")
+        variants:flush()
+    end
     track_geometry({
         frame=frame, stadium_id=stadium, game_state=game_state,
         field_length=length, field_width=width,
