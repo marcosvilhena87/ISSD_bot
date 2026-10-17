@@ -1,4 +1,4 @@
-# ISSD_bot — Radar v0.8.0
+# ISSD_bot — Radar v0.9.0
 
 Radar somente leitura para **International Superstar Soccer Deluxe (SNES)** no BizHawk/Lua.
 
@@ -22,7 +22,8 @@ Esses limites representam **posições repetidas da bola em quatro escanteios**,
 ## Configuração principal
 
 ```lua
-local USE_EMPIRICAL_BOUNDS = true
+-- "empirical" (padrao), "geometric", "field_dimensions"
+local PROJECTION_MODEL = "empirical"
 local STADIUM_CALIBRATION = {
     [0] = {min_x=4, max_x=1788, min_y=4, max_y=572, validated=false},
     [1] = {min_x=4, max_x=1852, min_y=4, max_y=636, validated=false},
@@ -35,8 +36,9 @@ local STADIUM_CALIBRATION = {
 }
 ```
 
-- `USE_EMPIRICAL_BOUNDS=true`: usa modelo empírico quando existe e as dimensões da WRAM são válidas.
-- `USE_EMPIRICAL_BOUNDS=false`: usa sempre a normalização original baseada em `field_length` e `field_width`.
+- `PROJECTION_MODEL="empirical"`: usa o perfil individual do `Stadium_ID` (com fallback para `field_dimensions` quando ausente ou inválido).
+- `PROJECTION_MODEL="geometric"`: calcula dinamicamente os limites `min_x=4`, `max_x=field_length-4`, `min_y=4`, `max_y=field_width-4`, quando as dimensões são maiores que 8.
+- `PROJECTION_MODEL="field_dimensions"`: mantém a normalização original por `field_length` e `field_width`.
 - Sem perfil para o `Stadium_ID`, o modo volta automaticamente a `field_dimensions`; nunca copia os limites de outro estádio.
 - `validated=false` indica que faltam correspondências **medidas no mesmo frame** com o radar nativo. A mudança de modelo não comprova melhora visual.
 - `ORIGIN_X/Y` e `SCALE_X/Y` afetam somente a projeção original; no modelo empírico a origem é `min_x/y` e a escala é derivada de `max-min`. `INVERT_X/Y` e `OFFSET_X/Y` continuam aplicados aos dois modelos.
@@ -58,7 +60,7 @@ As colunas antigas `norm_x/y`, `pixel_x/y` e `inside_bounds` continuam descreven
 
 1. Abra partida no BizHawk e execute `lua/radar.lua` via **Tools → Lua Console**.
 2. Confira as quatro cruzes magenta sobre os cantos do radar nativo. O retângulo inicial continua `FX=88, FY=161, FW=79, FH=54` em pixels lógicos.
-3. Para comparar as projeções, capture o mesmo savestate com `USE_EMPIRICAL_BOUNDS=true` e depois `false`.
+3. Para comparar as projeções, capture o mesmo savestate com `PROJECTION_MODEL="empirical"`, `"geometric"` e `"field_dimensions"`.
 4. Analise `issd_radar_calibration.csv` em ambos os testes. Salve uma cópia antes de reiniciar: o CSV é sobrescrito.
 5. Se tiver posições nativas anotadas por frame, informe-as em `REFERENCES` como descrito no código; apenas essas linhas permitem calcular `MATCHED`.
 
@@ -71,3 +73,27 @@ As colunas antigas `norm_x/y`, `pixel_x/y` e `inside_bounds` continuam descreven
 - Comprimento/largura: `0x12A2` / `0x12A4` (u16).
 
 Não altera a memória nem envia inputs. O código foi publicado, mas ainda requer execução no BizHawk para validar esta versão.
+
+## Comparação dos três modelos — v0.9.0
+
+| Modelo | Dados utilizados | Histórico de validação |
+| --- | --- | --- |
+| `field_dimensions` | WRAM `0x12A2` e `0x12A4`; `ORIGIN_X/Y`, `SCALE_X/Y` | Independente dos perfis |
+| `empirical` | `STADIUM_CALIBRATION[Stadium_ID]` | Cada perfil mantém `validated=false` até aferição nativa |
+| `geometric` | Regra dinâmica `(4, L-4, 4, W-4)` | Hipótese derivada de escanteios, não validação nativa |
+
+A regra geométrica produz os mesmos **limites min/max** que os oito perfis atuais; isso não significa que o modelo reproduza com exatidão as posições nativas. Também não reproduz a assimetria da posição da bola nos cantos superiores (X=4 ou L-8) e inferiores (X=8 ou L-4); os limites são extremos globais observados.
+
+As colunas anteriores do CSV são preservadas. A v0.9.0 acrescenta `geometric_norm_x/y`, `geometric_pixel_x/y`, `geometric_min_x/max_x/min_y/max_y` e `geometric_minus_empirical_pixel_x/y`. Essas diferenças **não** são erros contra o radar nativo.
+
+### Teste de regressão
+
+Execute na raiz do repositório:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+O teste `tests/test_stadium_geometry.py` lê os oito perfis reais do Lua, verifica presença, `validated=false` e igualdade dos limites com a fórmula para as dimensões medidas. Não testa a execução no BizHawk, a correspondência visual no radar nativo ou a exatidão dos pixels do jogo.
+
+**Atenção:** se `Stadium_ID` e dimensões WRAM forem inconsistentes durante transições de partida, os modelos `empirical` e `geometric` podem divergir. Essa diferença é informativa; não marca nenhum perfil como validado automaticamente.
