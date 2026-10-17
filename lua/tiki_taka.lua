@@ -57,30 +57,31 @@ function M.new(config)
         local axis_len=math.sqrt(axis_x*axis_x+axis_y*axis_y)
         if axis_len==0 then return {mode="HOLD",reason="invalid_goal_axis",candidates={},support={}} end
         local ux,uy=axis_x/axis_len,axis_y/axis_len
-        local candidates,support={},{}
+        local candidates,support,evaluations={},{},{}
         for _,p in ipairs(s.my_players) do
             if p.id~=nil and p.id~=s.carrier_id and valid(p) and not p.is_goalkeeper then
                 local d=dist(carrier,p)
                 if d<=cfg.support_radius then
                     support[#support+1]={id=p.id,distance=d,role="SUPPORT"}
                 end
-                if d>=cfg.min_pass_distance and d<=cfg.max_pass_distance then
-                    local clearance=math.huge
-                    for _,enemy in ipairs(s.cpu_players) do
-                        if valid(enemy) then
-                            clearance=math.min(clearance,segment_distance(enemy,carrier,p))
-                        end
-                    end
-                    local progression=(p.x-carrier.x)*ux+(p.y-carrier.y)*uy
-                    local score=math.min(clearance,180)*cfg.open_weight+
-                        progression*cfg.progress_weight-d*cfg.distance_weight
-                    if last_target==p.id then score=score-cfg.repeat_penalty end
-                    local item={id=p.id,distance=d,clearance=clearance,
-                        progression=progression,score=score}
-                    if clearance>=cfg.opponent_clearance then
-                        candidates[#candidates+1]=item
+                local clearance=math.huge
+                for _,enemy in ipairs(s.cpu_players) do
+                    if valid(enemy) then
+                        clearance=math.min(clearance,segment_distance(enemy,carrier,p))
                     end
                 end
+                local progression=(p.x-carrier.x)*ux+(p.y-carrier.y)*uy
+                local score=math.min(clearance,180)*cfg.open_weight+
+                    progression*cfg.progress_weight-d*cfg.distance_weight
+                if last_target==p.id then score=score-cfg.repeat_penalty end
+                local reason="SAFE"
+                if d<cfg.min_pass_distance then reason="TOO_CLOSE"
+                elseif d>cfg.max_pass_distance then reason="TOO_FAR"
+                elseif clearance<cfg.opponent_clearance then reason="BLOCKED" end
+                local item={id=p.id,distance=d,clearance=clearance,
+                    progression=progression,score=score,reason=reason}
+                evaluations[#evaluations+1]=item
+                if reason=="SAFE" then candidates[#candidates+1]=item end
             end
         end
         local function order(a,b)
@@ -88,18 +89,50 @@ function M.new(config)
             return a.score>b.score
         end
         table.sort(candidates,order)
+        table.sort(evaluations,order)
         table.sort(support,function(a,b)
             if a.distance==b.distance then return tostring(a.id)<tostring(b.id) end
             return a.distance<b.distance
         end)
+        local counts={SAFE=0,TOO_CLOSE=0,TOO_FAR=0,BLOCKED=0}
+        local best_rejected=nil
+        for _,e in ipairs(evaluations) do
+            counts[e.reason]=counts[e.reason]+1
+            if e.reason~="SAFE" and not best_rejected then best_rejected=e end
+        end
+        -- Experimental supporting move: lateral offset from the best rejected
+        -- receiver. Never interpreted as a player-control instruction.
+        local support_move=nil
+        if best_rejected then
+            local receiver
+            for _,p in ipairs(s.my_players) do
+                if p.id==best_rejected.id then receiver=p;break end
+            end
+            if receiver then
+                local side=(receiver.y<=carrier.y) and 1 or -1
+                local proposed={x=receiver.x,y=receiver.y+side*80}
+                local safety=math.huge
+                for _,enemy in ipairs(s.cpu_players) do
+                    if valid(enemy) then
+                        safety=math.min(safety,segment_distance(enemy,carrier,proposed))
+                    end
+                end
+                if safety>best_rejected.clearance and dist(carrier,proposed)<=cfg.max_pass_distance then
+                    support_move={id=receiver.id,x=proposed.x,y=proposed.y,
+                        clearance=safety,reason="IMPROVE_PASS_LANE"}
+                end
+            end
+        end
+        local diagnostics={evaluations=evaluations,counts=counts,
+            best_rejected=best_rejected,support_move=support_move}
         if s.frame-last_pass_frame<cfg.pass_cooldown then
-            return {mode="HOLD",reason="pass_cooldown",candidates=candidates,support=support}
+            return {mode="HOLD",reason="pass_cooldown",candidates=candidates,support=support,diagnostics=diagnostics}
         end
         if #candidates==0 then
-            return {mode="HOLD",reason="no_safe_pass",candidates={},support=support}
+            return {mode="HOLD",reason="no_safe_pass",candidates={},support=support,diagnostics=diagnostics}
         end
         return {mode="PASS",target_id=candidates[1].id,
-            reason="safe_short_pass",candidates=candidates,support=support}
+            reason="safe_short_pass",candidates=candidates,support=support,diagnostics=diagnostics}
     end
     -- Call only after the controller has verified an actual pass initiation.
     local function confirm_pass(target_id,frame)
