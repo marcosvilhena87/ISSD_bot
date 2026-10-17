@@ -119,8 +119,10 @@ class StadiumGeometryTests(unittest.TestCase):
         self.assertIn('local field_loaded = length > 8 and width > 8', self.source)
         self.assertIn('and center_x > 0 and center_x < length', self.source)
         self.assertIn('and center_y > 0 and center_y < width', self.source)
-        self.assertIn('(not AUTO_HIDE_CORNERS or field_loaded)', self.source)
-        self.assertIn('corners_visible and 1 or 0, "field_loaded"', self.source)
+        self.assertIn('local corners_geometry_known = valid_geometry', self.source)
+        self.assertIn('variant_profile.geometry_observed == true', self.source)
+        self.assertIn('(field_loaded and corners_geometry_known)', self.source)
+        self.assertIn('corners_visible and 1 or 0, "known_geometry"', self.source)
         self.assertNotIn('CORNER_VISIBILITY_MODE', self.source)
         self.assertNotIn('radar_likely_visible', self.source)
 
