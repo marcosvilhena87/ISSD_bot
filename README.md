@@ -488,3 +488,10 @@ O modulo `lua/pass_input_observer.lua` consulta `joypad.get()` no loop, quando a
 Cada borda de B inicia uma observacao de ate 120 frames com deslocamento da bola e eventual identificacao de um novo portador da mesma equipe. `TEAMMATE_POSSESSION` representa associacao temporal, nao prova causal de passe; `OBSERVATION_TIMEOUT` fecha uma observacao sem recepcao identificada. Saltos de frames e savestates reinicializam o observador. `joypad.get()` pode representar entradas emuladas: verifique se captura os botoes manuais no seu BizHawk/core.
 
 CSV: v1.15.0, schema 8, 101 colunas (as 88 anteriores preservadas). Novas: `input_status,input_source,input_direction,input_b,pass_id,pass_event,pass_kind,pass_direction,pass_lead_frames,pass_dx,pass_dy,pass_receiver,pass_note`. O bot permanece estritamente somente leitura, sem `joypad.set`; nao foi feita calibracao conclusiva ou selecao automatica de passe. Testes: `lua tests/test_pass_input_observer.lua` e `lua tests/test_tactical_telemetry.lua`.
+
+
+## v1.15.1 — Identificacao das teclas do Player 1
+
+O observador agora reconhece explicitamente `P1 Up`, `P1 Down`, `P1 Left`, `P1 Right` e `P1 B` retornados pelo BizHawk, mantendo compatibilidade com nomes sem prefixo. Controles `P2` nao sao usados como comandos do jogador 1. A primeira lista de chaves retornada (e eventuais mudancas) aparece em `pass_note` como `joypad_keys=...`, com limite de comprimento para preservar o CSV. Uma tabela sem chaves reconhecidas recebe `UNKNOWN_LAYOUT`, nao um falso `OBSERVED` com B solto. Atenção: tabelas esparsas vazias tambem recebem `UNKNOWN_LAYOUT`; nesse caso o diagnostico sozinho nao confirma se os controles estao soltos ou indisponiveis. `joypad.get()` continua sujeito ao formato e ao comportamento da versao do BizHawk.
+
+Telemetria `1.15.1`, schema 8, 101 colunas sem alteracoes de formato. Teste: `lua tests/test_pass_input_observer.lua`. O bot permanece somente leitura.
