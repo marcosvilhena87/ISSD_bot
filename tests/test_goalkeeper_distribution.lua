@@ -54,4 +54,20 @@ assert(GK.plan(s5).target_id~=5) -- blocked GK5 corridor
 s5.cpu_players={}
 s5.my_players[4].id=6
 assert(GK.plan(s5).target_id~=5)
+local s2={active=true,possession="my",ownership_source="PLAYER_BALL_POSSESSION",
+ carrier_id=1,ball={x=21,y=347},
+ my_players={{id=1,x=20,y=347,is_goalkeeper=true},{id=4,x=371,y=386},
+ {id=3,x=372,y=259},{id=5,x=435,y=497},{id=2,x=540,y=88}},
+ cpu_players={}}
+local r2=assert(GK.plan(s2))
+assert(r2.target_id==2 and r2.reason=="provisional_gk2_reception_zone")
+assert(#r2.options==4 and r2.options[4].status=="PROVISIONAL_OBSERVED")
+s2.my_players[5].x=700
+assert(GK.plan(s2).target_id==5)
+s2.my_players[5].x=540
+s2.cpu_players={{id=99,x=260,y=217}}
+assert(GK.plan(s2).target_id~=2)
+s2.cpu_players={}
+s2.ball.x=100
+assert(GK.plan(s2).target_id~=2)
 print("goalkeeper distribution tests passed")
