@@ -18,7 +18,7 @@ if script_dir then
 else
     package.path = "./lua/?.lua;lua/?.lua;" .. package.path
 end
-local TikiTaka = require("tiki_taka")
+local SequentialTiki = require("sequential_tiki_taka")
 local Gegenpressing = require("gegenpressing")
 local Possession = require("possession")
 local Telemetry = require("tactical_telemetry")
@@ -51,7 +51,7 @@ local function valid_input(s)
 end
 function M.new(config)
     config = config or {}
-    local tiki = TikiTaka.new(config.tiki_taka)
+    local tiki = SequentialTiki.new({tiki_taka=config.tiki_taka,dribble_step=config.dribble_step,dribble_clearance=config.dribble_clearance})
     local gegen = Gegenpressing.new(config.gegenpressing)
     local last_frame = nil
     local function reset()
@@ -67,15 +67,22 @@ function M.new(config)
         if last_frame and s.frame < last_frame then reset() end
         last_frame = s.frame
         if not valid_input(s) then
+            local waiting=tiki.update(s)
+            if waiting.mode=="WAIT_RECEIVE" then
+                return {mode="WAIT_RECEIVE",phase="TRANSITION",decision=waiting,reason=waiting.reason}
+            end
             reset()
-            return {mode="INACTIVE",reason="unvalidated_state"}
+            return {mode="INACTIVE",reason=s.reason or "unvalidated_state"}
         end
         -- Always update gegenpressing; otherwise it misses the my -> cpu transition.
         local pressure = gegen.update(s)
         if s.possession == "my" then
             local attack = tiki.update(s)
-            return {mode=attack.mode=="PASS" and "TIKI_TAKA" or "KEEP_POSSESSION",
-                phase="ATTACK",decision=attack,pressure=pressure}
+            local mode=attack.mode=="PASS_READY" and "TIKI_TAKA" or
+                attack.mode=="DRIBBLE" and "DRIBBLE" or
+                attack.mode=="REPLAN" and "REPLAN" or "KEEP_POSSESSION"
+            return {mode=mode,phase="ATTACK",decision=attack,
+                tactical_action=attack.mode,pressure=pressure}
         end
         -- Tiki-taka deliberately resets whenever we lose possession.
         tiki.reset()
