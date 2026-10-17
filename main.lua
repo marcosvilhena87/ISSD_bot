@@ -3,6 +3,7 @@
 package.path = "./lua/?.lua;lua/?.lua;" .. package.path
 local TikiTaka = require("tiki_taka")
 local Gegenpressing = require("gegenpressing")
+local Possession = require("possession")
 local M = {}
 local function finite(n)
     return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge
@@ -64,7 +65,8 @@ function M.new(config)
     end
     return {update=update,reset=reset,confirm_pass=confirm_pass}
 end
--- Read-only BizHawk loop. External provider must confirm possession and carrier.
+-- Read-only BizHawk loop: built-in conservative WRAM provider by default.
+-- An external validated state provider can override it.
 -- Define ISSD_STATE_PROVIDER=function(frame) return validated_state end
 -- before loading main.lua. No game buttons are emitted.
 function M.run(provider, config)
@@ -75,7 +77,12 @@ function M.run(provider, config)
     local previous_mode
     while true do
         local frame=emu.framecount()
-        local s=provider and provider(frame) or nil
+        local s
+        if provider then
+            s=provider(frame)
+        elseif type(memory)=="table" then
+            s=Possession.bizhawk()
+        end
         local decision
         if type(s)=="table" then
             s.frame=frame
