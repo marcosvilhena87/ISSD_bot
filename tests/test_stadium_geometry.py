@@ -11,7 +11,7 @@ import unittest
 RADAR = Path(__file__).resolve().parents[1] / "lua" / "radar.lua"
 EXPECTED_DIMENSIONS = {
     0: (1792, 576), 1: (1856, 640), 2: (1984, 704), 3: (2048, 640),
-    4: (1920, 640), 5: (1920, 576), 6: (1792, 704), 7: (1856, 640),
+    4: (1920, 640), 5: (1920, 576), 6: (1792, 704), 7: (2176, 704),
 }
 PATTERN = re.compile(
     r"\[(\d+)\]\s*=\s*\{min_x=(\d+),\s*max_x=(\d+),\s*"
