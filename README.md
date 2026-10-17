@@ -511,3 +511,10 @@ O CSV de 17/10/2026 15:48:40 registra `B_EDGE` no frame 6381 e `TEAMMATE_POSSESS
 O planejador agora recomenda ID 5 (`PROVISIONAL_OBSERVED`) quando ele esta entre GK1-GK3, em setor nominal `Right`, com `|dx-410|<=30`, `|dy-148|<=25`, `|distancia-435.89|<=35` e afastamento minimo ao adversario pelo menos `235`. Sao tolerancias heuristicas de UMA observacao, nao uma garantia de sucesso. O perfil ID 4 permanece. Quando ambos os perfis coincidem, o ID 5 recebe prioridade porque a captura que motivou esta regra terminou com ID 5, embora a recomendacao anterior fosse ID 4. Esse desempate tambem e provisório. Sem perfil correspondente, nenhuma recomendacao e selecionada. O modo nao aciona botoes.
 
 Versao de telemetria `1.15.3`, esquema 8, 101 colunas. Teste: `lua tests/test_goalkeeper_distribution.lua`.
+
+
+## v1.15.4 — Perfil provisório GK → ID 2
+
+No relatório de 15:53:48, B foi observado no frame 6390 com a bola em (21,347), e a posse do ID 2 surgiu no frame 6490, com bola em (540,88). O ID 2 não era um dos três candidatos registrados; a posição dele antes do passe é desconhecida. O destino observado não deve ser confundido com sua posição pré-passe.
+
+O perfil experimental somente recomenda o ID 2 se: bola perto de (21,347), tolerância 25 por eixo; vetor atual até o ID 2 próximo de (+519,-259), tolerância 60 por eixo; direção nominal Up+Right; e distância mínima adversária ao segmento >=200. Se ID 2 não estiver entre GK1-GK3, será incluído como quarta opção. Os perfis ID 4 e ID 5 permanecem. Limitação: o CSV e o radar apresentam apenas GK1-GK3, mesmo se ID 2 for um quarto candidato; a seleção aparece em target_id. Tolerâncias não são estatisticamente validadas. Não aciona controles. Versão 1.15.4, schema 8, 101 colunas.
