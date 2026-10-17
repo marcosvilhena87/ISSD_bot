@@ -21,6 +21,7 @@ end
 local TikiTaka = require("tiki_taka")
 local Gegenpressing = require("gegenpressing")
 local Possession = require("possession")
+local Telemetry = require("tactical_telemetry")
 print("[ISSD] main.lua: modulos carregados")
 local function callable_api(v)
     local t=type(v)
@@ -99,6 +100,13 @@ function M.run(provider, config)
     if provider ~= nil then assert(type(provider)=="function","provider must be a function") end
     local previous_mode
     local last_error
+    local telemetry, telemetry_error=Telemetry.new("issd_tactical_report.csv", {flush_every=60})
+    if telemetry then
+        print("[ISSD] Telemetria: issd_tactical_report.csv")
+    else
+        print("[ISSD] ERRO CSV: "..tostring(telemetry_error))
+    end
+    local last_csv_error
     while true do
         local frame=emu.framecount()
         local s
@@ -124,6 +132,13 @@ function M.run(provider, config)
         if type(gui)=="table" and callable_api(gui.text) then
             gui.text(4,4,"ISSD main: "..tostring(decision.mode))
         end
+        if telemetry then
+            local wrote,write_error=telemetry.record(frame,s,decision)
+            if not wrote and write_error~=last_csv_error then
+                print("[ISSD] ERRO CSV: "..tostring(write_error))
+                last_csv_error=write_error
+            end
+        end
         if decision.mode~=previous_mode then
             print(string.format("[ISSD][%d] %s",frame,decision.mode))
             previous_mode=decision.mode
@@ -131,6 +146,7 @@ function M.run(provider, config)
         if type(ISSD_TACTICAL_OBSERVER)=="function" then
             ISSD_TACTICAL_OBSERVER(decision,s)
         end
+        if telemetry and previous_mode~=decision.mode then telemetry.flush() end
         emu.frameadvance()
     end
 end
