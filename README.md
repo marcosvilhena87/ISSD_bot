@@ -439,3 +439,12 @@ Teste isolado: `lua tests/test_sequential_tiki_taka.lua`. Os testes foram adicio
 Com posse confirmada, `tiki_taka.lua` avalia passes de todas as direções pelo eixo dos gols: `PROGRESSIVE` (avança), `LATERAL` (apoio) e `BACKWARD` (recuo). Só entram na seleção passes aprovados pelos limites existentes de distância e corredor livre. Um passe progressivo válido tem preferência; um lateral ou recuo pode prevalecer quando apresentar corredor pelo menos `safety_override_margin=45` unidades mais livre que o melhor progressivo. Sem passe aprovado, o planejador sequencial considera `DRIBBLE`.
 
 A v1.13.1 atualiza o CSV para **schema 4, 43 colunas**, acrescentando `pass_type`, `pass_score`, `pass_clearance` e `pass_progression`. O modo continua somente leitura, sem comandos `joypad`. Teste de regressão: `lua tests/test_pass_priority.lua`. A preferência de passe é uma hipótese de planejamento e exige validação visual no BizHawk.
+
+
+## v1.13.2 — Diagnóstico dos companheiros próximos
+
+O algoritmo de tiki-taka agora guarda os **três jogadores de linha mais próximos do portador**, mesmo quando seus passes são rejeitados. Para cada um, registra `id`, distância a partir do portador (`carrier_distance`), distância a partir da bola (`ball_distance`), motivo `SAFE/TOO_CLOSE/TOO_FAR/BLOCKED` e identificação do adversário cuja posição está mais próxima do segmento de passe. O cálculo do bloqueador é geométrico e **não prova que ele interceptaria a bola**.
+
+O radar marca os três companheiros próximos com um pequeno contorno branco e destaca em laranja o bloqueador do melhor candidato rejeitado. A calibração do radar continua experimental. Os critérios de aceitação do passe e a prioridade progressiva/lateral/recuo **não foram alterados**.
+
+O CSV v1.13.2 utiliza o **esquema 5, com 58 colunas**: acrescenta `near1_id`, `near1_carrier_distance`, `near1_ball_distance`, `near1_reason`, `near1_blocker_id` e equivalentes para `near2` e `near3`. Os diagnósticos ficam vazios quando não há posse confirmada ou avaliação disponível. Teste: `lua tests/test_nearest_passes.lua`. A execução real no BizHawk ainda precisa ser validada.
